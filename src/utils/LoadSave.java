@@ -13,7 +13,16 @@ public class LoadSave {
     public static final String LEVEL_ATLAS = "road_tiles.png";
     public static final String ROAD_DATA = "road_data_new.png";
     public static final String ROAD_SAMPLE = "level_one_data.png";
-    public static final String ENEMY = "jeepney_sprites.png";
+    public static final String MENU_BUTTONS = "button_atlas.png";
+    public static final String MENU_BACKGROUNDS = "menu_background.png";
+    public static final String PAUSE_BACKGROUNDS = "pause_menu.png";
+    public static final String SOUND_BUTTONS = "sound_button.png";
+    public static final String URM_BUTTONS = "urm_buttons.png";
+    public static final String VOLUME_BUTTONS = "volume_buttons.png";
+
+    // Menu
+
+    public static final String ENEMY = "jeepney_sprites.png"    ;
     public static BufferedImage getSpriteAtlas(String fileName) {
         BufferedImage img = null;
         InputStream is = LoadSave.class.getResourceAsStream("/" + fileName);
