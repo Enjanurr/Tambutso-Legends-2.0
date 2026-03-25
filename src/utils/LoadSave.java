@@ -11,14 +11,19 @@ import java.io.InputStream;
 public class LoadSave {
     public static final String PLAYER_ATLAS = "jeepney_sprites.png";
     public static final String LEVEL_ATLAS = "road_tiles.png";
-    public static final String ROAD_DATA = "road_data_new.png";
+    //public static final String ROAD_DATA = "road_data_new.png";
+    public static final String ROAD_DATA = "long_road_data.png";
     public static final String ROAD_SAMPLE = "level_one_data.png";
     public static final String MENU_BUTTONS = "button_atlas.png";
     public static final String MENU_BACKGROUNDS = "menu_background.png";
-    public static final String PAUSE_BACKGROUNDS = "pause_menu.png";
+    public static final String PAUSE_BACKGROUND = "pause_menu.png";
     public static final String SOUND_BUTTONS = "sound_button.png";
     public static final String URM_BUTTONS = "urm_buttons.png";
     public static final String VOLUME_BUTTONS = "volume_buttons.png";
+    public static final String MENU_BACKGROUND_IMG = "background_menu.png";
+    public static final String PLAYING_BACKGROUND_IMG = "playing_bg_img.png";
+    public static final String BIG_CLOUDS = "big_clouds.png";
+    public static final String SMALL_CLOUDS  = "small_clouds.png";
 
     // Menu
 

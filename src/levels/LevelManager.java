@@ -29,13 +29,13 @@ public class LevelManager {
             }
     }
 
-    public void draw(Graphics g) {
+    public void draw(Graphics g, int lvlOffset) {
         // getSpriteIndex in LoadSave
         for (int row = 0; row < Game.TILES_IN_HEIGHT; row++)
-            for (int col = 0; col < Game.TILES_IN_WIDTH; col++) {
+            for (int col = 0; col < levelOne.getLevelData()[0].length   ; col++) {
                 int index = levelOne.getSpriteIndex(row, col);
                 //System.out.print(index + " "); // debug
-                g.drawImage(levelSprite[index], Game.TILES_SIZE * col, Game.TILES_SIZE * row, Game.TILES_SIZE, Game.TILES_SIZE, null);
+                g.drawImage(levelSprite[index], Game.TILES_SIZE * col - lvlOffset, Game.TILES_SIZE * row, Game.TILES_SIZE, Game.TILES_SIZE, null);
             }
         System.out.println();
     }
