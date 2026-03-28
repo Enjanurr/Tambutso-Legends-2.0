@@ -17,10 +17,10 @@ public class Person extends Entity {
     private int aniTick  = 0;
     private int aniIndex = 0;
 
-    // false = scrolled off screen, PersonManager removes this instance
+
     private boolean active = true;
 
-    // Movement direction — updated every tick based on jeepney state
+
     private boolean movingLeft = true;
 
     public Person(float x, float y, PersonType type, String atlasPath) {
@@ -41,10 +41,7 @@ public class Person extends Entity {
                         PERSON_HEIGHT_DEFAULT);
     }
 
-    /**
-     * @param worldScrolling true when the jeepney is moving (D held + centered)
-     * @param scrollSpeed    world scroll speed in pixels/tick
-     */
+
     public void update(boolean worldScrolling, float scrollSpeed) {
 
         if (type == PersonType.WALKER) {
@@ -91,5 +88,5 @@ public class Person extends Entity {
 
     public boolean    isActive()     { return active; }
     public PersonType getType()      { return type; }
-    public boolean    isMovingLeft() { return movingLeft; }
+
 }

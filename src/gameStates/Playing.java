@@ -1,8 +1,10 @@
 package gameStates;
 
 import Ui.PauseOverlay;
+import entities.EnemyManager;
 import entities.PersonManager;
 import entities.Player;
+import entities.PowerupManager;
 import levels.LevelManager;
 import main.Game;
 import utils.LoadSave;
@@ -17,10 +19,12 @@ import static utils.Constants.Environment.*;
 
 public class Playing extends State implements StateMethods {
 
-    private Player        player;
-    private PersonManager personManager;
-    private LevelManager  levelManager;
-    private PauseOverlay  pauseOverlay;
+    private PowerupManager powerupManager;
+    private Player         player;
+    private PersonManager  personManager;
+    private EnemyManager   enemyManager;   // NEW
+    private LevelManager   levelManager;
+    private PauseOverlay   pauseOverlay;
     private boolean paused = false;
 
     // ── World scrolling ──────────────────────────────────────
@@ -31,8 +35,7 @@ public class Playing extends State implements StateMethods {
     // -------------------------------------------------------
     // WORLD SCROLL SETTINGS
     // -------------------------------------------------------
-    private static final float WORLD_SCROLL_SPEED = 1.6f; // ← ADJUST: pixels per tick
-    private static final int   MAX_WORLD_LOOPS    = 15;   // ← ADJUST: total world loops
+    private static final int   MAX_WORLD_LOOPS  = 15;
     // -------------------------------------------------------
 
     private static final float CENTER_TOLERANCE = 10f * Game.SCALE;
@@ -62,7 +65,6 @@ public class Playing extends State implements StateMethods {
     private void initClasses() {
         levelManager = new LevelManager(game);
 
-        // Spawn jeep at horizontal screen centre
         int jeepHitboxW = (int)(70 * Game.SCALE);
         int spawnX      = (Game.GAME_WIDTH - jeepHitboxW) / 2;
         int spawnY      = 520;
@@ -72,8 +74,10 @@ public class Playing extends State implements StateMethods {
                 game.getGamePanel());
         player.loadLvlData(levelManager.getCurrentLevel().getLevelData());
 
-        personManager = new PersonManager(this);
-        pauseOverlay  = new PauseOverlay(this);
+        personManager  = new PersonManager(this);
+        enemyManager   = new EnemyManager(this);   // NEW
+        pauseOverlay   = new PauseOverlay(this);
+        powerupManager = new PowerupManager(this);
     }
 
     private void loadBackgroundAssets() {
@@ -86,41 +90,41 @@ public class Playing extends State implements StateMethods {
             smallCloudsPos[i] = (int)(20 * Game.SCALE) + rnd.nextInt((int)(100 * Game.SCALE));
     }
 
-    // ── Full game restart — called by PauseOverlay restart button ──
+    // ── Full game restart ────────────────────────────────────
     public void restartGame() {
-        // Reset world scroll state
         worldOffset    = 0;
         worldLoopCount = 0;
         worldLoopDone  = false;
         dKeyHeld       = false;
 
-        // Reset cloud offsets
         bigCloudOffset   = 0f;
         smallCloudOffset = 0f;
 
-        // Randomise new cloud positions
         for (int i = 0; i < smallCloudsPos.length; i++)
             smallCloudsPos[i] = (int)(20 * Game.SCALE) + rnd.nextInt((int)(100 * Game.SCALE));
 
-        // Reset player to centre screen with no speed
         int jeepHitboxW = (int)(70 * Game.SCALE);
         int spawnX      = (Game.GAME_WIDTH - jeepHitboxW) / 2;
         player.getHitBox().x = spawnX;
         player.getHitBox().y = 520;
         player.resetDirBooleans();
+        player.setWorldLoopDone(false);
 
-        // Clear all persons and reset spawn timers
         personManager.resetAll();
+        enemyManager.resetAll();    // NEW
+        powerupManager.resetAll();
 
-        // Close pause menu and resume play
         paused = false;
     }
 
+    // ── Scrolling condition ──────────────────────────────────
     public boolean isScrolling() {
-        return dKeyHeld && isJeepCentered() && !paused && !worldLoopDone;
+        // Jeep cannot scroll while in car-struck state
+        return dKeyHeld && isJeepCentered() && !paused && !worldLoopDone
+                && !player.isStruckActive();
     }
 
-    public float getScrollSpeed() { return WORLD_SCROLL_SPEED; }
+    public float getScrollSpeed() { return player.getCurrentXSpeed(); }
 
     private boolean isJeepCentered() {
         float jeepCenterX   = player.getHitBox().x + player.getHitBox().width / 2f;
@@ -128,40 +132,53 @@ public class Playing extends State implements StateMethods {
         return Math.abs(jeepCenterX - screenCenterX) <= CENTER_TOLERANCE;
     }
 
+    // ─────────────────────────────────────────────────────────
+    // UPDATE
+    // ─────────────────────────────────────────────────────────
     @Override
     public void update() {
         if (!paused) {
             boolean scrolling = isScrolling();
             player.setWorldScrolling(scrolling);
+            player.setWorldLoopDone(worldLoopDone);
 
             if (scrolling) {
-                worldOffset += WORLD_SCROLL_SPEED;
-                if (worldOffset >= levelPixelWidth) {
-                    worldOffset -= levelPixelWidth;
-                    worldLoopCount++;
-                    if (worldLoopCount >= MAX_WORLD_LOOPS) {
-                        worldLoopDone = true;
-                        worldOffset   = 0;
+                float spd = getScrollSpeed();
+                if (spd > 0) {
+                    worldOffset += spd;
+                    if (worldOffset >= levelPixelWidth) {
+                        worldOffset -= levelPixelWidth;
+                        worldLoopCount++;
+                        if (worldLoopCount >= MAX_WORLD_LOOPS) {
+                            worldLoopDone = true;
+                            worldOffset   = 0;
+                        }
                     }
+
+                    bigCloudOffset += spd * BIG_CLOUD_PARALLAX;
+                    if (bigCloudOffset >= BIG_CLOUD_WIDTH)
+                        bigCloudOffset -= BIG_CLOUD_WIDTH;
+
+                    smallCloudOffset += spd * SMALL_CLOUD_PARALLAX;
+                    if (smallCloudOffset >= SMALL_CLOUD_WIDTH)
+                        smallCloudOffset -= SMALL_CLOUD_WIDTH;
                 }
-
-                bigCloudOffset += WORLD_SCROLL_SPEED * BIG_CLOUD_PARALLAX;
-                if (bigCloudOffset >= BIG_CLOUD_WIDTH)
-                    bigCloudOffset -= BIG_CLOUD_WIDTH;
-
-                smallCloudOffset += WORLD_SCROLL_SPEED * SMALL_CLOUD_PARALLAX;
-                if (smallCloudOffset >= SMALL_CLOUD_WIDTH)
-                    smallCloudOffset -= SMALL_CLOUD_WIDTH;
             }
 
             levelManager.update();
             personManager.update();
+            enemyManager.update();    // NEW
+            powerupManager.update();
             player.update();
+
         } else {
             pauseOverlay.update();
         }
     }
 
+    // ─────────────────────────────────────────────────────────
+    // DRAW
+    // ─────────────────────────────────────────────────────────
     @Override
     public void draw(Graphics g) {
         if (backgroundImg != null)
@@ -169,6 +186,8 @@ public class Playing extends State implements StateMethods {
         drawClouds(g);
         levelManager.draw(g, (int) worldOffset);
         personManager.render(g);
+        enemyManager.render(g);
+        powerupManager.render(g);
         player.render(g);
 
         if (paused) {
@@ -199,6 +218,9 @@ public class Playing extends State implements StateMethods {
         }
     }
 
+    // ─────────────────────────────────────────────────────────
+    // INPUT
+    // ─────────────────────────────────────────────────────────
     @Override
     public void mouseClicked(MouseEvent e) {
         if (e.getButton() == MouseEvent.BUTTON1) player.setAttacking(true);
@@ -214,25 +236,28 @@ public class Playing extends State implements StateMethods {
     @Override
     public void keyPressed(KeyEvent e) {
         switch (e.getKeyCode()) {
-            case KeyEvent.VK_A:      player.setLeft(true);                break;
-            case KeyEvent.VK_D:      player.setRight(true); dKeyHeld = true; break;
-            case KeyEvent.VK_W:      player.setUp(true);                  break;
-            case KeyEvent.VK_S:      player.setDown(true);                break;
-            case KeyEvent.VK_ESCAPE: paused = !paused;                    break;
+            case KeyEvent.VK_A:      player.setLeft(true);                    break;
+            case KeyEvent.VK_D:      player.setRight(true); dKeyHeld = true;  break;
+            case KeyEvent.VK_W:      player.setUp(true);                      break;
+            case KeyEvent.VK_S:      player.setDown(true);                    break;
+            case KeyEvent.VK_ESCAPE: paused = !paused;                        break;
         }
     }
 
     @Override
     public void keyReleased(KeyEvent e) {
         switch (e.getKeyCode()) {
-            case KeyEvent.VK_A: player.setLeft(false);                     break;
-            case KeyEvent.VK_D: player.setRight(false); dKeyHeld = false;  break;
-            case KeyEvent.VK_W: player.setUp(false);                       break;
-            case KeyEvent.VK_S: player.setDown(false);                     break;
+            case KeyEvent.VK_A: player.setLeft(false);                        break;
+            case KeyEvent.VK_D: player.setRight(false); dKeyHeld = false;     break;
+            case KeyEvent.VK_W: player.setUp(false);                          break;
+            case KeyEvent.VK_S: player.setDown(false);                        break;
         }
     }
 
-    public void onJeepLooped() { personManager.resetAll(); }
+    public void onJeepLooped() {
+        personManager.resetAll();
+        enemyManager.resetAll();   // NEW — clear enemies on warp
+    }
 
     public void windowFocusLost() {
         player.resetDirBooleans();
@@ -240,5 +265,4 @@ public class Playing extends State implements StateMethods {
     }
 
     public Player getPlayer()      { return player; }
-    public float  getWorldOffset() { return worldOffset; }
 }

@@ -110,20 +110,23 @@ public class PersonManager {
 
     // ── Render — layered draw order ──────────────────────────
     public void render(Graphics g) {
+
+        List<Person> snapshot = new ArrayList<>(persons);
+
         // Layer 1 — Lane 1 walkers (back)
-        for (Person p : persons)
+        for (Person p : snapshot)
             if (p.getType() == Person.PersonType.WALKER
                     && p.getY() < LANE_2_Y * Game.SCALE)
                 p.render(g);
 
         // Layer 2 — Lane 2 walkers (middle)
-        for (Person p : persons)
+        for (Person p : snapshot)
             if (p.getType() == Person.PersonType.WALKER
                     && p.getY() >= LANE_2_Y * Game.SCALE)
                 p.render(g);
 
         // Layer 3 — Passengers (front)
-        for (Person p : persons)
+        for (Person p : snapshot)
             if (p.getType() == Person.PersonType.PASSENGER)
                 p.render(g);
     }

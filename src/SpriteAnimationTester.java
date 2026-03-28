@@ -10,7 +10,7 @@ import java.io.InputStream;
 public class SpriteAnimationTester extends JPanel implements Runnable {
 
 
-    private static final String SPRITE_PATH  = "/Person/test3.png"; // ← ADJUST: path to sprite sheet
+    private static final String SPRITE_PATH  = "/Person/test2.png"; // ← ADJUST: path to sprite sheet
     private static final int    FRAME_WIDTH  = 61;   // ← ADJUST: width of each frame
     private static final int    FRAME_HEIGHT = 60;   // ← ADJUST: height of each frame
     private static final int    COLUMNS      = 10;   // ← ADJUST: columns in the sheet
