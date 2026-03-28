@@ -4,7 +4,63 @@ import entities.Enemy;
 import main.Game;
 
 public class    Constants {
-    public static class EnemyConstants{
+
+    // ── Environment (clouds / background) ───────────────────
+    public static class Environment {
+        public static final int BIG_CLOUD_WIDTH_DEFAULT   = 448;
+        public static final int BIG_CLOUD_HEIGHT_DEFAULT  = 101;
+        public static final int SMALL_CLOUD_WIDTH_DEFAULT = 72;
+        public static final int SMALL_CLOUD_HEIGHT_DEFAULT = 24;
+        public static final int BUS_STOP_WIDTH_DEFAULT = 793;
+        public static final int BUS_STOP_HEIGHT_DEFAULT = 261;
+
+        public static final int BIG_CLOUD_WIDTH    = (int)(BIG_CLOUD_WIDTH_DEFAULT   * Game.SCALE);
+        public static final int BIG_CLOUD_HEIGHT   = (int)(BIG_CLOUD_HEIGHT_DEFAULT  * Game.SCALE);
+        public static final int SMALL_CLOUD_WIDTH  = (int)(SMALL_CLOUD_WIDTH_DEFAULT * Game.SCALE);
+        public static final int SMALL_CLOUD_HEIGHT = (int)(SMALL_CLOUD_HEIGHT_DEFAULT * Game.SCALE);
+        public static final int BUS_STOP_WIDTH = (int)(BUS_STOP_WIDTH_DEFAULT * (Game.SCALE - 1.2));
+        public static final int BUS_STOP_HEIGHT = (int)(BUS_STOP_HEIGHT_DEFAULT * (Game.SCALE - 1.2));
+    }
+
+    // ── Person sprites ───────────────────────────────────────
+    public static class PersonConstants {
+
+
+        // Sprite sheet per person: 610 × 120 — 10 columns, 2 rows, each cell 61 × 60 px
+        // Row 0 = IDLE / PASSENGER  (top row)
+        // Row 1 = WALK              (bottom row)
+        public static final int PERSON_FRAME_COUNT    = 10;
+        public static final int PERSON_WIDTH_DEFAULT  = 61;  // 610 / 10
+        public static final int PERSON_HEIGHT_DEFAULT = 60;  // 120 / 2
+
+        public static final int ROW_IDLE = 0;
+        public static final int ROW_WALK = 1;
+
+        public static final int PERSON_WIDTH  = (int)(PERSON_WIDTH_DEFAULT  * Game.SCALE);
+        public static final int PERSON_HEIGHT = (int)(PERSON_HEIGHT_DEFAULT * Game.SCALE);
+
+
+
+        // ── Walker settings ──────────────────────────────────
+        public static final float WALK_SPEED       = 0.3333f;
+        public static final int   WALKER_ANI_SPEED = 25;
+
+        // FOR WALKERS Lane Y positions
+        public static final float LANE_1_Y = 128f; // top sidewalk lane
+        public static final float LANE_2_Y = 140f; // bottom sidewalk lane
+
+
+
+        // ── Passenger settings ───────────────────────────────
+        public static final float PASSENGER_Y         = 154f;
+        public static final int   PASSENGER_ANI_SPEED = 25;
+
+
+
+    }
+
+
+    public static class EnemyConstants {
         public static final int ENEMY_JEEP = 0;
 
         public static final int IDLE = 1;
@@ -26,25 +82,6 @@ public class    Constants {
          }
 
 
-    }
-    public static class Environment{
-            public static final int BIG_CLOUD_WIDTH_DEFAULT = 448;
-            public static final int BIG_CLOUD_HEIGHT_DEFAULT = 101;
-
-            public static final int SMALL_CLOUD_WIDTH_DEFAULT = 72;
-            public static final int SMALL_CLOUD_HEIGHT_DEFAULT = 24;
-
-            public static final int BUS_STOP_WIDTH_DEFAULT = 793;
-            public static final int BUS_STOP_HEIGHT_DEFAULT = 261;
-
-            public static final int BIG_CLOUD_WIDTH = (int)(BIG_CLOUD_WIDTH_DEFAULT * Game.SCALE);
-            public static final int BIG_CLOUD_HEIGHT = (int)(BIG_CLOUD_HEIGHT_DEFAULT * Game.SCALE);
-
-            public static final int SMALL_CLOUD_WIDTH = (int)(SMALL_CLOUD_WIDTH_DEFAULT * Game.SCALE);
-            public static final int SMALL_CLOUD_HEIGHT = (int)(SMALL_CLOUD_HEIGHT_DEFAULT * Game.SCALE);
-
-            public static final int BUS_STOP_WIDTH = (int)(BUS_STOP_WIDTH_DEFAULT * (Game.SCALE - 1.2));
-            public static final int BUS_STOP_HEIGHT = (int)(BUS_STOP_HEIGHT_DEFAULT * (Game.SCALE - 1.2));
     }
     public static class UI{
         public static class Buttons{

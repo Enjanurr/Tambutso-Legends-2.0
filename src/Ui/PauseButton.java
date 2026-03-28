@@ -43,19 +43,9 @@ public class PauseButton {
         this.width = width;
     }
 
-    public int getHeight() {
-        return height;
-    }
-
-    public void setHeight(int height) {
-        this.height = height;
-    }
-
     public Rectangle getBounds() {
         return bounds;
     }
 
-    public void setBounds(Rectangle bounds) {
-        this.bounds = bounds;
-    }
+
 }
