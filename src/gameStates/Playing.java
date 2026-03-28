@@ -28,7 +28,7 @@ public class Playing extends State implements StateMethods{
 
     private int maxLevelOffSetX = maxTilesOffset * Game.TILES_SIZE;
 
-    private BufferedImage backgroundImg,bigClouds,smallClouds;
+    private BufferedImage backgroundImg,bigClouds,smallClouds, busStop;
     private int[] smallCloudsPos;
     private Random rnd = new Random();
 
@@ -38,6 +38,7 @@ public class Playing extends State implements StateMethods{
         backgroundImg = LoadSave.getSpriteAtlas(LoadSave.PLAYING_BACKGROUND_IMG);
         bigClouds = LoadSave.getSpriteAtlas(LoadSave.BIG_CLOUDS);
         smallClouds = LoadSave.getSpriteAtlas(LoadSave.SMALL_CLOUDS);
+        busStop = LoadSave.getSpriteAtlas(LoadSave.BUS_STOP);
 
         smallCloudsPos = new int[8];
         for(int i = 0 ; i < smallCloudsPos.length;i++){
@@ -90,6 +91,7 @@ public class Playing extends State implements StateMethods{
         levelManager.draw(g,xLvlOffset);
         player.render(g, xLvlOffset);
 
+        g.drawImage(busStop, 50, 225,  BUS_STOP_WIDTH, BUS_STOP_HEIGHT, null);
         if(paused){
             g.setColor(new Color(0,0,0,150));
             g.fillRect(0,0, Game.GAME_WIDTH,Game.GAME_HEIGHT);

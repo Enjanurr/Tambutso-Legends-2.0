@@ -24,6 +24,7 @@ public class LoadSave {
     public static final String PLAYING_BACKGROUND_IMG = "playing_bg_img.png";
     public static final String BIG_CLOUDS = "big_clouds.png";
     public static final String SMALL_CLOUDS  = "small_clouds.png";
+    public static final String BUS_STOP  = "bus_stop.png";
 
     // Menu
 

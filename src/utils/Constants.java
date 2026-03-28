@@ -3,7 +3,7 @@ package utils;
 import entities.Enemy;
 import main.Game;
 
-public class Constants {
+public class    Constants {
     public static class EnemyConstants{
         public static final int ENEMY_JEEP = 0;
 
@@ -34,12 +34,17 @@ public class Constants {
             public static final int SMALL_CLOUD_WIDTH_DEFAULT = 72;
             public static final int SMALL_CLOUD_HEIGHT_DEFAULT = 24;
 
+            public static final int BUS_STOP_WIDTH_DEFAULT = 793;
+            public static final int BUS_STOP_HEIGHT_DEFAULT = 261;
 
             public static final int BIG_CLOUD_WIDTH = (int)(BIG_CLOUD_WIDTH_DEFAULT * Game.SCALE);
             public static final int BIG_CLOUD_HEIGHT = (int)(BIG_CLOUD_HEIGHT_DEFAULT * Game.SCALE);
 
             public static final int SMALL_CLOUD_WIDTH = (int)(SMALL_CLOUD_WIDTH_DEFAULT * Game.SCALE);
             public static final int SMALL_CLOUD_HEIGHT = (int)(SMALL_CLOUD_HEIGHT_DEFAULT * Game.SCALE);
+
+            public static final int BUS_STOP_WIDTH = (int)(BUS_STOP_WIDTH_DEFAULT * (Game.SCALE - 1.2));
+            public static final int BUS_STOP_HEIGHT = (int)(BUS_STOP_HEIGHT_DEFAULT * (Game.SCALE - 1.2));
     }
     public static class UI{
         public static class Buttons{
