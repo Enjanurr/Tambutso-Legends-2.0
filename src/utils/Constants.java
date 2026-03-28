@@ -55,19 +55,51 @@ public class Constants {
     }
 
 
-    public static class EnemyConstants {
-        public static final int ENEMY_JEEP = 0;
+    public static class EnemyConstants{
+        public static final int GSM_TAXI = 0;
+
+        public static final  int GSM_FRAME_COUNT = 4;
+
+        public static final int   ENEMY_ANI_SPEED = 30;
+        public static final int ENEMY_FRAME_COUNT    = 4;
+        public static final float ENEMY_SPEED = 0.5f * Game.SCALE; // adjust to taste
+        public static final int E_JEEP = 1;
+        public static final  int EJEEP_FRAME_COUNT = 4;
+        public static final int IDLE = 1;
+        public static final int RUNNING = 0;
+
+        public static final int GSM_WIDTH_DEFAULT = 90;
+        public static final int GSM_HEIGHT_DEFAULT = 31;
+        public static final int GSM_WIDTH = (int)(GSM_WIDTH_DEFAULT * Game.SCALE);
+        public static final int GSM_HEIGHT = (int) (GSM_HEIGHT_DEFAULT * Game.SCALE);
+
+        public static final int EJEEP_WIDTH_DEFAULT =  110;
+        public static final int EJEEP_HEIGHT_DEFAULT = 40;
+
+        public static final int EJEEP_WIDTH = (int)(EJEEP_WIDTH_DEFAULT * Game.SCALE);
+        public static final int EJEEP_HEIGHT = (int) (EJEEP_HEIGHT_DEFAULT * Game.SCALE);
 
 
-        public static final int ENEMY_WIDTH_DEFAULT  = 110;
+
+
+        // FOR ENEMIES WITH VARIOUS SIZES
+        public static final int ENEMY_WIDTH_DEFAULT = 110;
         public static final int ENEMY_HEIGHT_DEFAULT = 40;
 
-        public static final int ENEMY_WIDTH  = (int)(ENEMY_WIDTH_DEFAULT  * Game.SCALE);
+
+        public static final int ENEMY_WIDTH = (int)(ENEMY_WIDTH_DEFAULT * Game.SCALE);
         public static final int ENEMY_HEIGHT = (int)(ENEMY_HEIGHT_DEFAULT * Game.SCALE);
 
-        public static int getSpriteAmountEnemy(int enemyType, int enemyState) {
+
+        public static final int ENEMYCARS_DRAWOFFSET_X = (int)(90 * Game.SCALE);
+        public static final int ENEMYCARS_DRAWOFFSET_Y = (int)(31 * Game.SCALE);
+        public static int getSpriteAmountEnemy(int enemyType, int enemyState){
+
+            // as of now return 4
             return 4;
         }
+
+
     }
 
 

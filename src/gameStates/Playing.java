@@ -1,6 +1,7 @@
 package gameStates;
 
 import Ui.PauseOverlay;
+import entities.EnemyManager;
 import entities.PersonManager;
 import entities.Player;
 import levels.LevelManager;
@@ -21,6 +22,7 @@ public class Playing extends State implements StateMethods {
     private PersonManager personManager;
     private LevelManager  levelManager;
     private PauseOverlay  pauseOverlay;
+    private EnemyManager enemyManager;
     private boolean paused = false;
 
     // ── World scrolling ──────────────────────────────────────
@@ -73,6 +75,7 @@ public class Playing extends State implements StateMethods {
         player.loadLvlData(levelManager.getCurrentLevel().getLevelData());
 
         personManager = new PersonManager(this);
+        enemyManager = new EnemyManager(this);
         pauseOverlay  = new PauseOverlay(this);
     }
 
@@ -156,6 +159,7 @@ public class Playing extends State implements StateMethods {
 
             levelManager.update();
             personManager.update();
+            enemyManager.update(); // <-- add this
             player.update();
         } else {
             pauseOverlay.update();
@@ -169,6 +173,7 @@ public class Playing extends State implements StateMethods {
         drawClouds(g);
         levelManager.draw(g, (int) worldOffset);
         personManager.render(g);
+        enemyManager.render(g);
         player.render(g);
 
         if (paused) {
@@ -179,24 +184,11 @@ public class Playing extends State implements StateMethods {
     }
 
     private void drawClouds(Graphics g) {
-        int bigTilesNeeded = (Game.GAME_WIDTH / BIG_CLOUD_WIDTH) + 2;
-        for (int i = 0; i < bigTilesNeeded; i++) {
-            int drawX = (int)(i * BIG_CLOUD_WIDTH - bigCloudOffset);
-            g.drawImage(bigClouds, drawX, (int)(40 * Game.SCALE),
-                    BIG_CLOUD_WIDTH, BIG_CLOUD_HEIGHT, null);
-        }
+        for (int i = 0; i < 3; i++)
+            g.drawImage(bigClouds, i * BIG_CLOUD_WIDTH - (int) (bigCloudOffset * 0.3), (int) (204 * Game.SCALE), BIG_CLOUD_WIDTH, BIG_CLOUD_HEIGHT, null);
 
-        int smallTilesNeeded = (Game.GAME_WIDTH / SMALL_CLOUD_WIDTH) + 2;
-        for (int i = 0; i < smallCloudsPos.length; i++) {
-            int drawX = (int)(i * SMALL_CLOUD_WIDTH - smallCloudOffset);
-            g.drawImage(smallClouds, drawX, smallCloudsPos[i % smallCloudsPos.length],
-                    SMALL_CLOUD_WIDTH, SMALL_CLOUD_HEIGHT, null);
-        }
-        for (int i = 0; i < smallTilesNeeded - smallCloudsPos.length; i++) {
-            int drawX = (int)((smallCloudsPos.length + i) * SMALL_CLOUD_WIDTH - smallCloudOffset);
-            g.drawImage(smallClouds, drawX, smallCloudsPos[i % smallCloudsPos.length],
-                    SMALL_CLOUD_WIDTH, SMALL_CLOUD_HEIGHT, null);
-        }
+        for (int i = 0; i < smallCloudsPos.length; i++)
+            g.drawImage(smallClouds, SMALL_CLOUD_WIDTH * 4 * i - (int) (smallCloudOffset * 0.7), smallCloudsPos[i], SMALL_CLOUD_WIDTH, SMALL_CLOUD_HEIGHT, null);
     }
 
     @Override
@@ -232,7 +224,9 @@ public class Playing extends State implements StateMethods {
         }
     }
 
-    public void onJeepLooped() { personManager.resetAll(); }
+    public void onJeepLooped() {
+        personManager.resetAll();
+        enemyManager.resetAll(); }
 
     public void windowFocusLost() {
         player.resetDirBooleans();
