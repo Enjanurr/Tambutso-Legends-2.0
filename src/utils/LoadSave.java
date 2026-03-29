@@ -21,6 +21,9 @@ public class LoadSave {
     public static final String BIG_CLOUDS             = "big_clouds.png";
     public static final String SMALL_CLOUDS           = "small_clouds.png";
 
+    // ── Playing state background / stops ───────────────
+    public static final String BUS_STOP = "bus_stop.png";
+
     // ── Menu atlases ─────────────────────────────────────────
     public static final String MENU_BUTTONS      = "button_atlas.png";
     public static final String MENU_BACKGROUNDS  = "menu_background.png";

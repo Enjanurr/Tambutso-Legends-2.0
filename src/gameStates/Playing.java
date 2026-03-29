@@ -3,19 +3,23 @@ package gameStates;
 import Ui.PauseOverlay;
 import entities.PersonManager;
 import entities.Player;
+import entities.WorldObject;
 import levels.LevelManager;
-import main.Game;
 import utils.LoadSave;
+import main.Game;
 
 import java.awt.*;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
 import java.util.Random;
+import java.util.ArrayList;
+import java.util.List;
 
 import static utils.Constants.Environment.*;
 
 public class Playing extends State implements StateMethods {
+
 
     private Player        player;
     private PersonManager personManager;
@@ -49,9 +53,17 @@ public class Playing extends State implements StateMethods {
     private static final float SMALL_CLOUD_PARALLAX = 0.5f;
 
     // ── Background ───────────────────────────────────────────
-    private BufferedImage backgroundImg, bigClouds, smallClouds;
+    private BufferedImage backgroundImg, bigClouds, smallClouds, busStop;
     private int[] smallCloudsPos;
     private final Random rnd = new Random();
+
+    // World objects like bus stops, signs, etc.
+    private final List<WorldObject> worldObjects = new ArrayList<>();
+
+    // Resouce cleaner
+    private int cleanupCounter = 0;
+    private static final int CLEANUP_INTERVAL_FRAMES = 60; // run heavy cleanup every 60 frames
+    private static final int CLEANUP_THRESHOLD = 8; // run immediate cleanup if list grows beyond this
 
     public Playing(Game game) {
         super(game);
@@ -80,6 +92,17 @@ public class Playing extends State implements StateMethods {
         backgroundImg = LoadSave.getSpriteAtlas(LoadSave.PLAYING_BACKGROUND_IMG);
         bigClouds     = LoadSave.getSpriteAtlas(LoadSave.BIG_CLOUDS);
         smallClouds   = LoadSave.getSpriteAtlas(LoadSave.SMALL_CLOUDS);
+        busStop       = LoadSave.getSpriteAtlas(LoadSave.BUS_STOP);
+
+        // create bus stop world object
+        if (busStop != null) {
+            int busW = busStop.getWidth();
+            int busH = busStop.getHeight();
+            int busWorldX = 50;   // world X coordinate for the bus stop
+            int busWorldY = 175;  // world Y coordinate for the bus stop
+            int loopsToRespawn = 3; // reappear after N full loops
+            worldObjects.add(new WorldObject(busWorldX, busWorldY, busW, busH, busStop, loopsToRespawn));
+        }
 
         smallCloudsPos = new int[8];
         for (int i = 0; i < smallCloudsPos.length; i++)
@@ -101,6 +124,9 @@ public class Playing extends State implements StateMethods {
         // Randomise new cloud positions
         for (int i = 0; i < smallCloudsPos.length; i++)
             smallCloudsPos[i] = (int)(20 * Game.SCALE) + rnd.nextInt((int)(100 * Game.SCALE));
+
+        // reset world objects so they reappear on a full restart
+        for (WorldObject obj : worldObjects) obj.reset();
 
         // Reset player to centre screen with no speed
         int jeepHitboxW = (int)(70 * Game.SCALE);
@@ -154,6 +180,38 @@ public class Playing extends State implements StateMethods {
                     smallCloudOffset -= SMALL_CLOUD_WIDTH;
             }
 
+            // update world objects with current loop count
+            for (WorldObject obj : worldObjects) {
+                obj.update(worldOffset, Game.GAME_WIDTH, worldLoopCount, levelPixelWidth);
+            }
+
+            // quick removal of permanently removable objects
+            if (worldObjects.size() > CLEANUP_THRESHOLD) {
+                // immediate cleanup when list is large
+                worldObjects.removeIf(obj -> {
+                    if (obj.isRemovable()) {
+                        obj.dispose();
+                        obj.markRemoved();
+                        return true;
+                    }
+                    return false;
+                });
+            } else {
+                // periodic cleanup to reduce per-frame cost
+                cleanupCounter++;
+                if (cleanupCounter >= CLEANUP_INTERVAL_FRAMES) {
+                    cleanupCounter = 0;
+                    worldObjects.removeIf(obj -> {
+                        if (obj.isRemovable()) {
+                            obj.dispose();
+                            obj.markRemoved();
+                            return true;
+                        }
+                        return false;
+                    });
+                }
+            }
+
             levelManager.update();
             personManager.update();
             player.update();
@@ -171,12 +229,19 @@ public class Playing extends State implements StateMethods {
         personManager.render(g);
         player.render(g);
 
+        // take a single snapshot to avoid ConcurrentModificationException
+        List<WorldObject> snapshot = new ArrayList<>(worldObjects);
+        for (WorldObject obj : snapshot) {
+            obj.draw(g, worldOffset, Game.GAME_WIDTH);
+        }
+
         if (paused) {
             g.setColor(new Color(0, 0, 0, 150));
             g.fillRect(0, 0, Game.GAME_WIDTH, Game.GAME_HEIGHT);
             pauseOverlay.draw(g);
         }
     }
+
 
     private void drawClouds(Graphics g) {
         int bigTilesNeeded = (Game.GAME_WIDTH / BIG_CLOUD_WIDTH) + 2;
