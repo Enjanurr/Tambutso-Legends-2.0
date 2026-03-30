@@ -1,10 +1,12 @@
 package gameStates;
 
+import Ui.HealthBar;
 import Ui.PauseOverlay;
 import entities.EnemyManager;
 import entities.PersonManager;
 import entities.Player;
 import entities.PowerupManager;
+import objects.StopSignManager;
 import levels.LevelManager;
 import main.Game;
 import utils.LoadSave;
@@ -19,12 +21,14 @@ import static utils.Constants.Environment.*;
 
 public class Playing extends State implements StateMethods {
 
-    private PowerupManager powerupManager;
-    private Player         player;
-    private PersonManager  personManager;
-    private EnemyManager   enemyManager;   // NEW
-    private LevelManager   levelManager;
-    private PauseOverlay   pauseOverlay;
+    private PowerupManager  powerupManager;
+    private Player          player;
+    private PersonManager   personManager;
+    private EnemyManager    enemyManager;
+    private StopSignManager stopSignManager;
+    private LevelManager    levelManager;
+    private PauseOverlay    pauseOverlay;
+    private HealthBar       healthBar;
     private boolean paused = false;
 
     // ── World scrolling ──────────────────────────────────────
@@ -35,7 +39,7 @@ public class Playing extends State implements StateMethods {
     // -------------------------------------------------------
     // WORLD SCROLL SETTINGS
     // -------------------------------------------------------
-    private static final int   MAX_WORLD_LOOPS  = 15;
+    private static final int MAX_WORLD_LOOPS = 15;
     // -------------------------------------------------------
 
     private static final float CENTER_TOLERANCE = 10f * Game.SCALE;
@@ -74,10 +78,12 @@ public class Playing extends State implements StateMethods {
                 game.getGamePanel());
         player.loadLvlData(levelManager.getCurrentLevel().getLevelData());
 
-        personManager  = new PersonManager(this);
-        enemyManager   = new EnemyManager(this);   // NEW
-        pauseOverlay   = new PauseOverlay(this);
-        powerupManager = new PowerupManager(this);
+        personManager   = new PersonManager(this);
+        enemyManager    = new EnemyManager(this);
+        stopSignManager = new StopSignManager(this);
+        pauseOverlay    = new PauseOverlay(this);
+        powerupManager  = new PowerupManager(this);
+        healthBar       = new HealthBar();
     }
 
     private void loadBackgroundAssets() {
@@ -111,15 +117,28 @@ public class Playing extends State implements StateMethods {
         player.setWorldLoopDone(false);
 
         personManager.resetAll();
-        enemyManager.resetAll();    // NEW
+        enemyManager.resetAll();
+        stopSignManager.resetAll();
         powerupManager.resetAll();
+        healthBar.reset();
 
         paused = false;
     }
 
+    // ── Health callbacks ─────────────────────────────────────
+
+    public void onPlayerHit() {
+        boolean dead = healthBar.takeDamage();
+        if (dead) restartGame();
+    }
+
+
+    public void onPlayerHeal() {
+        healthBar.heal();
+    }
+
     // ── Scrolling condition ──────────────────────────────────
     public boolean isScrolling() {
-        // Jeep cannot scroll while in car-struck state
         return dKeyHeld && isJeepCentered() && !paused && !worldLoopDone
                 && !player.isStruckActive();
     }
@@ -167,7 +186,8 @@ public class Playing extends State implements StateMethods {
 
             levelManager.update();
             personManager.update();
-            enemyManager.update();    // NEW
+            enemyManager.update();
+            stopSignManager.update();
             powerupManager.update();
             player.update();
 
@@ -187,8 +207,12 @@ public class Playing extends State implements StateMethods {
         levelManager.draw(g, (int) worldOffset);
         personManager.render(g);
         enemyManager.render(g);
+        stopSignManager.render(g);
         powerupManager.render(g);
         player.render(g);
+
+        // ── UI layer — always on top ──────────────────────────
+        healthBar.render(g);
 
         if (paused) {
             g.setColor(new Color(0, 0, 0, 150));
@@ -236,27 +260,28 @@ public class Playing extends State implements StateMethods {
     @Override
     public void keyPressed(KeyEvent e) {
         switch (e.getKeyCode()) {
-            case KeyEvent.VK_A:      player.setLeft(true);                    break;
-            case KeyEvent.VK_D:      player.setRight(true); dKeyHeld = true;  break;
-            case KeyEvent.VK_W:      player.setUp(true);                      break;
-            case KeyEvent.VK_S:      player.setDown(true);                    break;
-            case KeyEvent.VK_ESCAPE: paused = !paused;                        break;
+            case KeyEvent.VK_A:      player.setLeft(true);                   break;
+            case KeyEvent.VK_D:      player.setRight(true); dKeyHeld = true; break;
+            case KeyEvent.VK_W:      player.setUp(true);                     break;
+            case KeyEvent.VK_S:      player.setDown(true);                   break;
+            case KeyEvent.VK_ESCAPE: paused = !paused;                       break;
         }
     }
 
     @Override
     public void keyReleased(KeyEvent e) {
         switch (e.getKeyCode()) {
-            case KeyEvent.VK_A: player.setLeft(false);                        break;
-            case KeyEvent.VK_D: player.setRight(false); dKeyHeld = false;     break;
-            case KeyEvent.VK_W: player.setUp(false);                          break;
-            case KeyEvent.VK_S: player.setDown(false);                        break;
+            case KeyEvent.VK_A: player.setLeft(false);                       break;
+            case KeyEvent.VK_D: player.setRight(false); dKeyHeld = false;    break;
+            case KeyEvent.VK_W: player.setUp(false);                         break;
+            case KeyEvent.VK_S: player.setDown(false);                       break;
         }
     }
 
     public void onJeepLooped() {
         personManager.resetAll();
-        enemyManager.resetAll();   // NEW — clear enemies on warp
+        enemyManager.resetAll();
+        stopSignManager.resetAll();
     }
 
     public void windowFocusLost() {
@@ -264,5 +289,7 @@ public class Playing extends State implements StateMethods {
         dKeyHeld = false;
     }
 
-    public Player getPlayer()      { return player; }
+    // ── Getters ───────────────────────────────────────────────
+    public Player getPlayer()         { return player; }
+    public int    getWorldLoopCount() { return worldLoopCount; }
 }

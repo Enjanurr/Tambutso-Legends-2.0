@@ -32,7 +32,7 @@ public class Player extends Entity {
     private static final float X_DECEL_MAX   = 0.15f;
 
     // ── Vertical speed ────────────────────────────────────────
-    private static final float Y_SPEED = 1f;
+    private static final float Y_SPEED = 0.8f;
 
     public static final int STOP = Game.GAME_WIDTH;
 
@@ -44,7 +44,7 @@ public class Player extends Entity {
 
     // ── Car Struck state ─────────────────────────────────────
 
-    private static final int STRUCK_DURATION_TICKS = 2 * 200; // 4 s at 200 UPS
+    private static final int STRUCK_DURATION_TICKS = 1 * 200; // 4 s at 200 UPS
     // -------------------------------------------------------
     private boolean struckActive = false;
     private int     struckTimer  = 0;
@@ -60,7 +60,9 @@ public class Player extends Entity {
         super(x, y, width, height);
         this.gamePanel = gamePanel;
         loadAnimations();
-        initHitbox(x, y, 70 * Game.SCALE, 32 * Game.SCALE);
+        initHitbox(x, y,
+                54 * Game.SCALE,
+                32 * Game.SCALE);
     }
 
     // ─────────────────────────────────────────────────────────
@@ -266,12 +268,8 @@ public class Player extends Entity {
 
 
     public void setAttacking(boolean attacking)  { this.attacking = attacking; }
-    public boolean isLeft()  { return left; }
     public void setLeft(boolean left)            { this.left = left; }
-    public boolean isUp()    { return up; }
     public void setUp(boolean up)                { this.up = up; }
-    public boolean isRight() { return right; }
     public void setRight(boolean right)          { this.right = right; }
-    public boolean isDown()  { return down; }
     public void setDown(boolean down)            { this.down = down; }
 }

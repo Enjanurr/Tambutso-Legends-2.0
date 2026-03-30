@@ -57,12 +57,12 @@ public class Powerup {
     }
 
     public void update(boolean worldScrolling, float scrollSpeed) {
-        // Powerup is stationary on ground, gets left behind when jeep moves forward
+
         if (worldScrolling) {
             x -= scrollSpeed;
         }
 
-        // Remove if passed left border
+
         if (x + width < 0) {
             active = false;
         }

@@ -16,9 +16,15 @@ public class LoadSave {
     public static final String ROAD_DATA    = "road_data_new.png";
 
     // ── Enemy atlases (road cars) ─────────────────────────────
-    public static final String GSM_ATLAS   = "gsm-taxi.png";       // Taxi 4 frames
-    public static final String EJEEP_ATLAS = "modern_jeep.png";    // Modern Jeep  4 frames
     // -------------------------------------------------------
+
+    public static final String GSM_ATLAS   = "gsm-taxi.png";       // Taxi   360×31, 4 frames
+    public static final String EJEEP_ATLAS = "modern_jeep.png";    // Modern Jeep 440×38, 4 frames
+    // -------------------------------------------------------
+
+    // ── Objects ───────────────────────────────────────────────
+    public static final String STOP_SIGN   = "stop_sign.png";
+    public static final String LIFE_STATUS = "life_status.png";
 
     // ── Playing state background / environment ───────────────
     public static final String PLAYING_BACKGROUND_IMG = "playing_bg_img.png";
@@ -46,12 +52,16 @@ public class LoadSave {
     public static BufferedImage getSpriteAtlas(String fileName) {
         BufferedImage img = null;
         InputStream is = LoadSave.class.getResourceAsStream("/" + fileName);
+        if (is == null) {
+            System.err.println("[LoadSave] File not found on classpath: /" + fileName);
+            return null;
+        }
         try {
             img = ImageIO.read(is);
         } catch (IOException e) {
             e.printStackTrace();
         } finally {
-            try { if (is != null) is.close(); } catch (IOException e) { e.printStackTrace(); }
+            try { is.close(); } catch (IOException e) { e.printStackTrace(); }
         }
         return img;
     }

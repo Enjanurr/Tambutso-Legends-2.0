@@ -10,20 +10,31 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
 
+import static utils.Constants.EnemyConstants.*;
 
+/**
+ * Spawns and manages road enemies (EnemyCar).
+ *
+ * Rules:
+ *  - Only 1 enemy at a time.
+ *  - 20% spawn chance per cycle, only while world is scrolling.
+ *  - Collision triggers car-struck animation AND deducts one health bar.
+ */
 public class EnemyManager {
+
     private final Playing playing;
     private final Random  rng = new Random();
 
     private final List<EnemyCar> enemies = new ArrayList<>();
 
     // ── Spawn settings ────────────────────────────────────────
-    private static final float SPAWN_CHANCE       = 0.20f; // 20 %
+    private static final float SPAWN_CHANCE       = 0.20f;
     private static final int   SPAWN_INTERVAL_MIN = 150;
     private static final int   SPAWN_INTERVAL_MAX = 400;
-    private static final int   MAX_ENEMIES        = 1;     // only 1 on screen
+    private static final int   MAX_ENEMIES        = 1;
 
-
+    // -------------------------------------------------------
+    // LANE SETTINGS  ← ADJUST to match your road tiles
     // -------------------------------------------------------
     private static final int[] LANES_Y = { 460, 540, 620 };
     // -------------------------------------------------------
@@ -31,8 +42,8 @@ public class EnemyManager {
     private int spawnTimer;
 
     public EnemyManager(Playing playing) {
-        this.playing   = playing;
-        spawnTimer     = nextSpawnInterval();
+        this.playing = playing;
+        spawnTimer   = nextSpawnInterval();
     }
 
     // ─────────────────────────────────────────────────────────
@@ -43,21 +54,27 @@ public class EnemyManager {
         float   speed     = playing.getScrollSpeed();
         Player  player    = playing.getPlayer();
 
-        // ── Move / cull existing enemies ─────────────────────
+        boolean playerWasHit = false;
+
         Iterator<EnemyCar> it = enemies.iterator();
         while (it.hasNext()) {
             EnemyCar e = it.next();
             e.update(scrolling, speed);
 
-            // Collision check — only when jeepney is NOT in ghost mode
+            // Collision — only when jeepney is NOT in ghost mode
             if (e.isActive() && !player.isGhost() && checkCollision(e, player)) {
-                e.setActive(false);          // remove enemy
-                player.triggerCarStruck();   // start struck animation + ghost mode
+                e.setActive(false);
+                player.triggerCarStruck();  // starts struck animation + ghost mode
+                playerWasHit = true;
             }
 
             if (!e.isActive()) it.remove();
         }
 
+
+        if (playerWasHit) playing.onPlayerHit();
+
+        // Spawn timer — only while scrolling
         if (scrolling) {
             spawnTimer--;
             if (spawnTimer <= 0) {
@@ -109,7 +126,8 @@ public class EnemyManager {
     // RENDER
     // ─────────────────────────────────────────────────────────
     public void render(Graphics g) {
-        for (EnemyCar e : enemies)
+        List<EnemyCar> snapshot = new ArrayList<>(enemies);
+        for (EnemyCar e : snapshot)
             e.render(g);
     }
 }

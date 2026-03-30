@@ -13,7 +13,6 @@ public class EnemyCar extends Enemy {
 
     // ── Enemy type catalogue ─────────────────────────────────
     public enum EnemyType {
-        //          atlas               frameW  frameH  frames  speed
         TAXI(LoadSave.GSM_ATLAS,         90,     31,     4,     0.5f),
         JEEP(LoadSave.EJEEP_ATLAS,      90,     38,     4,     0.5f);
 
@@ -47,8 +46,8 @@ public class EnemyCar extends Enemy {
         loadFrames();
         // Hitbox is a slightly inset rectangle for fair collisions
         initHitbox(x + 4 * Game.SCALE, y + 2 * Game.SCALE,
-                type.frameW * Game.SCALE - 8 * Game.SCALE,
-                type.frameH * Game.SCALE - 4 * Game.SCALE);
+                type.frameW * Game.SCALE - 20 * Game.SCALE,// narrower width
+                type.frameH * Game.SCALE - 8 * Game.SCALE); // shorter height
     }
 
     private void loadFrames() {
@@ -100,7 +99,7 @@ public class EnemyCar extends Enemy {
         if (!active || frames == null) return;
         g.drawImage(frames[0][aniIndex], (int) x, (int) y, width, height, null);
         // Uncomment to debug hitboxes:
-        // drawHitBox(g);
+         //drawHitBox(g);
     }
 
     // ── Getters ───────────────────────────────────────────────

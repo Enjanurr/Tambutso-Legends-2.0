@@ -24,8 +24,7 @@ public class Game implements Runnable {
     public final static int   GAME_HEIGHT        = TILES_SIZE * TILES_IN_HEIGHT;
 
     public Game() {
-        // GamePanel MUST be created before initClasses()
-        // because Playing needs game.getGamePanel() for the Player constructor
+
         gamePanel = new GamePanel(this);
         initClasses();
         gameWindow = new GameWindow(gamePanel);
@@ -74,7 +73,6 @@ public class Game implements Runnable {
         }
     }
 
-    // Called by Player warp callback when jeep crosses right border
     public void onJeepLooped() {
         playing.onJeepLooped();
     }

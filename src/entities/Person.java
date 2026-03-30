@@ -58,7 +58,6 @@ public class Person extends Entity {
                 x += WALK_SPEED;
             }
 
-            // ── Cull ─────────────────────────────────────────
             if (movingLeft  && x + width < 0)          active = false; // exited left
             if (!movingLeft && x         > Game.GAME_WIDTH) active = false; // exited right
 
@@ -67,7 +66,6 @@ public class Person extends Entity {
             if (worldScrolling)
                 x -= scrollSpeed;
 
-            // Cull when pushed off the left edge
             if (x + width < 0) active = false;
         }
 

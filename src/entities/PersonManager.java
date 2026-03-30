@@ -19,7 +19,7 @@ public class PersonManager {
 
     private final List<Person> persons = new ArrayList<>();
 
-    // ── Atlas pool ───────────────────────────────────────────
+
     private static final String[] PERSON_ATLASES = {
             LoadSave.PERSON1_ATLAS,
             LoadSave.PERSON2_ATLAS,
@@ -31,7 +31,7 @@ public class PersonManager {
     private static final float WALKER_SPAWN_CHANCE    = 0.60f; // ← ADJUST: 60% chance per attempt
     private static final float PASSENGER_SPAWN_CHANCE = 0.30f; // ← ADJUST: 30% chance per attempt
 
-    // At 200 UPS: 100 ticks = 0.5s, 400 ticks = 2s
+
     private static final int WALKER_INTERVAL_MIN    = 100; // ← ADJUST: min ticks between walker spawn attempts
     private static final int WALKER_INTERVAL_MAX    = 400; // ← ADJUST: max ticks between walker spawn attempts
     private static final int PASSENGER_INTERVAL_MIN = 150; // ← ADJUST: min ticks between passenger spawn attempts
