@@ -17,14 +17,18 @@ public class LoadSave {
 
     // ── Enemy atlases (road cars) ─────────────────────────────
     // -------------------------------------------------------
-
+    // Point these at your actual filenames in /res
+    // -------------------------------------------------------
     public static final String GSM_ATLAS   = "gsm-taxi.png";       // Taxi   360×31, 4 frames
     public static final String EJEEP_ATLAS = "modern_jeep.png";    // Modern Jeep 440×38, 4 frames
     // -------------------------------------------------------
 
     // ── Objects ───────────────────────────────────────────────
-    public static final String STOP_SIGN   = "stop_sign.png";
-    public static final String LIFE_STATUS = "life_status.png";
+    public static final String STOP_SIGN      = "stop_sign.png";
+    public static final String LIFE_STATUS    = "life_status.png";
+    public static final String DEATH_SCREEN   = "death_screen.png";
+    public static final String TUTORIAL_IMG   = "tutorial.png";
+    public static final String MISSION_MAP1_IMG = "mission_map1.png";
 
     // ── Playing state background / environment ───────────────
     public static final String PLAYING_BACKGROUND_IMG = "playing_bg_img.png";

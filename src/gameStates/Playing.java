@@ -1,5 +1,6 @@
 package gameStates;
 
+import Ui.DeathOverlay;
 import Ui.HealthBar;
 import Ui.PauseOverlay;
 import entities.EnemyManager;
@@ -29,7 +30,10 @@ public class Playing extends State implements StateMethods {
     private LevelManager    levelManager;
     private PauseOverlay    pauseOverlay;
     private HealthBar       healthBar;
-    private boolean paused = false;
+    private DeathOverlay    deathOverlay;
+
+    private boolean paused     = false;
+    private boolean playerDead = false;     // true while death screen is showing
 
     // ── World scrolling ──────────────────────────────────────
     private float worldOffset = 0;
@@ -84,6 +88,7 @@ public class Playing extends State implements StateMethods {
         pauseOverlay    = new PauseOverlay(this);
         powerupManager  = new PowerupManager(this);
         healthBar       = new HealthBar();
+        deathOverlay    = new DeathOverlay(this);
     }
 
     private void loadBackgroundAssets() {
@@ -102,6 +107,7 @@ public class Playing extends State implements StateMethods {
         worldLoopCount = 0;
         worldLoopDone  = false;
         dKeyHeld       = false;
+        playerDead     = false;         // close death screen
 
         bigCloudOffset   = 0f;
         smallCloudOffset = 0f;
@@ -126,21 +132,30 @@ public class Playing extends State implements StateMethods {
     }
 
     // ── Health callbacks ─────────────────────────────────────
-
+    /**
+     * Called by EnemyManager after a collision.
+     * Deducts one bar — shows death screen if health reaches 0.
+     */
     public void onPlayerHit() {
         boolean dead = healthBar.takeDamage();
-        if (dead) restartGame();
+        if (dead) {
+            playerDead = true;
+            deathOverlay.reset();   // restart the fade-in fresh
+        }
     }
 
-
+    /**
+     * Called by PowerupManager when Heal powerup is collected.
+     */
     public void onPlayerHeal() {
         healthBar.heal();
     }
 
     // ── Scrolling condition ──────────────────────────────────
     public boolean isScrolling() {
+        // Freeze world while death screen is showing
         return dKeyHeld && isJeepCentered() && !paused && !worldLoopDone
-                && !player.isStruckActive();
+                && !player.isStruckActive() && !playerDead;
     }
 
     public float getScrollSpeed() { return player.getCurrentXSpeed(); }
@@ -156,6 +171,12 @@ public class Playing extends State implements StateMethods {
     // ─────────────────────────────────────────────────────────
     @Override
     public void update() {
+        // Death screen active — only update the overlay, freeze everything else
+        if (playerDead) {
+            deathOverlay.update();
+            return;
+        }
+
         if (!paused) {
             boolean scrolling = isScrolling();
             player.setWorldScrolling(scrolling);
@@ -201,6 +222,7 @@ public class Playing extends State implements StateMethods {
     // ─────────────────────────────────────────────────────────
     @Override
     public void draw(Graphics g) {
+        // Always draw the frozen game world underneath
         if (backgroundImg != null)
             g.drawImage(backgroundImg, 0, 0, Game.GAME_WIDTH, Game.GAME_HEIGHT, null);
         drawClouds(g);
@@ -211,8 +233,14 @@ public class Playing extends State implements StateMethods {
         powerupManager.render(g);
         player.render(g);
 
-        // ── UI layer — always on top ──────────────────────────
+        // ── UI layer ──────────────────────────────────────────
         healthBar.render(g);
+
+        // Death screen drawn on top of everything
+        if (playerDead) {
+            deathOverlay.render(g);
+            return;                 // skip pause overlay while dead
+        }
 
         if (paused) {
             g.setColor(new Color(0, 0, 0, 150));
@@ -247,18 +275,38 @@ public class Playing extends State implements StateMethods {
     // ─────────────────────────────────────────────────────────
     @Override
     public void mouseClicked(MouseEvent e) {
+        if (playerDead) return;     // ignore game clicks during death screen
         if (e.getButton() == MouseEvent.BUTTON1) player.setAttacking(true);
     }
 
-    @Override public void mousePressed(MouseEvent e)  { if (paused) pauseOverlay.mousePressed(e); }
-    public    void mouseDragged(MouseEvent e)         { if (paused) pauseOverlay.mouseDragged(e); }
-    @Override public void mouseReleased(MouseEvent e) { if (paused) pauseOverlay.mouseReleased(e); }
-    @Override public void mouseMoved(MouseEvent e)    { if (paused) pauseOverlay.mouseMoved(e); }
+    @Override
+    public void mousePressed(MouseEvent e) {
+        if (playerDead) { deathOverlay.mousePressed(e); return; }
+        if (paused) pauseOverlay.mousePressed(e);
+    }
+
+    public void mouseDragged(MouseEvent e) {
+        if (playerDead) return;
+        if (paused) pauseOverlay.mouseDragged(e);
+    }
+
+    @Override
+    public void mouseReleased(MouseEvent e) {
+        if (playerDead) { deathOverlay.mouseReleased(e); return; }
+        if (paused) pauseOverlay.mouseReleased(e);
+    }
+
+    @Override
+    public void mouseMoved(MouseEvent e) {
+        if (playerDead) { deathOverlay.mouseMoved(e); return; }
+        if (paused) pauseOverlay.mouseMoved(e);
+    }
 
     public void unPauseGame() { paused = false; }
 
     @Override
     public void keyPressed(KeyEvent e) {
+        if (playerDead) return;     // ignore all key input during death screen
         switch (e.getKeyCode()) {
             case KeyEvent.VK_A:      player.setLeft(true);                   break;
             case KeyEvent.VK_D:      player.setRight(true); dKeyHeld = true; break;
@@ -270,6 +318,7 @@ public class Playing extends State implements StateMethods {
 
     @Override
     public void keyReleased(KeyEvent e) {
+        if (playerDead) return;
         switch (e.getKeyCode()) {
             case KeyEvent.VK_A: player.setLeft(false);                       break;
             case KeyEvent.VK_D: player.setRight(false); dKeyHeld = false;    break;
@@ -291,5 +340,6 @@ public class Playing extends State implements StateMethods {
 
     // ── Getters ───────────────────────────────────────────────
     public Player getPlayer()         { return player; }
+    public float  getWorldOffset()    { return worldOffset; }
     public int    getWorldLoopCount() { return worldLoopCount; }
 }

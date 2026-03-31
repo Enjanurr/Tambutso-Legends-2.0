@@ -13,10 +13,8 @@ public class Menu extends State implements StateMethods {
 
     private MenuButton[] buttons = new MenuButton[3];
 
-
     private BufferedImage backgroundImg;
     private int menuX, menuY, menuWidth, menuHeight;
-
 
     private BufferedImage backgroundImgPink;
 
@@ -24,7 +22,6 @@ public class Menu extends State implements StateMethods {
         super(game);
         loadButtons();
         loadBackground();
-
         backgroundImgPink = LoadSave.getSpriteAtlas(LoadSave.MENU_BACKGROUND_IMG);
     }
 
@@ -49,14 +46,9 @@ public class Menu extends State implements StateMethods {
 
     @Override
     public void draw(Graphics g) {
-        // 1 — full-screen background (background_menu.png)
         if (backgroundImgPink != null)
             g.drawImage(backgroundImgPink, 0, 0, Game.GAME_WIDTH, Game.GAME_HEIGHT, null);
-
-        // 2 — centred panel (menu_background.png)
         g.drawImage(backgroundImg, menuX, menuY, menuWidth, menuHeight, null);
-
-        // 3 — buttons on top
         for (MenuButton mb : buttons) mb.draw(g);
     }
 
@@ -66,18 +58,19 @@ public class Menu extends State implements StateMethods {
     @Override
     public void mousePressed(MouseEvent e) {
         for (MenuButton mb : buttons) {
-            if (isIn(e, mb)) {
-                mb.setMousePressed(true);
-                break;
-            }
+            if (isIn(e, mb)) { mb.setMousePressed(true); break; }
         }
     }
 
     @Override
     public void mouseReleased(MouseEvent e) {
-        for (MenuButton mb : buttons) {
-            if (isIn(e, mb)) {
-                if (mb.isMousePressed()) mb.applyGameState();
+        for (int i = 0; i < buttons.length; i++) {
+            MenuButton mb = buttons[i];
+            if (isIn(e, mb) && mb.isMousePressed()) {
+                if (i == 0)
+                    game.startPlayingOrIntro(); // PLAY → always show intro first
+                else
+                    mb.applyGameState();        // OPTIONS / QUIT work normally
                 break;
             }
         }
@@ -92,17 +85,14 @@ public class Menu extends State implements StateMethods {
     public void mouseMoved(MouseEvent e) {
         for (MenuButton mb : buttons) mb.setMouseOver(false);
         for (MenuButton mb : buttons) {
-            if (isIn(e, mb)) {
-                mb.setMouseOver(true);
-                break;
-            }
+            if (isIn(e, mb)) { mb.setMouseOver(true); break; }
         }
     }
 
     @Override
     public void keyPressed(KeyEvent e) {
         if (e.getKeyCode() == KeyEvent.VK_ENTER)
-            GameStates.state = GameStates.PLAYING;
+            game.startPlayingOrIntro();
     }
 
     @Override
