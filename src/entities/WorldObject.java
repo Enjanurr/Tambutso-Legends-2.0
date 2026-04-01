@@ -5,142 +5,152 @@ import java.awt.Graphics;
 import java.awt.image.BufferedImage;
 
 public class WorldObject {
+    private static final int HIDDEN_X = Integer.MIN_VALUE;
+    private static final int NO_LOOP_SCHEDULED = -1;
+
     private final int worldX;
     private final int worldY;
     private final int width;
     private final int height;
     private final BufferedImage image;
 
-    // respawn control: 0 = never respawn, >0 = respawn after this many loops
+    // 0 = never respawn, >0 = respawn after this many completed world loops.
     private final int loopsToRespawn;
-    private int nextAppearLoop = -1;      // loop index when object should next appear
-    private int scheduledWorldX = -1;     // world X to use when scheduling a respawn
-    private boolean pendingRespawn = false;
-    private boolean gone = false;
 
-    // resource / lifecycle flags
-    private boolean removed = false;      // true once removed from list
-    private boolean disposed = false;     // true once resources released
+    private int     nextAppearLoop   = NO_LOOP_SCHEDULED;
+    private boolean gone             = false;
+    // While respawning, the object ignores worldX and scrolls in from the right edge.
+    private boolean respawning       = false;
+    private boolean removed          = false;
+    private boolean disposed         = false;
+    private float   respawnScreenX   = 0f;
+    private float   lastWorldOffset  = 0f;
+    private boolean hasLastWorldTick = false;
+
+    // Cached each update() so draw() doesn't need levelPixelWidth
+    private int cachedScreenX = HIDDEN_X;
 
     public WorldObject(int worldX, int worldY, int width, int height,
                        BufferedImage image, int loopsToRespawn) {
-        this.worldX = worldX;
-        this.worldY = worldY;
-        this.width = width;
-        this.height = height;
-        this.image = image;
+        this.worldX         = worldX;
+        this.worldY         = worldY;
+        this.width          = width;
+        this.height         = height;
+        this.image          = image;
         this.loopsToRespawn = loopsToRespawn;
     }
 
-    public boolean isGone() { return gone; }
-
-    /**
-     * Reset object to initial visible state (used on full game restart).
-     */
+    /** Reset to initial visible state on full game restart. */
     public void reset() {
-        gone = false;
-        nextAppearLoop = -1;
-        pendingRespawn = false;
-        scheduledWorldX = -1;
-        removed = false;
-        disposed = false;
+        gone             = false;
+        nextAppearLoop   = NO_LOOP_SCHEDULED;
+        respawning       = false;
+        removed          = false;
+        disposed         = false;
+        respawnScreenX   = 0f;
+        lastWorldOffset  = 0f;
+        hasLastWorldTick = false;
+        cachedScreenX    = HIDDEN_X;
     }
 
     /**
-     * Update visibility and respawn scheduling.
+     * Update visibility. Call this every tick.
      *
-     * @param worldOffset      current world offset in pixels
+     * @param worldOffset      current world scroll offset in pixels
      * @param viewportWidth    screen width in pixels
-     * @param currentLoopCount number of completed full level loops
-     * @param levelPixelWidth  width of one level in pixels (used to schedule respawn ahead)
+     * @param currentLoopCount number of completed full level loops so far
+     * @param levelPixelWidth  pixel width of one full level
      */
-    public void update(float worldOffset, int viewportWidth, int currentLoopCount, int levelPixelWidth) {
-        // If object was gone and its scheduled loop has arrived, mark pending respawn.
-        if (gone && nextAppearLoop >= 0 && currentLoopCount >= nextAppearLoop) {
-            if (scheduledWorldX < 0) {
-                scheduledWorldX = worldX + levelPixelWidth;
-            }
-            pendingRespawn = true;
-            nextAppearLoop = -1; // clear schedule; now waiting for off-right condition
+    public void update(float worldOffset, int viewportWidth,
+                       int currentLoopCount, int levelPixelWidth) {
+        // Track how far the world advanced this frame so respawning objects can move with it.
+        float scrollDelta = getScrollDelta(worldOffset, levelPixelWidth);
+        lastWorldOffset  = worldOffset;
+        hasLastWorldTick = true;
+
+        if (gone && loopsToRespawn > 0
+                && nextAppearLoop != NO_LOOP_SCHEDULED
+                && currentLoopCount >= nextAppearLoop) {
+            // Start just off the right side so the sprite scrolls onto the screen naturally.
+            gone           = false;
+            respawning     = true;
+            respawnScreenX = viewportWidth;
+            nextAppearLoop = NO_LOOP_SCHEDULED;
         }
 
-        // If pending respawn, wait until the scheduled world X is off the right side.
-        // pending respawn check (keep scheduledWorldX; do not clear it)
-        if (pendingRespawn) {
-            int screenX = scheduledWorldX - (int) worldOffset;
-            if (screenX >= viewportWidth) {   // use >= for safety
-                gone = false;
-                pendingRespawn = false;
-                // DO NOT clear scheduledWorldX here — keep it as the effective position
-            } else {
-                return; // still waiting offscreen to the right
-            }
+        if (gone) {
+            cachedScreenX = HIDDEN_X;
+            return;
         }
 
+        if (respawning) {
+            respawnScreenX -= scrollDelta;
+            cachedScreenX = Math.round(respawnScreenX);
 
-        if (gone) return;
-
-        // Determine effective world X (use scheduledWorldX if set and not pending)
-        int effectiveWorldX = (scheduledWorldX > 0 && !pendingRespawn) ? scheduledWorldX : worldX;
-        int screenX = effectiveWorldX - (int) worldOffset;
-
-        // inside update(...), replace the scheduling branch with this:
-
-        // If fully offscreen to the left or right, mark gone and schedule respawn if configured
-        if (screenX + width < 0 || screenX > viewportWidth) {
-            gone = true;
-            if (loopsToRespawn > 0) {
-                // schedule reappearance after `loopsToRespawn` full loops
-                nextAppearLoop = currentLoopCount + loopsToRespawn;
-
-                // place the scheduled world X several levels ahead so it will be off the right
-                // when the loop count arrives: effectiveWorldX + levelPixelWidth * loopsToRespawn
-                scheduledWorldX = effectiveWorldX + levelPixelWidth * loopsToRespawn;
-
-                // pendingRespawn will be set when the loop count arrives
-                pendingRespawn = false;
-            } else {
-                nextAppearLoop = -1; // never respawn
+            if (cachedScreenX + width < 0) {
+                gone          = true;
+                respawning    = false;
+                cachedScreenX = HIDDEN_X;
+                if (loopsToRespawn > 0) {
+                    nextAppearLoop = currentLoopCount + loopsToRespawn;
+                }
             }
+            return;
         }
 
+        int unwrappedScreenX = getScreenX(worldOffset, levelPixelWidth);
+        if (unwrappedScreenX + width < 0) {
+            // Once the object fully exits left, hide it until its scheduled return loop.
+            hideUntilLoop(currentLoopCount);
+            return;
+        }
+
+        cachedScreenX = unwrappedScreenX;
+    }
+
+    private float getScrollDelta(float worldOffset, int levelPixelWidth) {
+        if (!hasLastWorldTick) {
+            return 0f;
+        }
+
+        float scrollDelta = worldOffset - lastWorldOffset;
+        if (scrollDelta < 0) {
+            scrollDelta += levelPixelWidth;
+        }
+        return scrollDelta;
+    }
+
+    private int getScreenX(float worldOffset, int levelPixelWidth) {
+        int posInLevel = worldX % levelPixelWidth;
+        return posInLevel - ((int) worldOffset % levelPixelWidth);
+    }
+
+    private void hideUntilLoop(int currentLoopCount) {
+        // Schedule the next appearance relative to the current completed-loop count.
+        gone          = true;
+        respawning    = false;
+        cachedScreenX = HIDDEN_X;
+        if (loopsToRespawn > 0) {
+            nextAppearLoop = currentLoopCount + loopsToRespawn;
+        }
+    }
+
+    public void draw(Graphics g) {
+        if (gone || cachedScreenX == HIDDEN_X) return;
+        if (cachedScreenX + width > 0) {
+            g.drawImage(image, cachedScreenX, worldY, width, height, null);
+        }
     }
 
     /**
-     * Draw the object if any part is inside the viewport.
-     */
-    public void draw(Graphics g, float worldOffset, int viewportWidth) {
-        if (gone) return;
-        int effectiveWorldX = (scheduledWorldX > 0 && !pendingRespawn) ? scheduledWorldX : worldX;
-        int screenX = effectiveWorldX - (int) worldOffset;
-        if (screenX + width > 0 && screenX < viewportWidth) {
-            g.drawImage(image, screenX, worldY, width, height, null);
-        }
-    }
-
-    /**
-     * True when the object is permanently removable (gone and not scheduled to reappear).
+     * True only when permanently gone with no scheduled respawn.
+     * Safe to remove from the list and dispose.
      */
     public boolean isRemovable() {
-        return gone && nextAppearLoop < 0 && !pendingRespawn && !removed;
+        return gone && loopsToRespawn == 0 && !removed;
     }
 
-    public void markRemoved() {
-        removed = true;
-    }
-
-    /**
-     * Free heavy resources held by this object.
-     * If the image is shared globally (recommended), do not null it here.
-     * If this object owns the image, call image.flush() and drop the reference.
-     */
-    public void dispose() {
-        if (disposed) return;
-        // If this object owns the image, uncomment the following:
-        // if (image != null) {
-        //     image.flush();
-        //     // Note: image reference is final; only null if you change field mutability.
-        // }
-        disposed = true;
-    }
+    public boolean isGone()   { return gone; }
+    public void markRemoved() { removed = true; }
+    public void dispose()     { if (!disposed) disposed = true; }
 }

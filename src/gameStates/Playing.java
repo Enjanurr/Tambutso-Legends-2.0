@@ -19,7 +19,15 @@ import java.util.List;
 import static utils.Constants.Environment.*;
 
 public class Playing extends State implements StateMethods {
-
+    // Tunables for horizontal world scrolling and the bus stop respawn cadence.
+    private static final float WORLD_SCROLL_SPEED = 1.6f;
+    private static final int MAX_WORLD_LOOPS = 15;
+    private static final float CENTER_TOLERANCE = 10f * Game.SCALE;
+    private static final int CLEANUP_INTERVAL_FRAMES = 60;
+    private static final int CLEANUP_THRESHOLD = 8;
+    private static final int BUS_STOP_WORLD_X = 50;
+    private static final int BUS_STOP_WORLD_Y = 175;
+    private static final int BUS_STOP_RESPAWN_LOOPS = 3;
 
     private Player        player;
     private PersonManager personManager;
@@ -32,15 +40,7 @@ public class Playing extends State implements StateMethods {
     private final int levelPixelWidth =
             LoadSave.GetLevelData()[0].length * Game.TILES_SIZE;
 
-    // -------------------------------------------------------
-    // WORLD SCROLL SETTINGS
-    // -------------------------------------------------------
-    private static final float WORLD_SCROLL_SPEED = 1.6f; // ← ADJUST: pixels per tick
-    private static final int   MAX_WORLD_LOOPS    = 15;   // ← ADJUST: total world loops
-    // -------------------------------------------------------
-
-    private static final float CENTER_TOLERANCE = 10f * Game.SCALE;
-
+    // Counts how many full wraps of the level have completed.
     private int     worldLoopCount = 0;
     private boolean worldLoopDone  = false;
     private boolean dKeyHeld       = false;
@@ -60,10 +60,7 @@ public class Playing extends State implements StateMethods {
     // World objects like bus stops, signs, etc.
     private final List<WorldObject> worldObjects = new ArrayList<>();
 
-    // Resouce cleaner
     private int cleanupCounter = 0;
-    private static final int CLEANUP_INTERVAL_FRAMES = 60; // run heavy cleanup every 60 frames
-    private static final int CLEANUP_THRESHOLD = 8; // run immediate cleanup if list grows beyond this
 
     public Playing(Game game) {
         super(game);
@@ -94,51 +91,51 @@ public class Playing extends State implements StateMethods {
         smallClouds   = LoadSave.getSpriteAtlas(LoadSave.SMALL_CLOUDS);
         busStop       = LoadSave.getSpriteAtlas(LoadSave.BUS_STOP);
 
-        // create bus stop world object
-        if (busStop != null) {
-            int busW = busStop.getWidth();
-            int busH = busStop.getHeight();
-            int busWorldX = 50;   // world X coordinate for the bus stop
-            int busWorldY = 175;  // world Y coordinate for the bus stop
-            int loopsToRespawn = 3; // reappear after N full loops
-            worldObjects.add(new WorldObject(busWorldX, busWorldY, busW, busH, busStop, loopsToRespawn));
-        }
+        addBusStop();
 
         smallCloudsPos = new int[8];
-        for (int i = 0; i < smallCloudsPos.length; i++)
+        for (int i = 0; i < smallCloudsPos.length; i++) {
             smallCloudsPos[i] = (int)(20 * Game.SCALE) + rnd.nextInt((int)(100 * Game.SCALE));
+        }
     }
 
-    // ── Full game restart — called by PauseOverlay restart button ──
+    private void addBusStop() {
+        if (busStop == null) {
+            return;
+        }
+
+        // The bus stop lives in world space and manages its own respawn timing.
+        worldObjects.add(new WorldObject(
+                BUS_STOP_WORLD_X,
+                BUS_STOP_WORLD_Y,
+                busStop.getWidth(),
+                busStop.getHeight(),
+                busStop,
+                BUS_STOP_RESPAWN_LOOPS
+        ));
+    }
+
     public void restartGame() {
-        // Reset world scroll state
         worldOffset    = 0;
         worldLoopCount = 0;
         worldLoopDone  = false;
         dKeyHeld       = false;
-
-        // Reset cloud offsets
         bigCloudOffset   = 0f;
         smallCloudOffset = 0f;
 
-        // Randomise new cloud positions
-        for (int i = 0; i < smallCloudsPos.length; i++)
+        for (int i = 0; i < smallCloudsPos.length; i++) {
             smallCloudsPos[i] = (int)(20 * Game.SCALE) + rnd.nextInt((int)(100 * Game.SCALE));
+        }
 
-        // reset world objects so they reappear on a full restart
-        for (WorldObject obj : worldObjects) obj.reset();
+        for (WorldObject obj : worldObjects) {
+            obj.reset();
+        }
 
-        // Reset player to centre screen with no speed
         int jeepHitboxW = (int)(70 * Game.SCALE);
-        int spawnX      = (Game.GAME_WIDTH - jeepHitboxW) / 2;
-        player.getHitBox().x = spawnX;
+        player.getHitBox().x = (float) (Game.GAME_WIDTH - jeepHitboxW) / 2;
         player.getHitBox().y = 520;
         player.resetDirBooleans();
-
-        // Clear all persons and reset spawn timers
         personManager.resetAll();
-
-        // Close pause menu and resume play
         paused = false;
     }
 
@@ -165,6 +162,9 @@ public class Playing extends State implements StateMethods {
                 if (worldOffset >= levelPixelWidth) {
                     worldOffset -= levelPixelWidth;
                     worldLoopCount++;
+                    // Debug counter: prints once whenever the scrolling world completes a full loop.
+                    System.out.println("World loops: " + worldLoopCount);
+
                     if (worldLoopCount >= MAX_WORLD_LOOPS) {
                         worldLoopDone = true;
                         worldOffset   = 0;
@@ -180,37 +180,11 @@ public class Playing extends State implements StateMethods {
                     smallCloudOffset -= SMALL_CLOUD_WIDTH;
             }
 
-            // update world objects with current loop count
             for (WorldObject obj : worldObjects) {
                 obj.update(worldOffset, Game.GAME_WIDTH, worldLoopCount, levelPixelWidth);
             }
 
-            // quick removal of permanently removable objects
-            if (worldObjects.size() > CLEANUP_THRESHOLD) {
-                // immediate cleanup when list is large
-                worldObjects.removeIf(obj -> {
-                    if (obj.isRemovable()) {
-                        obj.dispose();
-                        obj.markRemoved();
-                        return true;
-                    }
-                    return false;
-                });
-            } else {
-                // periodic cleanup to reduce per-frame cost
-                cleanupCounter++;
-                if (cleanupCounter >= CLEANUP_INTERVAL_FRAMES) {
-                    cleanupCounter = 0;
-                    worldObjects.removeIf(obj -> {
-                        if (obj.isRemovable()) {
-                            obj.dispose();
-                            obj.markRemoved();
-                            return true;
-                        }
-                        return false;
-                    });
-                }
-            }
+            cleanupWorldObjects();
 
             levelManager.update();
             personManager.update();
@@ -229,10 +203,9 @@ public class Playing extends State implements StateMethods {
         personManager.render(g);
         player.render(g);
 
-        // take a single snapshot to avoid ConcurrentModificationException
         List<WorldObject> snapshot = new ArrayList<>(worldObjects);
         for (WorldObject obj : snapshot) {
-            obj.draw(g, worldOffset, Game.GAME_WIDTH);
+            obj.draw(g);
         }
 
         if (paused) {
@@ -240,6 +213,33 @@ public class Playing extends State implements StateMethods {
             g.fillRect(0, 0, Game.GAME_WIDTH, Game.GAME_HEIGHT);
             pauseOverlay.draw(g);
         }
+    }
+
+    private void cleanupWorldObjects() {
+        // Run removal eagerly for larger lists, otherwise amortize it across frames.
+        if (worldObjects.size() > CLEANUP_THRESHOLD) {
+            removeDisposableWorldObjects();
+            return;
+        }
+
+        cleanupCounter++;
+        if (cleanupCounter >= CLEANUP_INTERVAL_FRAMES) {
+            cleanupCounter = 0;
+            removeDisposableWorldObjects();
+        }
+    }
+
+    private void removeDisposableWorldObjects() {
+        // Dispose one-shot objects that have gone permanently off-screen.
+        worldObjects.removeIf(obj -> {
+            if (!obj.isRemovable()) {
+                return false;
+            }
+
+            obj.dispose();
+            obj.markRemoved();
+            return true;
+        });
     }
 
 
