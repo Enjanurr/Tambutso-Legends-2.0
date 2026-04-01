@@ -30,6 +30,5 @@ public abstract class Enemy extends Entity {
 
     public void update() { updateAnimationTick(); }
 
-    public int getAniIndex()   { return aniIndex; }
-    public int getEnemyState() { return enemyState; }
+
 }

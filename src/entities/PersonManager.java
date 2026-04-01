@@ -110,7 +110,7 @@ public class PersonManager {
 
     // ── Render — layered draw order ──────────────────────────
     public void render(Graphics g) {
-        // take a single snapshot to avoid ConcurrentModificationException
+
         List<Person> snapshot = new ArrayList<>(persons);
 
         // Layer 1 — Lane 1 walkers (back)
@@ -130,5 +130,4 @@ public class PersonManager {
             if (p.getType() == Person.PersonType.PASSENGER)
                 p.render(g);
     }
-
 }

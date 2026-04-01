@@ -14,10 +14,24 @@ public class LoadSave {
     public static final String PLAYER_ATLAS = "/jeepney_sprites.png";
     public static final String LEVEL_ATLAS  = "road_tiles.png";
     public static final String ROAD_DATA    = "road_data_new.png";
-    public static final String ENEMY        = "jeepney_sprites.png";
+
+    // ── Enemy atlases (road cars) ─────────────────────────────
+    // -------------------------------------------------------
+    // Point these at your actual filenames in /res
+    // -------------------------------------------------------
+    public static final String GSM_ATLAS   = "gsm-taxi.png";       // Taxi   360×31, 4 frames
+    public static final String EJEEP_ATLAS = "modern_jeep.png";    // Modern Jeep 440×38, 4 frames
+    // -------------------------------------------------------
+
+    // ── Objects ───────────────────────────────────────────────
+    public static final String STOP_SIGN      = "stop_sign.png";
+    public static final String LIFE_STATUS    = "life_status.png";
+    public static final String DEATH_SCREEN   = "death_screen.png";
+    public static final String TUTORIAL_IMG   = "tutorial.png";
+    public static final String MISSION_MAP1_IMG = "mission_map1.png";
 
     // ── Playing state background / environment ───────────────
-    public static final String PLAYING_BACKGROUND_IMG = "playing_bg_img.png"; // full-screen road BG
+    public static final String PLAYING_BACKGROUND_IMG = "playing_bg_img.png";
     public static final String BIG_CLOUDS             = "big_clouds.png";
     public static final String SMALL_CLOUDS           = "small_clouds.png";
 
@@ -25,8 +39,8 @@ public class LoadSave {
     public static final String BUS_STOP = "bus_stop.png";
 
     // ── Menu atlases ─────────────────────────────────────────
-    public static final String MENU_BUTTONS      = "button_atlas.png";
-    public static final String MENU_BACKGROUNDS  = "menu_background.png";
+    public static final String MENU_BUTTONS        = "button_atlas.png";
+    public static final String MENU_BACKGROUNDS    = "menu_background.png";
     public static final String MENU_BACKGROUND_IMG = "background_menu.png";
 
     // ── Pause UI atlases ─────────────────────────────────────
@@ -34,21 +48,27 @@ public class LoadSave {
     public static final String SOUND_BUTTONS     = "sound_button.png";
     public static final String URM_BUTTONS       = "urm_buttons.png";
     public static final String VOLUME_BUTTONS    = "volume_buttons.png";
+    public static final String POWERUP           = "powerup.png";
 
-    // ── Person sprite sheets — add one line per new person ───
+    // ── Person sprite sheets ──────────────────────────────────
     public static final String PERSON1_ATLAS = "Person/Person1.png";
     public static final String PERSON2_ATLAS = "Person/Person2.png";
+
     // ─────────────────────────────────────────────────────────
 
     public static BufferedImage getSpriteAtlas(String fileName) {
         BufferedImage img = null;
         InputStream is = LoadSave.class.getResourceAsStream("/" + fileName);
+        if (is == null) {
+            System.err.println("[LoadSave] File not found on classpath: /" + fileName);
+            return null;
+        }
         try {
             img = ImageIO.read(is);
         } catch (IOException e) {
             e.printStackTrace();
         } finally {
-            try { if (is != null) is.close(); } catch (IOException e) { e.printStackTrace(); }
+            try { is.close(); } catch (IOException e) { e.printStackTrace(); }
         }
         return img;
     }

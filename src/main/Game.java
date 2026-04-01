@@ -4,16 +4,18 @@ import java.awt.Graphics;
 import gameStates.GameStates;
 import gameStates.Menu;
 import gameStates.Playing;
+import Ui.IntroOverlay;
 
 public class Game implements Runnable {
-    private GameWindow gameWindow;
-    private GamePanel  gamePanel;
-    private Thread     gameThread;
-    private final int FPS_SET = 120;
-    private final int UPS_SET = 200;
+    private GameWindow   gameWindow;
+    private GamePanel    gamePanel;
+    private Thread       gameThread;
+    private final int    FPS_SET = 120;
+    private final int    UPS_SET = 200;
 
-    private Playing playing;
-    private Menu    menu;
+    private Playing      playing;
+    private Menu         menu;
+    private IntroOverlay introOverlay;
 
     public final static int   TILES_DEFAULT_SIZE = 20;
     public final static float SCALE              = 2f;
@@ -24,18 +26,17 @@ public class Game implements Runnable {
     public final static int   GAME_HEIGHT        = TILES_SIZE * TILES_IN_HEIGHT;
 
     public Game() {
-        // GamePanel MUST be created before initClasses()
-        // because Playing needs game.getGamePanel() for the Player constructor
-        gamePanel = new GamePanel(this);
+        gamePanel    = new GamePanel(this);
         initClasses();
-        gameWindow = new GameWindow(gamePanel);
+        gameWindow   = new GameWindow(gamePanel);
         gamePanel.requestFocus();
         startGameLoop();
     }
 
     private void initClasses() {
-        menu    = new Menu(this);
-        playing = new Playing(this);
+        menu         = new Menu(this);
+        playing      = new Playing(this);
+        introOverlay = new IntroOverlay();
     }
 
     private void startGameLoop() {
@@ -43,10 +44,20 @@ public class Game implements Runnable {
         gameThread.start();
     }
 
+
+    public void startPlayingOrIntro() {
+        introOverlay.reset();
+        GameStates.state = GameStates.INTRO;
+    }
+
     public void update() {
         switch (GameStates.state) {
             case MENU:
                 menu.update();
+                break;
+            case INTRO:
+                boolean done = introOverlay.update();
+                if (done) GameStates.state = GameStates.PLAYING;
                 break;
             case PLAYING:
                 gamePanel.updateFade();
@@ -66,6 +77,11 @@ public class Game implements Runnable {
             case MENU:
                 menu.draw(g);
                 break;
+            case INTRO:
+                // Draw menu as background, overlay on top
+                menu.draw(g);
+                introOverlay.render(g);
+                break;
             case PLAYING:
                 playing.draw(g);
                 break;
@@ -74,7 +90,6 @@ public class Game implements Runnable {
         }
     }
 
-    // Called by Player warp callback when jeep crosses right border
     public void onJeepLooped() {
         playing.onJeepLooped();
     }
@@ -110,7 +125,8 @@ public class Game implements Runnable {
     }
 
     // ── Getters ───────────────────────────────────────────────
-    public GamePanel getGamePanel() { return gamePanel; }
-    public Menu      getMenu()      { return menu; }
-    public Playing   getPlaying()   { return playing; }
+    public GamePanel    getGamePanel()    { return gamePanel; }
+    public Menu         getMenu()         { return menu; }
+    public Playing      getPlaying()      { return playing; }
+    public IntroOverlay getIntroOverlay() { return introOverlay; }
 }

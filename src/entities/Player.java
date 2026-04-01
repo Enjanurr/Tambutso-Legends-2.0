@@ -21,7 +21,7 @@ public class Player extends Entity {
     private boolean moving = false, attacking = false;
     private boolean left, up, right, down;
 
-
+    // ── Horizontal speed / decel ──────────────────────────────
     private float currentXSpeed = 0f;
     private float currentDecel  = 0f;
 
@@ -30,15 +30,26 @@ public class Player extends Entity {
     private static final float X_DECEL_START = 0.001f;
     private static final float X_DECEL_GROW  = 0.003f;
     private static final float X_DECEL_MAX   = 0.15f;
-    // -------------------------------------------------------
 
-    // UP/DOWN SPEED
-    private static final float Y_SPEED = 1f;
+    // ── Vertical speed ────────────────────────────────────────
+    private static final float Y_SPEED = 0.8f;
 
     public static final int STOP = Game.GAME_WIDTH;
 
-    // Set by Playing every tick — true = world is scrolling, freeze jeep X.
+    // Set by Playing every tick
     private boolean worldScrolling = false;
+    private boolean worldLoopDone  = false;
+
+    private float currentMaxSpeed = X_MAX_SPEED;
+
+    // ── Car Struck state ─────────────────────────────────────
+
+    private static final int STRUCK_DURATION_TICKS = 1 * 200; // 4 s at 200 UPS
+    // -------------------------------------------------------
+    private boolean struckActive = false;
+    private int     struckTimer  = 0;
+    // Ghost mode: true while struck — disables collision detection
+    private boolean ghost        = false;
 
     private GamePanel gamePanel;
     private int[][] lvlData;
@@ -49,9 +60,14 @@ public class Player extends Entity {
         super(x, y, width, height);
         this.gamePanel = gamePanel;
         loadAnimations();
-        initHitbox(x, y, 70 * Game.SCALE, 32 * Game.SCALE);
+        initHitbox(x, y,
+                54 * Game.SCALE,
+                32 * Game.SCALE);
     }
 
+    // ─────────────────────────────────────────────────────────
+    // RENDER
+    // ─────────────────────────────────────────────────────────
     public void render(Graphics g) {
         g.drawImage(
                 animations[playerAction][aniIndex],
@@ -72,18 +88,54 @@ public class Player extends Entity {
         drawHitBox(g, xLvlOffset);
     }
 
+    // ─────────────────────────────────────────────────────────
+    // UPDATE
+    // ─────────────────────────────────────────────────────────
     public void update() {
-        updatePos();
+        updateStruckState();
+        if (!struckActive) {
+            updatePos();
+        }
         updateAnimationTick();
         setAnimation();
     }
 
+
+    public void triggerCarStruck() {
+        struckActive  = true;
+        struckTimer   = STRUCK_DURATION_TICKS;
+        ghost         = true;
+        // Kill speed so jeep stops instantly
+        currentXSpeed = 0f;
+        currentDecel  = X_DECEL_START;
+        // Force key flags off so input can't resume movement mid-animation
+        left = right = up = down = false;
+    }
+
+    private void updateStruckState() {
+        if (!struckActive) return;
+        struckTimer--;
+        if (struckTimer <= 0) {
+            struckActive = false;
+            ghost        = false;
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────
+    // ANIMATION
+    // ─────────────────────────────────────────────────────────
     private void setAnimation() {
-        int startAnimation = playerAction;
-        if (moving)  playerAction = RUNNING;
-        else         playerAction = IDLE;
-        if (startAnimation != playerAction)
-            resetAnimationTick();
+        int prev = playerAction;
+
+        if (struckActive) {
+            playerAction = CAR_STRUCK;
+        } else if (moving) {
+            playerAction = RUNNING;
+        } else {
+            playerAction = IDLE;
+        }
+
+        if (prev != playerAction) resetAnimationTick();
     }
 
     private void resetAnimationTick() {
@@ -103,35 +155,47 @@ public class Player extends Entity {
         }
     }
 
+    // ─────────────────────────────────────────────────────────
+    // MOVEMENT
+    // ─────────────────────────────────────────────────────────
     private void updatePos() {
         if (gamePanel.isFading()) return;
 
         moving = false;
 
-        // ── HORIZONTAL (A / D) ───────────────────────────────
-        if (!worldScrolling) {
-
-            if (right && !left) {
-                currentXSpeed = Math.min(currentXSpeed + X_ACCEL, X_MAX_SPEED);
-                currentDecel  = X_DECEL_START;
-            } else if (left && !right) {
-                currentXSpeed = Math.max(currentXSpeed - X_ACCEL, -X_MAX_SPEED);
-                currentDecel  = X_DECEL_START;
+        // ── HORIZONTAL ───────────────────────────────────────
+        if (right && !left) {
+            currentXSpeed = Math.min(currentXSpeed + X_ACCEL, currentMaxSpeed);
+            currentDecel  = X_DECEL_START;
+        } else if (left && !right && !worldScrolling) {
+            currentXSpeed = Math.max(currentXSpeed - X_ACCEL, -currentMaxSpeed);
+            currentDecel  = X_DECEL_START;
+        } else {
+            currentDecel = Math.min(currentDecel + X_DECEL_GROW, X_DECEL_MAX);
+            if (currentXSpeed > 0) {
+                currentXSpeed -= currentDecel;
+                if (currentXSpeed < 0) currentXSpeed = 0;
+            } else if (currentXSpeed < 0) {
+                currentXSpeed += currentDecel;
+                if (currentXSpeed > 0) currentXSpeed = 0;
             } else {
-                currentDecel = Math.min(currentDecel + X_DECEL_GROW, X_DECEL_MAX);
-                if (currentXSpeed > 0) {
-                    currentXSpeed -= currentDecel;
-                    if (currentXSpeed < 0) currentXSpeed = 0;
-                } else if (currentXSpeed < 0) {
-                    currentXSpeed += currentDecel;
-                    if (currentXSpeed > 0) currentXSpeed = 0;
-                } else {
-                    currentDecel = X_DECEL_START;
-                }
+                currentDecel = X_DECEL_START;
             }
+        }
 
+        if (!worldScrolling) {
             if (currentXSpeed != 0) {
                 float nextX = hitBox.x + currentXSpeed;
+
+                if (!worldLoopDone && currentXSpeed > 0) {
+                    float centerClamp = Game.GAME_WIDTH / 2f - hitBox.width / 2f;
+                    if (nextX >= centerClamp) {
+                        hitBox.x      = centerClamp;
+                        currentXSpeed = 0;
+                        currentDecel  = X_DECEL_START;
+                        return;
+                    }
+                }
 
                 if (isAtRightBorder(nextX, hitBox.width)) {
                     hitBox.x = Game.GAME_WIDTH - hitBox.width;
@@ -147,14 +211,9 @@ public class Player extends Entity {
                     hitBox.x = nextX;
                 }
             }
-
-        } else {
-
-            currentXSpeed = 0;
-            currentDecel  = X_DECEL_START;
         }
 
-        // ── VERTICAL (W / S) — always allowed ───────────────
+        // ── VERTICAL ─────────────────────────────────────────
         float ySpeed = 0;
         if (up && !down)      ySpeed = -Y_SPEED;
         else if (down && !up) ySpeed = Y_SPEED;
@@ -162,32 +221,37 @@ public class Player extends Entity {
         if (ySpeed != 0 && canMoveHere(hitBox.x, hitBox.y + ySpeed, hitBox.width, hitBox.height, lvlData))
             hitBox.y += ySpeed;
 
-        // Mark moving for animation purposes
         if ((!worldScrolling && currentXSpeed != 0) || ySpeed != 0)
             moving = true;
         if (worldScrolling && right)
             moving = true;
     }
 
+    // ─────────────────────────────────────────────────────────
+    // LOAD ANIMATIONS
+    //   Row 0 = RUNNING
+    //   Row 1 = IDLE
+    //   Row 2 = CAR_STRUCK
+    // ─────────────────────────────────────────────────────────
     private void loadAnimations() {
         InputStream is = getClass().getResourceAsStream(LoadSave.PLAYER_ATLAS);
         try {
             BufferedImage img = ImageIO.read(is);
-            animations = new BufferedImage[2][4];
-            for (int j = 0; j < animations.length; j++)
-                for (int i = 0; i < animations[j].length; i++)
-                    animations[j][i] = img.getSubimage(i * 110, j * 40, 110, 40);
+            animations = new BufferedImage[3][4]; // 3 rows, 4 frames
+            for (int row = 0; row < animations.length; row++)
+                for (int col = 0; col < animations[row].length; col++)
+                    animations[row][col] = img.getSubimage(col * 110, row * 40, 110, 40);
         } catch (IOException e) {
             e.printStackTrace();
         } finally {
-            try { is.close(); } catch (IOException e) { e.printStackTrace(); }
+            try { if (is != null) is.close(); } catch (IOException e) { e.printStackTrace(); }
         }
     }
 
     public void loadLvlData(int[][] lvlData) { this.lvlData = lvlData; }
 
-
     public void setWorldScrolling(boolean scrolling) { this.worldScrolling = scrolling; }
+    public void setWorldLoopDone(boolean done)        { this.worldLoopDone  = done; }
 
     public void resetDirBooleans() {
         left = false; right = false; up = false; down = false;
@@ -196,13 +260,16 @@ public class Player extends Entity {
         worldScrolling = false;
     }
 
-    public void setAttacking(boolean attacking) { this.attacking = attacking; }
-    public boolean isLeft()  { return left; }
-    public void setLeft(boolean left)     { this.left = left; }
-    public boolean isUp()    { return up; }
-    public void setUp(boolean up)         { this.up = up; }
-    public boolean isRight() { return right; }
-    public void setRight(boolean right)   { this.right = right; }
-    public boolean isDown()  { return down; }
-    public void setDown(boolean down)     { this.down = down; }
+    public boolean isGhost()          { return ghost; }
+    public boolean isStruckActive()   { return struckActive; }
+    public float   getCurrentXSpeed() { return currentXSpeed; }
+
+    public void setMaxSpeed(float maxSpeed)      { this.currentMaxSpeed = maxSpeed; }
+
+
+    public void setAttacking(boolean attacking)  { this.attacking = attacking; }
+    public void setLeft(boolean left)            { this.left = left; }
+    public void setUp(boolean up)                { this.up = up; }
+    public void setRight(boolean right)          { this.right = right; }
+    public void setDown(boolean down)            { this.down = down; }
 }
