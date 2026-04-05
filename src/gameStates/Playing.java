@@ -10,6 +10,7 @@ import objects.StopSignManager;
 import levels.LevelManager;
 import main.Game;
 import utils.LoadSave;
+import utils.RouteConstants;
 
 import java.awt.*;
 import java.awt.event.KeyEvent;
@@ -32,6 +33,7 @@ public class Playing extends State implements StateMethods {
     private HealthBar       healthBar;
     private DeathOverlay    deathOverlay;
     private AcceptPassengerOverlay acceptPassengerOverlay;       // ← modal
+
 
     private boolean paused              = false;
     private boolean playerDead          = false;
@@ -62,6 +64,10 @@ public class Playing extends State implements StateMethods {
     private BufferedImage backgroundImg, bigClouds, smallClouds;
     private int[] smallCloudsPos;
     private final Random rnd = new Random();
+
+    // ── Current route position ────────────────────────────────
+    private int    currentStopIndex = 0;
+    private final java.util.Random rng = new java.util.Random();
 
     // ─────────────────────────────────────────────────────────
     public Playing(Game game) {
@@ -113,6 +119,7 @@ public class Playing extends State implements StateMethods {
     public void restartGame() {
         worldOffset    = 0;
         worldLoopCount = 0;
+        currentStopIndex = 0;
         worldLoopDone  = false;
         dKeyHeld       = false;
         playerDead     = false;
@@ -141,7 +148,7 @@ public class Playing extends State implements StateMethods {
         interactionPaused = false;
         acceptPassengerOverlay.close();
         acceptPassengerOverlay.resetPassengerCount(); //
-
+        acceptPassengerOverlay.resetEarnings();
         paused = false;
     }
 
@@ -314,21 +321,15 @@ public class Playing extends State implements StateMethods {
                     SMALL_CLOUD_WIDTH, SMALL_CLOUD_HEIGHT, null);
         }
     }
-
-
-
-
-
     // ─────────────────────────────────────────────────────────
     // INPUT
     // ─────────────────────────────────────────────────────────
     @Override
     public void mouseClicked(MouseEvent e) {
         if (playerDead)        return;
-        if (interactionPaused) return;   // block all clicks while modal is open
+        if (interactionPaused) return;
 
         if (e.getButton() == MouseEvent.BUTTON1) {
-            // Check every interactable passenger — click must land on their hitbox
             for (Person p : personManager.getPersons()) {
                 if (!p.isInteractable()) continue;
 
@@ -336,13 +337,20 @@ public class Playing extends State implements StateMethods {
                 if (pHB != null && pHB.contains(e.getX(), e.getY())) {
                     System.out.println("Passenger clicked");
                     System.out.println("Game paused");
+
+                    // ── Assign destination and fare on click ──────
+                    int destIndex = RouteConstants.randomForwardStopIndex(currentStopIndex, rng);
+                    p.setDestinationStop(RouteConstants.STOPS[destIndex]);
+                    p.setFare(RouteConstants.randomFare(rng));
+
+                    System.out.println("Destination: " + p.getDestinationStop());
+                    System.out.println("Fare: ₱" + p.getFare());
+
                     interactionPaused = true;
                     acceptPassengerOverlay.open(p);
-                    return;   // one modal max — stop here
+                    return;
                 }
             }
-
-            // No passenger hit — normal jeep attack
             player.setAttacking(true);
         }
     }
@@ -415,4 +423,5 @@ public class Playing extends State implements StateMethods {
     public Player getPlayer()         { return player; }
     public float  getWorldOffset()    { return worldOffset; }
     public int    getWorldLoopCount() { return worldLoopCount; }
+
 }

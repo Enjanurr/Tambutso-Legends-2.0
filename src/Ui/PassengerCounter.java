@@ -25,7 +25,7 @@ public class PassengerCounter {
     public static final int MAX_PASSENGERS = 16;
 
     // ── Position & size settings ← ADJUST ────────────────────
-    private static final float COUNTER_SCALE = 0.5f;
+    private static final float COUNTER_SCALE = 0.2f;
     // ─────────────────────────────────────────────────────────
 
     private final int drawW, drawH;
@@ -87,6 +87,8 @@ public class PassengerCounter {
 
     public int  getCount()  { return currentCount; }
     public boolean isFull() { return currentCount >= MAX_PASSENGERS; }
+    public int getDrawY() { return drawY; }
+    public int getDrawH() { return drawH; }
 
     // ─────────────────────────────────────────────────────────
     // RENDER

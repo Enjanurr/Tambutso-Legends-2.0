@@ -23,6 +23,9 @@ public class Person extends Entity {
 
 
     private boolean movingLeft = true;
+    // ── Passenger trip data ───────────────────────────────────
+    private String destinationStop = "";
+    private int    fare            = 0;
 
     public Person(float x, float y, PersonType type, String atlasPath) {
         super(x, y, PERSON_WIDTH, PERSON_HEIGHT);
@@ -116,5 +119,11 @@ public class Person extends Entity {
     public PersonType getType()      { return type; }
     public boolean isInteractable()           { return interactable; }
     public void    setInteractable(boolean v) { interactable = v; }
+
+    public String getDestinationStop()             { return destinationStop; }
+    public void   setDestinationStop(String stop)  { destinationStop = stop; }
+    public int    getFare()                        { return fare; }
+    public void   setFare(int fare)                { this.fare = fare; }
+    public float getY() { return hitBox != null ? hitBox.y : y; }
 
 }

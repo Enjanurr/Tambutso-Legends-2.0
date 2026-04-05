@@ -14,6 +14,7 @@ public class AcceptPassengerButtons {
     private boolean mouseOver, mousePressed;
     private BufferedImage[] imgs;
     private Rectangle bounds;
+    private float scale = 0.7f; // 70% of original size
 
     public AcceptPassengerButtons(int xPos, int yPos, int rowIndex) {
         this.xPos     = xPos;
@@ -24,27 +25,40 @@ public class AcceptPassengerButtons {
     }
 
     private void initBounds() {
-        bounds = new Rectangle(xPos - xOffsetCenter, yPos, B_WIDTH, B_HEIGHT);
+        bounds = new Rectangle(
+                xPos - (int)(xOffsetCenter * scale),
+                yPos,
+                (int)(B_WIDTH * scale),
+                (int)(B_HEIGHT * scale)
+        );
     }
 
     // Mirrors MenuButton.loadImages() — just swaps atlas path
     private void loadImages() {
         imgs = new BufferedImage[3];                        // 3 states: normal, hover, pressed
-        BufferedImage temp = LoadSave.getSpriteAtlas(LoadSave.MENU_BUTTONS);
+        BufferedImage temp = LoadSave.getSpriteAtlas(LoadSave.ACCEPT_PASSENGER_BUTTONS);
 
-
+       int WIDTH = 94;
+       int HEIGHT = 53;
         for (int i = 0; i < imgs.length; i++) {
             imgs[i] = temp.getSubimage(
-                    i * B_WIDTH_DEFAULT,
-                    rowIndex * B_HEIGHT_DEFAULT,
-                    B_WIDTH_DEFAULT,
-                    B_HEIGHT_DEFAULT);
+                    i * WIDTH,
+                    rowIndex * HEIGHT,
+                    WIDTH,
+                    HEIGHT);
         }
     }
 
     // Identical to MenuButton.draw()
     public void draw(Graphics g) {
-        g.drawImage(imgs[index], xPos - xOffsetCenter, yPos, B_WIDTH, B_HEIGHT, null);
+        g.drawImage(
+                imgs[index],
+                xPos - (int)(xOffsetCenter * scale),
+                yPos,
+                (int)(B_WIDTH * scale),
+                (int)(B_HEIGHT * scale),
+                null
+        );
     }
 
     // Identical to MenuButton.update()
