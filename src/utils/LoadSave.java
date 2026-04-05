@@ -52,6 +52,9 @@ public class LoadSave {
     public static final String PERSON2_ATLAS = "Person/Person2.png";
 
     // ─────────────────────────────────────────────────────────
+    public static final String ACCEPT_PASSENGER_BACKGROUND = "accept_passenger.png";
+    public static final String ACCEPT_PASSENGER_BUTTONS = "accept_passenger_buttons.png";
+    public static final String PASSENGER_COUNTER = "passenger_counter.png";
 
     public static BufferedImage getSpriteAtlas(String fileName) {
         BufferedImage img = null;

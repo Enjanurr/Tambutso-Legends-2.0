@@ -1,9 +1,8 @@
 package gameStates;
 
-import Ui.DeathOverlay;
-import Ui.HealthBar;
-import Ui.PauseOverlay;
+import Ui.*;
 import entities.EnemyManager;
+import entities.Person;
 import entities.PersonManager;
 import entities.Player;
 import entities.PowerupManager;
@@ -15,6 +14,7 @@ import utils.LoadSave;
 import java.awt.*;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
+import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
 import java.util.Random;
 
@@ -31,43 +31,49 @@ public class Playing extends State implements StateMethods {
     private PauseOverlay    pauseOverlay;
     private HealthBar       healthBar;
     private DeathOverlay    deathOverlay;
+    private AcceptPassengerOverlay acceptPassengerOverlay;       // ← modal
 
-    private boolean paused     = false;
-    private boolean playerDead = false;     // true while death screen is showing
+    private boolean paused              = false;
+    private boolean playerDead          = false;
+    private boolean interactionPaused   = false;   // ← replaces pickUpPassenger
 
     // ── World scrolling ──────────────────────────────────────
-    private float worldOffset = 0;
+    private float worldOffset    = 0;
     private final int levelPixelWidth =
             LoadSave.GetLevelData()[0].length * Game.TILES_SIZE;
 
-    // -------------------------------------------------------
-    // WORLD SCROLL SETTINGS
-    // -------------------------------------------------------
-    private static final int MAX_WORLD_LOOPS = 15;
-    // -------------------------------------------------------
-
+    private static final int   MAX_WORLD_LOOPS  = 15;
     private static final float CENTER_TOLERANCE = 10f * Game.SCALE;
 
     private int     worldLoopCount = 0;
     private boolean worldLoopDone  = false;
     private boolean dKeyHeld       = false;
 
+
     // ── Cloud scroll accumulators ────────────────────────────
     private float bigCloudOffset   = 0f;
     private float smallCloudOffset = 0f;
-
     private static final float BIG_CLOUD_PARALLAX   = 0.3f;
     private static final float SMALL_CLOUD_PARALLAX = 0.5f;
+
+    private PassengerCounter passengerCounter;
 
     // ── Background ───────────────────────────────────────────
     private BufferedImage backgroundImg, bigClouds, smallClouds;
     private int[] smallCloudsPos;
     private final Random rnd = new Random();
 
+    // ─────────────────────────────────────────────────────────
     public Playing(Game game) {
         super(game);
         initClasses();
         loadBackgroundAssets();
+    }
+
+
+    public void resumeFromInteraction() {
+        interactionPaused = false;
+        acceptPassengerOverlay.close();
     }
 
     private void initClasses() {
@@ -88,7 +94,9 @@ public class Playing extends State implements StateMethods {
         pauseOverlay    = new PauseOverlay(this);
         powerupManager  = new PowerupManager(this);
         healthBar       = new HealthBar();
+        passengerCounter = new PassengerCounter();
         deathOverlay    = new DeathOverlay(this);
+        acceptPassengerOverlay = new AcceptPassengerOverlay(this, passengerCounter);  // ← init modal
     }
 
     private void loadBackgroundAssets() {
@@ -107,7 +115,7 @@ public class Playing extends State implements StateMethods {
         worldLoopCount = 0;
         worldLoopDone  = false;
         dKeyHeld       = false;
-        playerDead     = false;         // close death screen
+        playerDead     = false;
 
         bigCloudOffset   = 0f;
         smallCloudOffset = 0f;
@@ -127,35 +135,34 @@ public class Playing extends State implements StateMethods {
         stopSignManager.resetAll();
         powerupManager.resetAll();
         healthBar.reset();
+        passengerCounter.reset();
+
+        // Reset interaction state
+        interactionPaused = false;
+        acceptPassengerOverlay.close();
+        acceptPassengerOverlay.resetPassengerCount(); //
 
         paused = false;
     }
 
     // ── Health callbacks ─────────────────────────────────────
-    /**
-     * Called by EnemyManager after a collision.
-     * Deducts one bar — shows death screen if health reaches 0.
-     */
     public void onPlayerHit() {
         boolean dead = healthBar.takeDamage();
         if (dead) {
             playerDead = true;
-            deathOverlay.reset();   // restart the fade-in fresh
+            deathOverlay.reset();
         }
     }
 
-    /**
-     * Called by PowerupManager when Heal powerup is collected.
-     */
     public void onPlayerHeal() {
         healthBar.heal();
     }
 
     // ── Scrolling condition ──────────────────────────────────
     public boolean isScrolling() {
-        // Freeze world while death screen is showing
         return dKeyHeld && isJeepCentered() && !paused && !worldLoopDone
-                && !player.isStruckActive() && !playerDead;
+                && !player.isStruckActive() && !playerDead
+                && !interactionPaused;             // ← frozen during modal
     }
 
     public float getScrollSpeed() { return player.getCurrentXSpeed(); }
@@ -171,9 +178,20 @@ public class Playing extends State implements StateMethods {
     // ─────────────────────────────────────────────────────────
     @Override
     public void update() {
-        // Death screen active — only update the overlay, freeze everything else
         if (playerDead) {
             deathOverlay.update();
+            return;
+        }
+
+        // Keep modal ticking even while interaction is paused
+        acceptPassengerOverlay.update();
+
+        // ── Modal open — only update the modal, freeze everything else ──
+        if (interactionPaused) {
+            // Close modal if it shut itself (both buttons call close())
+            if (!acceptPassengerOverlay.isOpen()) {
+                interactionPaused = false;
+            }
             return;
         }
 
@@ -207,6 +225,7 @@ public class Playing extends State implements StateMethods {
 
             levelManager.update();
             personManager.update();
+            checkPassengerInteractions();   // ← renamed + expanded
             enemyManager.update();
             stopSignManager.update();
             powerupManager.update();
@@ -218,11 +237,35 @@ public class Playing extends State implements StateMethods {
     }
 
     // ─────────────────────────────────────────────────────────
+    // PASSENGER INTERACTION SCAN
+    // ─────────────────────────────────────────────────────────
+    private void checkPassengerInteractions() {
+        Rectangle2D.Float jeepHB = player.getHitBox();
+        if (jeepHB == null) return;
+
+        for (Person p : personManager.getPersons()) {
+            if (p.getType() != Person.PersonType.PASSENGER) continue;
+            if (!p.isActive()) continue;
+
+            Rectangle2D.Float pHB = p.getHitBox();
+            if (pHB == null) continue;
+
+            boolean overlapping = jeepHB.intersects(pHB);
+
+            // Print only on the rising edge (was false, now true)
+            if (overlapping && !p.isInteractable()) {
+                System.out.println("Passenger ready for interaction");
+            }
+
+            p.setInteractable(overlapping);
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────
     // DRAW
     // ─────────────────────────────────────────────────────────
     @Override
     public void draw(Graphics g) {
-        // Always draw the frozen game world underneath
         if (backgroundImg != null)
             g.drawImage(backgroundImg, 0, 0, Game.GAME_WIDTH, Game.GAME_HEIGHT, null);
         drawClouds(g);
@@ -232,14 +275,16 @@ public class Playing extends State implements StateMethods {
         stopSignManager.render(g);
         powerupManager.render(g);
         player.render(g);
-
-        // ── UI layer ──────────────────────────────────────────
         healthBar.render(g);
+        passengerCounter.render(g);
 
-        // Death screen drawn on top of everything
+        // Modal renders on top of the frozen world
+
+        acceptPassengerOverlay.render(g);
+
         if (playerDead) {
             deathOverlay.render(g);
-            return;                 // skip pause overlay while dead
+            return;
         }
 
         if (paused) {
@@ -270,43 +315,71 @@ public class Playing extends State implements StateMethods {
         }
     }
 
+
+
+
+
     // ─────────────────────────────────────────────────────────
     // INPUT
     // ─────────────────────────────────────────────────────────
     @Override
     public void mouseClicked(MouseEvent e) {
-        if (playerDead) return;     // ignore game clicks during death screen
-        if (e.getButton() == MouseEvent.BUTTON1) player.setAttacking(true);
+        if (playerDead)        return;
+        if (interactionPaused) return;   // block all clicks while modal is open
+
+        if (e.getButton() == MouseEvent.BUTTON1) {
+            // Check every interactable passenger — click must land on their hitbox
+            for (Person p : personManager.getPersons()) {
+                if (!p.isInteractable()) continue;
+
+                Rectangle2D.Float pHB = p.getHitBox();
+                if (pHB != null && pHB.contains(e.getX(), e.getY())) {
+                    System.out.println("Passenger clicked");
+                    System.out.println("Game paused");
+                    interactionPaused = true;
+                    acceptPassengerOverlay.open(p);
+                    return;   // one modal max — stop here
+                }
+            }
+
+            // No passenger hit — normal jeep attack
+            player.setAttacking(true);
+        }
     }
 
     @Override
     public void mousePressed(MouseEvent e) {
-        if (playerDead) { deathOverlay.mousePressed(e); return; }
-        if (paused) pauseOverlay.mousePressed(e);
+        if (playerDead)        { deathOverlay.mousePressed(e); return; }
+        if (interactionPaused) { acceptPassengerOverlay.mousePressed(e); return; }
+        if (paused)              pauseOverlay.mousePressed(e);
     }
 
     public void mouseDragged(MouseEvent e) {
-        if (playerDead) return;
-        if (paused) pauseOverlay.mouseDragged(e);
+        if (playerDead)          return;
+        if (interactionPaused) { acceptPassengerOverlay.mouseDragged(e); return; }
+        if (paused)              pauseOverlay.mouseDragged(e);
     }
 
     @Override
     public void mouseReleased(MouseEvent e) {
-        if (playerDead) { deathOverlay.mouseReleased(e); return; }
-        if (paused) pauseOverlay.mouseReleased(e);
+        if (playerDead)        { deathOverlay.mouseReleased(e); return; }
+        if (interactionPaused) { acceptPassengerOverlay.mouseReleased(e); return; }
+        if (paused)              pauseOverlay.mouseReleased(e);
     }
 
     @Override
     public void mouseMoved(MouseEvent e) {
-        if (playerDead) { deathOverlay.mouseMoved(e); return; }
-        if (paused) pauseOverlay.mouseMoved(e);
+        if (playerDead)        { deathOverlay.mouseMoved(e); return; }
+        acceptPassengerOverlay.mouseMoved(e);   // always forward — needed for button hover
+        if (paused)              pauseOverlay.mouseMoved(e);
     }
 
     public void unPauseGame() { paused = false; }
 
     @Override
     public void keyPressed(KeyEvent e) {
-        if (playerDead) return;     // ignore all key input during death screen
+        if (playerDead)        return;
+        if (interactionPaused) return;   // block key input during modal
         switch (e.getKeyCode()) {
             case KeyEvent.VK_A:      player.setLeft(true);                   break;
             case KeyEvent.VK_D:      player.setRight(true); dKeyHeld = true; break;
