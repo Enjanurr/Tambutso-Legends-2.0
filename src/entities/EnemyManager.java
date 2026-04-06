@@ -14,7 +14,6 @@ import static utils.Constants.EnemyConstants.*;
 
 /**
  * Spawns and manages road enemies (EnemyCar).
- *
  * Rules:
  *  - Only 1 enemy at a time.
  *  - 20% spawn chance per cycle, only while world is scrolling.

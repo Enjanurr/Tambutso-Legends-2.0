@@ -11,20 +11,16 @@ import java.util.List;
 public class StopSignManager {
 
     private final Playing playing;
+    private final WorldObjectManager worldObjectManager;
     private final List<StopSign> signs = new ArrayList<>();
 
-
-    // -------------------------------------------------------
-    // STOP SIGN SETTINGS  ← ADJUST
-    // -------------------------------------------------------
-    private static final int MAX_WORLD_LOOPS = 15;
-    // -------------------------------------------------------
-
-    // Tracks which loop we last spawned on so we spawn exactly once per loop
+    // Tracks which completed world loop last triggered a roadside spawn.
     private int lastSpawnedLoop = -1;
+    private int totalSignsSpawned = 0;
 
-    public StopSignManager(Playing playing) {
+    public StopSignManager(Playing playing, WorldObjectManager worldObjectManager) {
         this.playing = playing;
+        this.worldObjectManager = worldObjectManager;
     }
 
     // ─────────────────────────────────────────────────────────
@@ -44,7 +40,7 @@ public class StopSignManager {
 
         int currentLoop = playing.getWorldLoopCount();
         if (currentLoop > lastSpawnedLoop
-                && currentLoop <= MAX_WORLD_LOOPS
+                && currentLoop <= Playing.MAX_WORLD_LOOPS
                 && currentLoop > 0) {
             spawnSign();
             lastSpawnedLoop = currentLoop;
@@ -52,8 +48,11 @@ public class StopSignManager {
     }
 
     private void spawnSign() {
-        float spawnX = Game.GAME_WIDTH; // right border
+        float spawnX = Game.GAME_WIDTH; // spawn just outside the right edge
         signs.add(new StopSign(spawnX));
+        totalSignsSpawned++;
+        // Decorative roadside props are scheduled off the stop count.
+        worldObjectManager.onStopSignSpawned(totalSignsSpawned);
     }
 
     // ─────────────────────────────────────────────────────────
@@ -71,5 +70,6 @@ public class StopSignManager {
     public void resetAll() {
         signs.clear();
         lastSpawnedLoop = -1;
+        totalSignsSpawned = 0;
     }
 }

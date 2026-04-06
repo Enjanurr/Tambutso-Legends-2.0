@@ -8,6 +8,7 @@ import entities.PersonManager;
 import entities.Player;
 import entities.PowerupManager;
 import objects.StopSignManager;
+import objects.WorldObjectManager;
 import levels.LevelManager;
 import main.Game;
 import utils.LoadSave;
@@ -21,7 +22,9 @@ import java.util.Random;
 import static utils.Constants.Environment.*;
 
 public class Playing extends State implements StateMethods {
-
+    // Playing orchestrates the active run and delegates specialized behavior
+    // to managers for enemies, powerups, interactive stop signs, and
+    // decorative roadside objects.
     private PowerupManager  powerupManager;
     private Player          player;
     private PersonManager   personManager;
@@ -43,7 +46,7 @@ public class Playing extends State implements StateMethods {
     // -------------------------------------------------------
     // WORLD SCROLL SETTINGS
     // -------------------------------------------------------
-    private static final int MAX_WORLD_LOOPS = 15;
+    public static final int MAX_WORLD_LOOPS = 15;
     // -------------------------------------------------------
 
     private static final float CENTER_TOLERANCE = 10f * Game.SCALE;
@@ -63,6 +66,9 @@ public class Playing extends State implements StateMethods {
     private BufferedImage backgroundImg, bigClouds, smallClouds;
     private int[] smallCloudsPos;
     private final Random rnd = new Random();
+    // Decorative props such as bus stops and future buildings can exist at run start
+    // and can also be scheduled from stop-count milestones.
+    private WorldObjectManager worldObjectManager;
 
     public Playing(Game game) {
         super(game);
@@ -84,7 +90,8 @@ public class Playing extends State implements StateMethods {
 
         personManager   = new PersonManager(this);
         enemyManager    = new EnemyManager(this);
-        stopSignManager = new StopSignManager(this);
+        worldObjectManager = new WorldObjectManager();
+        stopSignManager = new StopSignManager(this, worldObjectManager);
         pauseOverlay    = new PauseOverlay(this);
         powerupManager  = new PowerupManager(this);
         healthBar       = new HealthBar();
@@ -116,11 +123,11 @@ public class Playing extends State implements StateMethods {
             smallCloudsPos[i] = (int)(20 * Game.SCALE) + rnd.nextInt((int)(100 * Game.SCALE));
 
         int jeepHitboxW = (int)(70 * Game.SCALE);
-        int spawnX      = (Game.GAME_WIDTH - jeepHitboxW) / 2;
-        player.getHitBox().x = spawnX;
+        player.getHitBox().x = (float) (Game.GAME_WIDTH - jeepHitboxW) / 2;
         player.getHitBox().y = 520;
         player.resetDirBooleans();
         player.setWorldLoopDone(false);
+        worldObjectManager.reset();
 
         personManager.resetAll();
         enemyManager.resetAll();
@@ -189,6 +196,8 @@ public class Playing extends State implements StateMethods {
                     if (worldOffset >= levelPixelWidth) {
                         worldOffset -= levelPixelWidth;
                         worldLoopCount++;
+                        // Debug output: prints once per full level wrap.
+                        System.out.println("World loops: " + worldLoopCount);
                         if (worldLoopCount >= MAX_WORLD_LOOPS) {
                             worldLoopDone = true;
                             worldOffset   = 0;
@@ -209,6 +218,7 @@ public class Playing extends State implements StateMethods {
             personManager.update();
             enemyManager.update();
             stopSignManager.update();
+            worldObjectManager.update(scrolling, getScrollSpeed());
             powerupManager.update();
             player.update();
 
@@ -227,10 +237,13 @@ public class Playing extends State implements StateMethods {
             g.drawImage(backgroundImg, 0, 0, Game.GAME_WIDTH, Game.GAME_HEIGHT, null);
         drawClouds(g);
         levelManager.draw(g, (int) worldOffset);
+        // Decorative roadside props should sit behind characters in the scene.
+        worldObjectManager.draw(g);
         personManager.render(g);
         enemyManager.render(g);
         stopSignManager.render(g);
         powerupManager.render(g);
+
         player.render(g);
 
         // ── UI layer ──────────────────────────────────────────
@@ -328,9 +341,12 @@ public class Playing extends State implements StateMethods {
     }
 
     public void onJeepLooped() {
+        // A hard jeep loop reset clears dynamic roadside spawns and restores any
+        // props that should be visible at the start of a fresh run.
         personManager.resetAll();
         enemyManager.resetAll();
         stopSignManager.resetAll();
+        worldObjectManager.reset();
     }
 
     public void windowFocusLost() {
