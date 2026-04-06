@@ -52,8 +52,6 @@ public class Playing extends State implements StateMethods {
     // -------------------------------------------------------
     public static final int MAX_WORLD_LOOPS = 15;
     // -------------------------------------------------------
-
-    private static final int   MAX_WORLD_LOOPS  = 15;
     private static final float CENTER_TOLERANCE = 10f * Game.SCALE;
 
     private int     worldLoopCount = 0;
