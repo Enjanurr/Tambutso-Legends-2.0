@@ -11,7 +11,6 @@ import static utils.Constants.UI.URMButtons.*;
 
 
 public class IntroOverlay {
-
     // ── Screens ───────────────────────────────────────────────
     private static final int TOTAL_STEPS = 2;
     private final BufferedImage[] screens = new BufferedImage[TOTAL_STEPS];
@@ -79,6 +78,12 @@ public class IntroOverlay {
 
 
     public boolean update() {
+        // Guard the transition frame where update has already advanced past
+        // the last intro screen but render may still be called once more.
+        if (isCurrentStepValid()) {
+            return true;
+        }
+
         if (clickCooldown > 0) clickCooldown--;
         if (fadeState == FadeState.VISIBLE) nextBtn.update();
 
@@ -92,7 +97,7 @@ public class IntroOverlay {
                 fadeAlpha = Math.max(fadeAlpha - FADE_SPEED, 0f);
                 if (fadeAlpha <= 0f) {
                     currentStep++;
-                    if (currentStep >= TOTAL_STEPS) return true; // all done
+                    if (isCurrentStepValid()) return true; // all done
                     fadeState = FadeState.FADE_IN;               // next screen
                 }
                 break;
@@ -105,7 +110,15 @@ public class IntroOverlay {
     }
 
     public void render(Graphics g) {
-        Graphics2D g2d = (Graphics2D) g;    
+        Graphics2D g2d = (Graphics2D) g;
+        // Snapshot the step so the EDT doesn't observe a different value mid-render.
+        int step = currentStep;
+
+        // The game state can still be INTRO for one repaint after the last step.
+        // Skip drawing instead of indexing past the end of the screens array.
+        if (step < 0 || step >= screens.length) {
+            return;
+        }
 
         // 1 — semi-transparent black overlay
         g2d.setComposite(AlphaComposite.getInstance(
@@ -115,16 +128,21 @@ public class IntroOverlay {
         g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1f));
 
         // 2 — tutorial / mission image (fades in with overlay)
-        if (screens[currentStep] != null) {
+        if (screens[step] != null) {
             float imgAlpha = Math.min(fadeAlpha / MAX_OVERLAY, 1f);
             g2d.setComposite(AlphaComposite.getInstance(
                     AlphaComposite.SRC_OVER, imgAlpha));
-            g2d.drawImage(screens[currentStep], imgX, imgY, imgW, imgH, null);
+            g2d.drawImage(screens[step], imgX, imgY, imgW, imgH, null);
             g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1f));
         }
 
         // 3 — NEXT button (only after fully faded in)
         if (fadeState == FadeState.VISIBLE) nextBtn.draw(g);
+    }
+
+    private boolean isCurrentStepValid() {
+        // Centralized bounds check so update/render stay consistent.
+        return currentStep < 0 || currentStep >= screens.length;
     }
 
     // ─────────────────────────────────────────────────────────

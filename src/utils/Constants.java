@@ -11,14 +11,24 @@ public class Constants {
         public static final int SMALL_CLOUD_WIDTH_DEFAULT  = 72;
         public static final int SMALL_CLOUD_HEIGHT_DEFAULT = 24;
 
+        public static final int BUS_STOP_WIDTH_DEFAULT     = 793;
+        public static final int BUS_STOP_HEIGHT_DEFAULT    = 261;
+        public static final float BUS_STOP_SCALE           = 0.4f;
+
         public static final int BIG_CLOUD_WIDTH    = (int)(BIG_CLOUD_WIDTH_DEFAULT   * Game.SCALE);
         public static final int BIG_CLOUD_HEIGHT   = (int)(BIG_CLOUD_HEIGHT_DEFAULT  * Game.SCALE);
         public static final int SMALL_CLOUD_WIDTH  = (int)(SMALL_CLOUD_WIDTH_DEFAULT * Game.SCALE);
         public static final int SMALL_CLOUD_HEIGHT = (int)(SMALL_CLOUD_HEIGHT_DEFAULT * Game.SCALE);
+
+        public static final int BUS_STOP_WIDTH    = (int)(BUS_STOP_WIDTH_DEFAULT  * Game.SCALE * BUS_STOP_SCALE);
+        public static final int BUS_STOP_HEIGHT   = (int)(BUS_STOP_HEIGHT_DEFAULT * Game.SCALE * BUS_STOP_SCALE);
     }
 
     // ── Person sprites ───────────────────────────────────────
     public static class PersonConstants {
+        // Sprite sheet per person: 610 × 120 — 10 columns, 2 rows, each cell 61 × 60 px
+        // Row 0 = IDLE / PASSENGER
+        // Row 1 = WALK
         public static final int PERSON_FRAME_COUNT    = 10;
         public static final int PERSON_WIDTH_DEFAULT  = 61;
         public static final int PERSON_HEIGHT_DEFAULT = 60;

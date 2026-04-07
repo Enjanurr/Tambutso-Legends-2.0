@@ -51,14 +51,18 @@ public class PersonManager {
     private int passengerTimer;
 
     public PersonManager(Playing playing) {
-        this.playing       = playing;
-        walkerTimer        = nextWalkerInterval();
-        passengerTimer     = nextPassengerInterval();
+        this.playing = playing;
+        walkerTimer = nextWalkerInterval();
+        passengerTimer = nextPassengerInterval();
+    }
+
+    public List<Person> getPersons() {
+        return persons;
     }
 
     public void update() {
         boolean scrolling = playing.isScrolling();
-        float   speed     = playing.getScrollSpeed();
+        float speed = playing.getScrollSpeed();
 
         Iterator<Person> it = persons.iterator();
         while (it.hasNext()) {
@@ -84,13 +88,13 @@ public class PersonManager {
         }
     }
 
-    // ── Walker spawn — each lane rolls independently ──────────
+    // ── Walker spawn — each lane rolls independently──────────
     private void trySpawnWalkers() {
         float spawnX = Game.GAME_WIDTH + PERSON_WIDTH;
         for (float laneY : WALKER_LANES) {
-            if (rng.nextFloat() < WALKER_SPAWN_CHANCE)
-                persons.add(new Person(spawnX, laneY * Game.SCALE,
-                        Person.PersonType.WALKER, randomAtlas()));
+            if (rng.nextFloat() < WALKER_SPAWN_CHANCE) {
+                persons.add(new Person(spawnX, laneY * Game.SCALE, Person.PersonType.WALKER, randomAtlas()));
+            }
         }
     }
 
@@ -101,17 +105,26 @@ public class PersonManager {
 
         float spawnX = Game.GAME_WIDTH + PERSON_WIDTH;
         float spawnY = PASSENGER_Y * Game.SCALE;
+
         persons.add(new Person(spawnX, spawnY, Person.PersonType.PASSENGER, randomAtlas()));
     }
 
     // ── Helpers ──────────────────────────────────────────────
-    private int    nextWalkerInterval()    { return WALKER_INTERVAL_MIN + rng.nextInt(WALKER_INTERVAL_MAX - WALKER_INTERVAL_MIN); }
-    private int    nextPassengerInterval() { return PASSENGER_INTERVAL_MIN + rng.nextInt(PASSENGER_INTERVAL_MAX - PASSENGER_INTERVAL_MIN); }
-    private String randomAtlas()           { return PERSON_ATLASES[rng.nextInt(PERSON_ATLASES.length)]; }
+    private int nextWalkerInterval() {
+        return WALKER_INTERVAL_MIN + rng.nextInt(WALKER_INTERVAL_MAX - WALKER_INTERVAL_MIN);
+    }
+
+    private int nextPassengerInterval() {
+        return PASSENGER_INTERVAL_MIN + rng.nextInt(PASSENGER_INTERVAL_MAX - PASSENGER_INTERVAL_MIN);
+    }
+
+    private String randomAtlas() {
+        return PERSON_ATLASES[rng.nextInt(PERSON_ATLASES.length)];
+    }
 
     public void resetAll() {
         persons.clear();
-        walkerTimer    = nextWalkerInterval();
+        walkerTimer = nextWalkerInterval();
         passengerTimer = nextPassengerInterval();
     }
 

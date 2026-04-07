@@ -53,7 +53,7 @@ public class Powerup {
     }
 
     private void loadImage() {
-        image = LoadSave.getSpriteAtlas("powerup.png");
+        image = LoadSave.getSpriteAtlas(LoadSave.POWERUP);
     }
 
     public void update(boolean worldScrolling, float scrollSpeed) {

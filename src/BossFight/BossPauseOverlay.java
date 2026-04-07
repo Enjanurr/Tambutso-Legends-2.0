@@ -6,6 +6,7 @@ import Ui.UrmButton;
 import Ui.VolumeButton;
 import gameStates.GameStates;
 import main.Game;
+import utils.AudioPlayer;
 import utils.LoadSave;
 
 import java.awt.*;
@@ -60,6 +61,7 @@ public class BossPauseOverlay {
         int sfxY   = (int)(186 * Game.SCALE);
         musicButton = new SoundButton(soundX, musicY, SOUND_SIZE, SOUND_SIZE);
         sfxButton   = new SoundButton(soundX, sfxY,   SOUND_SIZE, SOUND_SIZE);
+        musicButton.setMuted(getAudioPlayer().isMuted());
     }
 
     private void createUrmButtons() {
@@ -77,6 +79,7 @@ public class BossPauseOverlay {
         int vX = (int)(293 * Game.SCALE);
         int vY = (int)(278 * Game.SCALE);
         volumeButton = new VolumeButton(vX, vY, SLIDER_WIDTH, VOLUME_HEIGHT);
+        volumeButton.setValue(getAudioPlayer().getVolume());
     }
 
     // ── Update / Draw ─────────────────────────────────────────
@@ -101,8 +104,14 @@ public class BossPauseOverlay {
 
     // ── Mouse input ───────────────────────────────────────────
     public void mouseDragged(MouseEvent e) {
-        if (volumeButton.isMousePressed())
+        if (volumeButton.isMousePressed()) {
             volumeButton.changeX(e.getX());
+            getAudioPlayer().setVolume(volumeButton.getValue());
+            if (musicButton.isMuted()) {
+                musicButton.setMuted(false);
+                getAudioPlayer().setMuted(false);
+            }
+        }
     }
 
     public void mousePressed(MouseEvent e) {
@@ -116,8 +125,11 @@ public class BossPauseOverlay {
 
     public void mouseReleased(MouseEvent e) {
         if (isIn(e, musicButton)) {
-            if (musicButton.isMousePressed())
-                musicButton.setMuted(!musicButton.isMuted());
+            if (musicButton.isMousePressed()) {
+                boolean muted = !musicButton.isMuted();
+                musicButton.setMuted(muted);
+                getAudioPlayer().setMuted(muted);
+            }
 
         } else if (isIn(e, sfxButton)) {
             if (sfxButton.isMousePressed())
@@ -164,5 +176,9 @@ public class BossPauseOverlay {
 
     private boolean isIn(MouseEvent e, PauseButton b) {
         return b.getBounds().contains(e.getX(), e.getY());
+    }
+
+    private AudioPlayer getAudioPlayer() {
+        return bossFightState.getGame().getAudioPlayer();
     }
 }

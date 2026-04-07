@@ -2,7 +2,6 @@ package gameStates;
 
 import Ui.DeathOverlay;
 import Ui.HealthBar;
-import Ui.IntroOverlay;
 import Ui.PauseOverlay;
 import Ui.ProgressBar;
 import entities.EnemyManager;
@@ -48,12 +47,9 @@ public class Playing extends State implements StateMethods {
     private HealthBar       healthBar;
     private DeathOverlay    deathOverlay;
     private ProgressBar     progressBar;
-    private IntroOverlay    introOverlay;
 
     private boolean paused     = false;
     private boolean playerDead = false;
-    private boolean introShown = false; // Track if intro has been shown this session
-    private boolean showIntro  = false; // Flag to show intro on game start
 
     // ── World scrolling ──────────────────────────────────────
     private float worldOffset = 0;
@@ -110,7 +106,6 @@ public class Playing extends State implements StateMethods {
         healthBar       = new HealthBar();
         deathOverlay    = new DeathOverlay(this);
         progressBar     = new ProgressBar();
-        introOverlay    = new IntroOverlay();
     }
 
     private void loadBackgroundAssets() {
@@ -152,22 +147,6 @@ public class Playing extends State implements StateMethods {
         progressBar.reset();
 
         paused = false;
-    }
-
-    // ── Start game with optional intro (called from Menu Play button) ─
-    public void startGameWithOptionalIntro() {
-        GameStates.state = GameStates.PLAYING;
-
-        if (!introShown) {
-            // First time: show intro, start paused
-            showIntro = true;
-            paused = true;
-            introOverlay.reset();
-        } else {
-            // Subsequent times: skip intro, start unpaused
-            showIntro = false;
-            paused = false;
-        }
     }
 
     // ── Health callbacks ─────────────────────────────────────
@@ -223,17 +202,6 @@ public class Playing extends State implements StateMethods {
     public void update() {
         // ── SKIP_TO_BOSS: uncomment the block below to skip loops ──
         //if (true) { game.startBossFight(); return; }
-
-        // ── Intro overlay handling ─────────────────────────────
-        if (showIntro) {
-            boolean introDone = introOverlay.update();
-            if (introDone) {
-                showIntro = false;
-                introShown = true; // Mark as shown for this session
-                paused = false;    // Unpause the game
-            }
-            return;
-        }
 
         if (playerDead) {
             deathOverlay.update();
@@ -309,18 +277,9 @@ public class Playing extends State implements StateMethods {
         }
 
         if (paused) {
-            // Show pause overlay dim only if not showing intro
-            // (intro has its own fade overlay)
-            if (!showIntro) {
-                g.setColor(new Color(0, 0, 0, 150));
-                g.fillRect(0, 0, Game.GAME_WIDTH, Game.GAME_HEIGHT);
-                pauseOverlay.draw(g);
-            }
-        }
-
-        // Draw intro overlay on top when active
-        if (showIntro) {
-            introOverlay.render(g);
+            g.setColor(new Color(0, 0, 0, 150));
+            g.fillRect(0, 0, Game.GAME_WIDTH, Game.GAME_HEIGHT);
+            pauseOverlay.draw(g);
         }
     }
 
@@ -350,34 +309,29 @@ public class Playing extends State implements StateMethods {
     // ─────────────────────────────────────────────────────────
     @Override
     public void mouseClicked(MouseEvent e) {
-        if (showIntro) return; // Block clicks during intro
         if (playerDead) return;
         if (e.getButton() == MouseEvent.BUTTON1) player.setAttacking(true);
     }
 
     @Override
     public void mousePressed(MouseEvent e) {
-        if (showIntro) { introOverlay.mousePressed(e); return; }
         if (playerDead) { deathOverlay.mousePressed(e); return; }
         if (paused) pauseOverlay.mousePressed(e);
     }
 
     public void mouseDragged(MouseEvent e) {
-        if (showIntro) return;
         if (playerDead) return;
         if (paused) pauseOverlay.mouseDragged(e);
     }
 
     @Override
     public void mouseReleased(MouseEvent e) {
-        if (showIntro) { introOverlay.mouseReleased(e); return; }
         if (playerDead) { deathOverlay.mouseReleased(e); return; }
         if (paused) pauseOverlay.mouseReleased(e);
     }
 
     @Override
     public void mouseMoved(MouseEvent e) {
-        if (showIntro) { introOverlay.mouseMoved(e); return; }
         if (playerDead) { deathOverlay.mouseMoved(e); return; }
         if (paused) pauseOverlay.mouseMoved(e);
     }
@@ -386,7 +340,6 @@ public class Playing extends State implements StateMethods {
 
     @Override
     public void keyPressed(KeyEvent e) {
-        if (showIntro) return; // Block key inputs during intro
         if (playerDead) return;
         switch (e.getKeyCode()) {
             case KeyEvent.VK_A:      player.setLeft(true);                   break;
@@ -399,7 +352,6 @@ public class Playing extends State implements StateMethods {
 
     @Override
     public void keyReleased(KeyEvent e) {
-        if (showIntro) return; // Block key inputs during intro
         if (playerDead) return;
         switch (e.getKeyCode()) {
             case KeyEvent.VK_A: player.setLeft(false);                       break;

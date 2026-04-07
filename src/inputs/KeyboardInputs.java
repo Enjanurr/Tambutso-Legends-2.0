@@ -21,6 +21,9 @@ public class KeyboardInputs implements KeyListener {
             case MENU:
                 gamePanel.getGame().getMenu().keyReleased(e);
                 break;
+            case OPTIONS:
+                gamePanel.getGame().getOptions().keyReleased(e);
+                break;
             case PLAYING:
                 gamePanel.getGame().getPlaying().keyReleased(e);
                 break;
@@ -37,6 +40,9 @@ public class KeyboardInputs implements KeyListener {
         switch (GameStates.state) {
             case MENU:
                 gamePanel.getGame().getMenu().keyPressed(e);
+                break;
+            case OPTIONS:
+                gamePanel.getGame().getOptions().keyPressed(e);
                 break;
             case PLAYING:
                 gamePanel.getGame().getPlaying().keyPressed(e);

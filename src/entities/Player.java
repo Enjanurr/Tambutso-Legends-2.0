@@ -50,6 +50,7 @@ public class Player extends Entity {
     // -------------------------------------------------------
     private boolean struckActive = false;
     private int     struckTimer  = 0;
+    // Ghost mode: true while struck — disables collision detection
     private boolean ghost        = false;
 
     // ── Boss fight mode ───────────────────────────────────────
