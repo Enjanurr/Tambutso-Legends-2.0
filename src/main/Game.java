@@ -4,7 +4,6 @@ import java.awt.Graphics;
 import gameStates.GameStates;
 import gameStates.Menu;
 import gameStates.Playing;
-import Ui.IntroOverlay;
 import BossFight.BossFightState;
 
 public class Game implements Runnable {
@@ -16,7 +15,6 @@ public class Game implements Runnable {
 
     private Playing       playing;
     private Menu          menu;
-    private IntroOverlay  introOverlay;
     private BossFightState bossFightState;
 
     public final static int   TILES_DEFAULT_SIZE = 20;
@@ -38,7 +36,6 @@ public class Game implements Runnable {
     private void initClasses() {
         menu          = new Menu(this);
         playing       = new Playing(this);
-        introOverlay  = new IntroOverlay();
         // BossFightState shares the Player and HealthBar from Playing
         bossFightState = new BossFightState(this,
                 playing.getPlayer(),
@@ -51,8 +48,7 @@ public class Game implements Runnable {
     }
 
     public void startPlayingOrIntro() {
-        introOverlay.reset();
-        GameStates.state = GameStates.INTRO;
+        playing.startGameWithOptionalIntro();
     }
 
     /** Called by Playing when all 15 loops complete. */
@@ -65,10 +61,6 @@ public class Game implements Runnable {
         switch (GameStates.state) {
             case MENU:
                 menu.update();
-                break;
-            case INTRO:
-                boolean done = introOverlay.update();
-                if (done) GameStates.state = GameStates.PLAYING;
                 break;
             case PLAYING:
                 gamePanel.updateFade();
@@ -90,10 +82,6 @@ public class Game implements Runnable {
         switch (GameStates.state) {
             case MENU:
                 menu.draw(g);
-                break;
-            case INTRO:
-                menu.draw(g);
-                introOverlay.render(g);
                 break;
             case PLAYING:
                 playing.draw(g);
@@ -144,6 +132,5 @@ public class Game implements Runnable {
     public GamePanel      getGamePanel()      { return gamePanel; }
     public Menu           getMenu()           { return menu; }
     public Playing        getPlaying()        { return playing; }
-    public IntroOverlay   getIntroOverlay()   { return introOverlay; }
     public BossFightState getBossFightState() { return bossFightState; }
 }
