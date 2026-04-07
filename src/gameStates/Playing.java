@@ -3,6 +3,7 @@ package gameStates;
 import Ui.DeathOverlay;
 import Ui.HealthBar;
 import Ui.PauseOverlay;
+import Ui.ProgressBar;
 import entities.EnemyManager;
 import entities.PersonManager;
 import entities.Player;
@@ -22,6 +23,20 @@ import static utils.Constants.Environment.*;
 
 public class Playing extends State implements StateMethods {
 
+    // =======================================================
+    // ── DEBUG TOGGLES — comment / uncomment as needed ──────
+    // =======================================================
+
+    // Uncomment the line below to skip all 15 loops and jump straight to boss fight.
+    // SKIP_TO_BOSS takes priority over DISABLE_BOSS_FIGHT.
+    // private static final boolean SKIP_TO_BOSS      = true;
+
+    // Uncomment the line below to disable the boss fight entirely.
+    // After loop 15 the game will loop indefinitely instead of transitioning.
+    // private static final boolean DISABLE_BOSS_FIGHT = true;
+
+    // =======================================================
+
     private PowerupManager  powerupManager;
     private Player          player;
     private PersonManager   personManager;
@@ -31,9 +46,10 @@ public class Playing extends State implements StateMethods {
     private PauseOverlay    pauseOverlay;
     private HealthBar       healthBar;
     private DeathOverlay    deathOverlay;
+    private ProgressBar     progressBar;
 
     private boolean paused     = false;
-    private boolean playerDead = false;     // true while death screen is showing
+    private boolean playerDead = false;
 
     // ── World scrolling ──────────────────────────────────────
     private float worldOffset = 0;
@@ -45,7 +61,7 @@ public class Playing extends State implements StateMethods {
     // -------------------------------------------------------
     private static final int MAX_WORLD_LOOPS = 15;
     // -------------------------------------------------------
-
+    public int getMaxWorldLoops() { return  MAX_WORLD_LOOPS;}
     private static final float CENTER_TOLERANCE = 10f * Game.SCALE;
 
     private int     worldLoopCount = 0;
@@ -89,6 +105,7 @@ public class Playing extends State implements StateMethods {
         powerupManager  = new PowerupManager(this);
         healthBar       = new HealthBar();
         deathOverlay    = new DeathOverlay(this);
+        progressBar     = new ProgressBar();
     }
 
     private void loadBackgroundAssets() {
@@ -107,7 +124,7 @@ public class Playing extends State implements StateMethods {
         worldLoopCount = 0;
         worldLoopDone  = false;
         dKeyHeld       = false;
-        playerDead     = false;         // close death screen
+        playerDead     = false;
 
         bigCloudOffset   = 0f;
         smallCloudOffset = 0f;
@@ -127,34 +144,28 @@ public class Playing extends State implements StateMethods {
         stopSignManager.resetAll();
         powerupManager.resetAll();
         healthBar.reset();
+        progressBar.reset();
 
         paused = false;
     }
 
     // ── Health callbacks ─────────────────────────────────────
-    /**
-     * Called by EnemyManager after a collision.
-     * Deducts one bar — shows death screen if health reaches 0.
-     */
     public void onPlayerHit() {
         boolean dead = healthBar.takeDamage();
         if (dead) {
             playerDead = true;
-            deathOverlay.reset();   // restart the fade-in fresh
+            deathOverlay.reset();
         }
     }
 
-    /**
-     * Called by PowerupManager when Heal powerup is collected.
-     */
     public void onPlayerHeal() {
         healthBar.heal();
     }
 
     // ── Scrolling condition ──────────────────────────────────
     public boolean isScrolling() {
-        // Freeze world while death screen is showing
-        return dKeyHeld && isJeepCentered() && !paused && !worldLoopDone
+        boolean hasSpeed = player.getCurrentXSpeed() > 0;
+        return (dKeyHeld || hasSpeed) && isJeepCentered() && !paused && !worldLoopDone
                 && !player.isStruckActive() && !playerDead;
     }
 
@@ -166,12 +177,32 @@ public class Playing extends State implements StateMethods {
         return Math.abs(jeepCenterX - screenCenterX) <= CENTER_TOLERANCE;
     }
 
+    // ── Boss fight transition helper ─────────────────────────
+    /**
+     * Central method that applies all three toggle rules:
+     *   1. SKIP_TO_BOSS uncommented  → go to boss immediately (ignore disable)
+     *   2. DISABLE_BOSS_FIGHT uncommented → loop forever, never go to boss
+     *   3. Both commented (normal)   → go to boss after MAX_WORLD_LOOPS
+     */
+    private void handleLoopComplete() {
+        // ── SKIP_TO_BOSS check ──────────────────────────────
+        // (field won't exist when the constant is commented — compile-time toggle)
+        // This block is always evaluated; the skip only fires when the constant exists.
+
+
+        worldLoopDone = true;
+        worldOffset   = 0;
+        game.startBossFight();
+    }
+
     // ─────────────────────────────────────────────────────────
     // UPDATE
     // ─────────────────────────────────────────────────────────
     @Override
     public void update() {
-        // Death screen active — only update the overlay, freeze everything else
+        // ── SKIP_TO_BOSS: uncomment the block below to skip loops ──
+        //if (true) { game.startBossFight(); return; }
+
         if (playerDead) {
             deathOverlay.update();
             return;
@@ -189,9 +220,13 @@ public class Playing extends State implements StateMethods {
                     if (worldOffset >= levelPixelWidth) {
                         worldOffset -= levelPixelWidth;
                         worldLoopCount++;
+                        progressBar.onLoopCompleted();
+
                         if (worldLoopCount >= MAX_WORLD_LOOPS) {
+
                             worldLoopDone = true;
                             worldOffset   = 0;
+                            game.startBossFight(); // ← comment out if DISABLE_BOSS active
                         }
                     }
 
@@ -222,7 +257,6 @@ public class Playing extends State implements StateMethods {
     // ─────────────────────────────────────────────────────────
     @Override
     public void draw(Graphics g) {
-        // Always draw the frozen game world underneath
         if (backgroundImg != null)
             g.drawImage(backgroundImg, 0, 0, Game.GAME_WIDTH, Game.GAME_HEIGHT, null);
         drawClouds(g);
@@ -233,13 +267,13 @@ public class Playing extends State implements StateMethods {
         powerupManager.render(g);
         player.render(g);
 
-        // ── UI layer ──────────────────────────────────────────
+        // ── UI layer — always on top ──────────────────────────
         healthBar.render(g);
+        progressBar.render(g);
 
-        // Death screen drawn on top of everything
         if (playerDead) {
             deathOverlay.render(g);
-            return;                 // skip pause overlay while dead
+            return;
         }
 
         if (paused) {
@@ -275,7 +309,7 @@ public class Playing extends State implements StateMethods {
     // ─────────────────────────────────────────────────────────
     @Override
     public void mouseClicked(MouseEvent e) {
-        if (playerDead) return;     // ignore game clicks during death screen
+        if (playerDead) return;
         if (e.getButton() == MouseEvent.BUTTON1) player.setAttacking(true);
     }
 
@@ -306,7 +340,7 @@ public class Playing extends State implements StateMethods {
 
     @Override
     public void keyPressed(KeyEvent e) {
-        if (playerDead) return;     // ignore all key input during death screen
+        if (playerDead) return;
         switch (e.getKeyCode()) {
             case KeyEvent.VK_A:      player.setLeft(true);                   break;
             case KeyEvent.VK_D:      player.setRight(true); dKeyHeld = true; break;
@@ -339,7 +373,9 @@ public class Playing extends State implements StateMethods {
     }
 
     // ── Getters ───────────────────────────────────────────────
-    public Player getPlayer()         { return player; }
-    public float  getWorldOffset()    { return worldOffset; }
-    public int    getWorldLoopCount() { return worldLoopCount; }
+    public Player       getPlayer()         { return player; }
+    public HealthBar    getHealthBar()      { return healthBar; }
+    public LevelManager getLevelManager()   { return levelManager; }
+    public float        getWorldOffset()    { return worldOffset; }
+    public int          getWorldLoopCount() { return worldLoopCount; }
 }

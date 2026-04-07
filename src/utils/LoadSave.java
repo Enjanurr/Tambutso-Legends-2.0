@@ -15,20 +15,22 @@ public class LoadSave {
     public static final String LEVEL_ATLAS  = "road_tiles.png";
     public static final String ROAD_DATA    = "road_data_new.png";
 
-    // ── Enemy atlases (road cars) ─────────────────────────────
-    // -------------------------------------------------------
-    // Point these at your actual filenames in /res
-    // -------------------------------------------------------
-    public static final String GSM_ATLAS   = "gsm-taxi.png";       // Taxi   360×31, 4 frames
-    public static final String EJEEP_ATLAS = "modern_jeep.png";    // Modern Jeep 440×38, 4 frames
-    // -------------------------------------------------------
+    // ── Enemy atlases ─────────────────────────────────────────
+    public static final String GSM_ATLAS   = "gsm-taxi.png";
+    public static final String EJEEP_ATLAS = "modern_jeep.png";
+
+    // ── Boss atlases ──────────────────────────────────────────
+    public static final String BOSS1_ATLAS = "boss1.png";       // 550×316, 4 rows × 5 cols
+    public static final String BOSS1_LIFE  = "boss1_life.png";  // 2700×224, 2 rows × 9 cols
+    public static final String BOSS_DEFEAT = "BossDefeat.png";  // 434×323, single image
 
     // ── Objects ───────────────────────────────────────────────
-    public static final String STOP_SIGN      = "stop_sign.png";
-    public static final String LIFE_STATUS    = "life_status.png";
-    public static final String DEATH_SCREEN   = "death_screen.png";
-    public static final String TUTORIAL_IMG   = "tutorial.png";
+    public static final String STOP_SIGN        = "stop_sign.png";
+    public static final String LIFE_STATUS      = "life_status.png";
+    public static final String DEATH_SCREEN     = "death_screen.png";
+    public static final String TUTORIAL_IMG     = "tutorial.png";
     public static final String MISSION_MAP1_IMG = "mission_map1.png";
+    public static final String PROGRESS_BAR     = "progress_bar.png";
 
     // ── Playing state background / environment ───────────────
     public static final String PLAYING_BACKGROUND_IMG = "playing_bg_img.png";

@@ -105,7 +105,7 @@ public class IntroOverlay {
     }
 
     public void render(Graphics g) {
-        Graphics2D g2d = (Graphics2D) g;
+        Graphics2D g2d = (Graphics2D) g;    
 
         // 1 — semi-transparent black overlay
         g2d.setComposite(AlphaComposite.getInstance(
