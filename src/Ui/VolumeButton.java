@@ -65,6 +65,19 @@ public class VolumeButton extends PauseButton{
 
          bounds.x = buttonX - VOLUME_WIDTH / 2  ;
     }
+
+    public float getValue() {
+        if (maxX == minX)
+            return 0f;
+        return (buttonX - minX) / (float) (maxX - minX);
+    }
+
+    public void setValue(float value) {
+        float clamped = Math.max(0f, Math.min(1f, value));
+        buttonX = minX + Math.round((maxX - minX) * clamped);
+        bounds.x = buttonX - VOLUME_WIDTH / 2;
+    }
+
     public void resetBools(){
         mouseOver = false;
         mousePressed = false;

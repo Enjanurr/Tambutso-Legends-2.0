@@ -547,4 +547,5 @@ public class BossFightState extends State implements StateMethods {
     }
 
     public void resetAll() { fullReset(); }
+    public boolean isPaused() { return paused; }
 }

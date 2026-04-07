@@ -1,7 +1,9 @@
 package gameStates;
 
+import Ui.AcceptPassengerOverlay;
 import Ui.DeathOverlay;
 import Ui.HealthBar;
+import Ui.PassengerCounter;
 import Ui.PauseOverlay;
 import Ui.ProgressBar;
 import entities.EnemyManager;
@@ -342,6 +344,7 @@ public class Playing extends State implements StateMethods {
         // Decorative roadside props should sit behind characters in the scene.
         worldObjectManager.draw(g);
         enemyManager.render(g);
+        personManager.render(g);
         stopSignManager.render(g);
         powerupManager.render(g);
 
@@ -497,4 +500,5 @@ public class Playing extends State implements StateMethods {
     public LevelManager getLevelManager()   { return levelManager; }
     public float        getWorldOffset()    { return worldOffset; }
     public int          getWorldLoopCount() { return worldLoopCount; }
+    public boolean      isPaused()          { return paused; }
 }

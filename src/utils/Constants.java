@@ -10,6 +10,7 @@ public class Constants {
         public static final int BIG_CLOUD_HEIGHT_DEFAULT   = 101;
         public static final int SMALL_CLOUD_WIDTH_DEFAULT  = 72;
         public static final int SMALL_CLOUD_HEIGHT_DEFAULT = 24;
+
         public static final int BUS_STOP_WIDTH_DEFAULT     = 793;
         public static final int BUS_STOP_HEIGHT_DEFAULT    = 261;
         public static final float BUS_STOP_SCALE           = 0.4f;
@@ -18,6 +19,7 @@ public class Constants {
         public static final int BIG_CLOUD_HEIGHT   = (int)(BIG_CLOUD_HEIGHT_DEFAULT  * Game.SCALE);
         public static final int SMALL_CLOUD_WIDTH  = (int)(SMALL_CLOUD_WIDTH_DEFAULT * Game.SCALE);
         public static final int SMALL_CLOUD_HEIGHT = (int)(SMALL_CLOUD_HEIGHT_DEFAULT * Game.SCALE);
+
         public static final int BUS_STOP_WIDTH    = (int)(BUS_STOP_WIDTH_DEFAULT  * Game.SCALE * BUS_STOP_SCALE);
         public static final int BUS_STOP_HEIGHT   = (int)(BUS_STOP_HEIGHT_DEFAULT * Game.SCALE * BUS_STOP_SCALE);
     }

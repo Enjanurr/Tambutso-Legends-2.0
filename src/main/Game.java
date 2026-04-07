@@ -3,9 +3,11 @@ package main;
 import java.awt.Graphics;
 import gameStates.GameStates;
 import gameStates.Menu;
+import gameStates.Options;
 import gameStates.Playing;
 import Ui.IntroOverlay;
 import BossFight.BossFightState;
+import utils.AudioPlayer;
 
 public class Game implements Runnable {
     private GameWindow    gameWindow;
@@ -16,8 +18,11 @@ public class Game implements Runnable {
 
     private Playing       playing;
     private Menu          menu;
+    private Options       options;
     private IntroOverlay  introOverlay;
     private BossFightState bossFightState;
+    private final AudioPlayer audioPlayer;
+    private String activeMusicTrack;
 
     public final static int   TILES_DEFAULT_SIZE = 20;
     public final static float SCALE              = 2f;
@@ -28,15 +33,18 @@ public class Game implements Runnable {
     public final static int   GAME_HEIGHT        = TILES_SIZE * TILES_IN_HEIGHT;
 
     public Game() {
+        audioPlayer = new AudioPlayer();
         gamePanel    = new GamePanel(this);
         initClasses();
         gameWindow   = new GameWindow(gamePanel);
         gamePanel.requestFocus();
+        syncMusicToState();
         startGameLoop();
     }
 
     private void initClasses() {
         menu          = new Menu(this);
+        options       = new Options(this);
         playing       = new Playing(this);
         introOverlay  = new IntroOverlay();
         // BossFightState shares the Player and HealthBar from Playing
@@ -78,11 +86,49 @@ public class Game implements Runnable {
                 bossFightState.update();
                 break;
             case OPTIONS:
+                options.update();
                 break;
             case QUIT:
             default:
                 System.exit(0);
                 break;
+        }
+        syncMusicToState();
+    }
+
+    private void syncMusicToState() {
+        String desiredTrack = getDesiredMusicTrack();
+        if (desiredTrack.equals(activeMusicTrack))
+            return;
+
+        switch (desiredTrack) {
+            case "menu":
+                audioPlayer.playMenuTheme();
+                break;
+            case "main":
+                audioPlayer.playMainTheme();
+                break;
+            default:
+                audioPlayer.stop();
+                break;
+        }
+
+        activeMusicTrack = desiredTrack;
+    }
+
+    private String getDesiredMusicTrack() {
+        switch (GameStates.state) {
+            case MENU:
+            case INTRO:
+            case OPTIONS:
+                return "menu";
+            case PLAYING:
+                return playing.isPaused() ? "menu" : "main";
+            case BOSS_FIGHT:
+                return bossFightState.isPaused() ? "menu" : "main";
+            case QUIT:
+            default:
+                return "none";
         }
     }
 
@@ -100,6 +146,9 @@ public class Game implements Runnable {
                 break;
             case BOSS_FIGHT:
                 bossFightState.draw(g);
+                break;
+            case OPTIONS:
+                options.draw(g);
                 break;
             default:
                 break;
@@ -143,7 +192,9 @@ public class Game implements Runnable {
     // ── Getters ───────────────────────────────────────────────
     public GamePanel      getGamePanel()      { return gamePanel; }
     public Menu           getMenu()           { return menu; }
+    public Options        getOptions()        { return options; }
     public Playing        getPlaying()        { return playing; }
     public IntroOverlay   getIntroOverlay()   { return introOverlay; }
     public BossFightState getBossFightState() { return bossFightState; }
+    public AudioPlayer    getAudioPlayer()    { return audioPlayer; }
 }
