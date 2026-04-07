@@ -5,17 +5,19 @@ import gameStates.GameStates;
 import gameStates.Menu;
 import gameStates.Playing;
 import Ui.IntroOverlay;
+import BossFight.BossFightState;
 
 public class Game implements Runnable {
-    private GameWindow   gameWindow;
-    private GamePanel    gamePanel;
-    private Thread       gameThread;
-    private final int    FPS_SET = 120;
-    private final int    UPS_SET = 200;
+    private GameWindow    gameWindow;
+    private GamePanel     gamePanel;
+    private Thread        gameThread;
+    private final int     FPS_SET = 120;
+    private final int     UPS_SET = 200;
 
-    private Playing      playing;
-    private Menu         menu;
-    private IntroOverlay introOverlay;
+    private Playing       playing;
+    private Menu          menu;
+    private IntroOverlay  introOverlay;
+    private BossFightState bossFightState;
 
     public final static int   TILES_DEFAULT_SIZE = 20;
     public final static float SCALE              = 2f;
@@ -34,9 +36,13 @@ public class Game implements Runnable {
     }
 
     private void initClasses() {
-        menu         = new Menu(this);
-        playing      = new Playing(this);
-        introOverlay = new IntroOverlay();
+        menu          = new Menu(this);
+        playing       = new Playing(this);
+        introOverlay  = new IntroOverlay();
+        // BossFightState shares the Player and HealthBar from Playing
+        bossFightState = new BossFightState(this,
+                playing.getPlayer(),
+                playing.getHealthBar());
     }
 
     private void startGameLoop() {
@@ -44,10 +50,15 @@ public class Game implements Runnable {
         gameThread.start();
     }
 
-
     public void startPlayingOrIntro() {
         introOverlay.reset();
         GameStates.state = GameStates.INTRO;
+    }
+
+    /** Called by Playing when all 15 loops complete. */
+    public void startBossFight() {
+        bossFightState.resetAll();
+        GameStates.state = GameStates.BOSS_FIGHT;
     }
 
     public void update() {
@@ -62,6 +73,9 @@ public class Game implements Runnable {
             case PLAYING:
                 gamePanel.updateFade();
                 playing.update();
+                break;
+            case BOSS_FIGHT:
+                bossFightState.update();
                 break;
             case OPTIONS:
                 break;
@@ -78,12 +92,14 @@ public class Game implements Runnable {
                 menu.draw(g);
                 break;
             case INTRO:
-                // Draw menu as background, overlay on top
                 menu.draw(g);
                 introOverlay.render(g);
                 break;
             case PLAYING:
                 playing.draw(g);
+                break;
+            case BOSS_FIGHT:
+                bossFightState.draw(g);
                 break;
             default:
                 break;
@@ -125,8 +141,9 @@ public class Game implements Runnable {
     }
 
     // ── Getters ───────────────────────────────────────────────
-    public GamePanel    getGamePanel()    { return gamePanel; }
-    public Menu         getMenu()         { return menu; }
-    public Playing      getPlaying()      { return playing; }
-    public IntroOverlay getIntroOverlay() { return introOverlay; }
+    public GamePanel      getGamePanel()      { return gamePanel; }
+    public Menu           getMenu()           { return menu; }
+    public Playing        getPlaying()        { return playing; }
+    public IntroOverlay   getIntroOverlay()   { return introOverlay; }
+    public BossFightState getBossFightState() { return bossFightState; }
 }

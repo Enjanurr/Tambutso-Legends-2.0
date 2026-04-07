@@ -37,23 +37,25 @@ public class Constants {
         public static final int PERSON_WIDTH  = (int)(PERSON_WIDTH_DEFAULT  * Game.SCALE);
         public static final int PERSON_HEIGHT = (int)(PERSON_HEIGHT_DEFAULT * Game.SCALE);
 
-        // ── Walker settings ──────────────────────────────────
         public static final float WALK_SPEED       = 0.3333f;
         public static final int   WALKER_ANI_SPEED = 25;
 
-        // Lane Y positions (walkers)
+        // ── Top sidewalk walker lanes ─────────────────────────
         public static final float LANE_1_Y = 128f;
         public static final float LANE_2_Y = 140f;
 
-        // ── Passenger settings ───────────────────────────────
+        // ── Bottom sidewalk walker lanes ← ADJUST ─────────────
+        // -------------------------------------------------------
+        public static final float LANE_3_Y = 320f; // top bottom-sidewalk lane
+        public static final float LANE_4_Y = 330f; // bottom bottom-sidewalk lane
+        // -------------------------------------------------------
+
         public static final float PASSENGER_Y         = 154f;
         public static final int   PASSENGER_ANI_SPEED = 25;
     }
 
     // ── Enemy sprites ────────────────────────────────────────
     public static class EnemyConstants {
-
-        // Legacy jeep enemy (unused stub — kept for compatibility)
         public static final int ENEMY_JEEP = 0;
 
         public static final int ENEMY_WIDTH_DEFAULT  = 110;
@@ -63,14 +65,12 @@ public class Constants {
         public static final int ENEMY_HEIGHT = (int)(ENEMY_HEIGHT_DEFAULT * Game.SCALE);
 
         // -------------------------------------------------------
-        // ANI SPEED  ← ADJUST: ticks per frame for road enemies
+        // ANI SPEED  ← ADJUST
         // -------------------------------------------------------
         public static final int ENEMY_ANI_SPEED = 20;
         // -------------------------------------------------------
 
-        public static int getSpriteAmountEnemy(int enemyType, int enemyState) {
-            return 4;
-        }
+        public static int getSpriteAmountEnemy(int enemyType, int enemyState) { return 4; }
     }
 
     // ── UI ───────────────────────────────────────────────────
@@ -104,13 +104,33 @@ public class Constants {
 
     // ── Player ───────────────────────────────────────────────
     public static class PlayerConstants {
-        // Row indices in the sprite sheet
+        // Row indices in the jeepney sprite sheet (440 × 200, 5 rows)
         public static final int RUNNING    = 0;
         public static final int IDLE       = 1;
-        public static final int CAR_STRUCK = 2; // NEW — Row 2
+        public static final int CAR_STRUCK = 2;
+        public static final int SHIELD     = 3; // 2 cols: col0=full, col1=half
+        public static final int SHOOT      = 4; // 4 cols: animated projectile source
 
+        // Frame counts per row
         public static int getSpriteAmount(int playerAction) {
-            return 4; // all rows have 4 frames
+            switch (playerAction) {
+                case SHIELD: return 2;
+                default:     return 4;
+            }
         }
+    }
+
+    // ── Boss 1 (Garbage Truck) ───────────────────────────────
+    public static class BossConstants {
+        // boss1.png  550 × 316,  4 rows × 5 cols  (each cell 110 × 79)
+        public static final int BOSS1_FRAME_W   = 110;
+        public static final int BOSS1_FRAME_H   = 79;
+        public static final int BOSS1_COLS      = 5;
+        public static final int BOSS1_ROWS      = 4;
+
+        public static final int ROW_SKILL1      = 0;
+        public static final int ROW_RUNNING     = 1;
+        public static final int ROW_SKILL2      = 2;
+        public static final int ROW_HIT         = 3;
     }
 }

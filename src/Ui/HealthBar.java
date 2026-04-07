@@ -7,40 +7,43 @@ import java.awt.*;
 import java.awt.image.BufferedImage;
 
 /**
- * Draws the life status bar in the upper-left corner.
+ * Draws the jeepney life bar in the upper-left corner.
  *
- * Sprite sheet: life_status.png — 2010 × 125, 1 row × 6 columns
- *   Column 0 = 5 bars (full health)
- *   Column 1 = 4 bars
- *   Column 2 = 3 bars
- *   Column 3 = 2 bars
- *   Column 4 = 1 bar
- *   Column 5 = 0 bars (dead)
+ * Sprite sheet: life_status.png — 1800 × 224, 2 rows × 6 columns
+ *   Row 0  = Full bars  : col 0=5 bars … col 5=0 bars (dead)
+ *   Row 1  = Half bars  : col 0=half of 5 … col 4=half of 1 (col 5 unused)
+ *
+ * Damage sequence (10 hits to die):
+ *   R0C0 → R1C0 → R0C1 → R1C1 → R0C2 → R1C2 →
+ *   R0C3 → R1C3 → R0C4 → R1C4 → R0C5 (DEAD)
  */
 public class HealthBar {
 
     // ── Sprite sheet constants ────────────────────────────────
-    private static final int SHEET_WIDTH    = 2010;
-    private static final int SHEET_HEIGHT   = 125;
-    private static final int FRAME_COUNT    = 6;
-    private static final int FRAME_W        = SHEET_WIDTH  / FRAME_COUNT; // 335
-    private static final int FRAME_H        = SHEET_HEIGHT;               // 125
+    private static final int COLS         = 6;
+    private static final int ROWS         = 2;
+    private static final int FRAME_W      = 1800 / COLS; // 300
+    private static final int FRAME_H      = 224  / ROWS; // 112
 
-    // ── Max health ────────────────────────────────────────────
-    public static final int MAX_HEALTH      = 5; // column 0 = full, column 5 = dead
+    // ── Total damage steps before death ──────────────────────
+    // 5 full + 5 half = 10 steps; step 10 = R0C5 = dead
+    public static final int MAX_HITS = 10;
 
     // -------------------------------------------------------
     // POSITION & SIZE SETTINGS  ← ADJUST
     // -------------------------------------------------------
-    private static final float BAR_X        = 10f;  // screen X (pre-scale)
-    private static final float BAR_Y        = 10f;  // screen Y (pre-scale)
-    private static final float BAR_SCALE    = 0.5f; // render at 50% of scaled size
+    private static final float BAR_X     = 10f;  // pre-scale screen X
+    private static final float BAR_Y     = 10f;  // pre-scale screen Y
+    private static final float BAR_SCALE = 0.5f; // render size multiplier
     // -------------------------------------------------------
 
     private final int drawX, drawY, drawW, drawH;
 
-    private BufferedImage[] frames;
-    private int currentColumn = 0; // 0 = full health
+    // frames[row][col]
+    private BufferedImage[][] frames;
+
+    // Current damage step: 0 = full health, 10 = dead
+    private int hitStep = 0;
 
     public HealthBar() {
         drawX = (int)(BAR_X * Game.SCALE);
@@ -56,36 +59,41 @@ public class HealthBar {
             System.err.println("[HealthBar] Could not load " + LoadSave.LIFE_STATUS);
             return;
         }
-        frames = new BufferedImage[FRAME_COUNT];
-        for (int i = 0; i < FRAME_COUNT; i++)
-            frames[i] = sheet.getSubimage(i * FRAME_W, 0, FRAME_W, FRAME_H);
+        frames = new BufferedImage[ROWS][COLS];
+        for (int row = 0; row < ROWS; row++)
+            for (int col = 0; col < COLS; col++)
+                frames[row][col] = sheet.getSubimage(
+                        col * FRAME_W, row * FRAME_H, FRAME_W, FRAME_H);
     }
 
     // ─────────────────────────────────────────────────────────
     // DAMAGE / HEAL
     // ─────────────────────────────────────────────────────────
 
-
+    /**
+     * Advances one damage step.
+     * @return true if the jeepney has died (hitStep == MAX_HITS)
+     */
     public boolean takeDamage() {
-        if (currentColumn < MAX_HEALTH) {
-            currentColumn++;
-        }
-        return currentColumn >= MAX_HEALTH; // true = dead
+        if (hitStep < MAX_HITS) hitStep++;
+        return hitStep >= MAX_HITS;
     }
 
-
+    /**
+     * Reverses one damage step (Heal powerup).
+     * Does nothing at full health.
+     */
     public void heal() {
-        if (currentColumn > 0)
-            currentColumn--;
+        if (hitStep > 0) hitStep--;
     }
 
-
+    /** Resets to full health. */
     public void reset() {
-        currentColumn = 0;
+        hitStep = 0;
     }
 
     public boolean isDead() {
-        return currentColumn >= MAX_HEALTH;
+        return hitStep >= MAX_HITS;
     }
 
     // ─────────────────────────────────────────────────────────
@@ -93,7 +101,25 @@ public class HealthBar {
     // ─────────────────────────────────────────────────────────
     public void render(Graphics g) {
         if (frames == null) return;
-        int col = Math.min(currentColumn, FRAME_COUNT - 1);
-        g.drawImage(frames[col], drawX, drawY, drawW, drawH, null);
+
+        // Map hitStep → (row, col):
+        //   step 0         → R0 C0  (full 5 bars)
+        //   step 1         → R1 C0  (half 5 bars)
+        //   step 2         → R0 C1  (4 bars)
+        //   step 3         → R1 C1  (half 4 bars)
+        //   …
+        //   step 10        → R0 C5  (dead)
+        int row, col;
+        if (hitStep >= MAX_HITS) {
+            row = 0; col = COLS - 1; // dead frame
+        } else {
+            row = hitStep % 2;         // 0=full, 1=half
+            col = hitStep / 2;         // which bar count column
+        }
+
+        row = Math.min(row, ROWS - 1);
+        col = Math.min(col, COLS - 1);
+
+        g.drawImage(frames[row][col], drawX, drawY, drawW, drawH, null);
     }
 }

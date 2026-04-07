@@ -27,7 +27,7 @@ public class EnemyManager {
     private final List<EnemyCar> enemies = new ArrayList<>();
 
     // ── Spawn settings ────────────────────────────────────────
-    private static final float SPAWN_CHANCE       = 0.20f;
+    private static final float SPAWN_CHANCE       = 0.50f;
     private static final int   SPAWN_INTERVAL_MIN = 150;
     private static final int   SPAWN_INTERVAL_MAX = 400;
     private static final int   MAX_ENEMIES        = 1;

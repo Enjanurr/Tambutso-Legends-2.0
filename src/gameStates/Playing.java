@@ -1,6 +1,9 @@
 package gameStates;
 
-import Ui.*;
+import Ui.DeathOverlay;
+import Ui.HealthBar;
+import Ui.PauseOverlay;
+import Ui.ProgressBar;
 import entities.EnemyManager;
 import entities.Person;
 import entities.PersonManager;
@@ -26,6 +29,21 @@ public class Playing extends State implements StateMethods {
     // Playing orchestrates the active run and delegates specialized behavior
     // to managers for enemies, powerups, interactive stop signs, and
     // decorative roadside objects.
+
+    // =======================================================
+    // ── DEBUG TOGGLES — comment / uncomment as needed ──────
+    // =======================================================
+
+    // Uncomment the line below to skip all 15 loops and jump straight to boss fight.
+    // SKIP_TO_BOSS takes priority over DISABLE_BOSS_FIGHT.
+    // private static final boolean SKIP_TO_BOSS      = true;
+
+    // Uncomment the line below to disable the boss fight entirely.
+    // After loop 15 the game will loop indefinitely instead of transitioning.
+    // private static final boolean DISABLE_BOSS_FIGHT = true;
+
+    // =======================================================
+
     private PowerupManager  powerupManager;
     private Player          player;
     private PersonManager   personManager;
@@ -35,8 +53,8 @@ public class Playing extends State implements StateMethods {
     private PauseOverlay    pauseOverlay;
     private HealthBar       healthBar;
     private DeathOverlay    deathOverlay;
+    private ProgressBar     progressBar;
     private AcceptPassengerOverlay acceptPassengerOverlay;       // ← modal
-
 
     private boolean paused              = false;
     private boolean playerDead          = false;
@@ -52,6 +70,7 @@ public class Playing extends State implements StateMethods {
     // -------------------------------------------------------
     public static final int MAX_WORLD_LOOPS = 15;
     // -------------------------------------------------------
+    public int getMaxWorldLoops() { return  MAX_WORLD_LOOPS;}
     private static final float CENTER_TOLERANCE = 10f * Game.SCALE;
 
     private int     worldLoopCount = 0;
@@ -62,6 +81,7 @@ public class Playing extends State implements StateMethods {
     // ── Cloud scroll accumulators ────────────────────────────
     private float bigCloudOffset   = 0f;
     private float smallCloudOffset = 0f;
+
     private static final float BIG_CLOUD_PARALLAX   = 0.3f;
     private static final float SMALL_CLOUD_PARALLAX = 0.5f;
 
@@ -114,6 +134,7 @@ public class Playing extends State implements StateMethods {
         passengerCounter = new PassengerCounter();
         deathOverlay    = new DeathOverlay(this);
         acceptPassengerOverlay = new AcceptPassengerOverlay(this, passengerCounter);  // ← init modal
+        progressBar     = new ProgressBar();
     }
 
     private void loadBackgroundAssets() {
@@ -154,6 +175,7 @@ public class Playing extends State implements StateMethods {
         powerupManager.resetAll();
         healthBar.reset();
         passengerCounter.reset();
+        progressBar.reset();
 
         // Reset interaction state
         interactionPaused = false;
@@ -178,9 +200,9 @@ public class Playing extends State implements StateMethods {
 
     // ── Scrolling condition ──────────────────────────────────
     public boolean isScrolling() {
-        return dKeyHeld && isJeepCentered() && !paused && !worldLoopDone
-                && !player.isStruckActive() && !playerDead
-                && !interactionPaused;             // ← frozen during modal
+        boolean hasSpeed = player.getCurrentXSpeed() > 0;
+        return (dKeyHeld || hasSpeed) && isJeepCentered() && !paused && !worldLoopDone
+                && !player.isStruckActive() && !playerDead;
     }
 
     public float getScrollSpeed() { return player.getCurrentXSpeed(); }
@@ -191,12 +213,32 @@ public class Playing extends State implements StateMethods {
         return Math.abs(jeepCenterX - screenCenterX) <= CENTER_TOLERANCE;
     }
 
+    // ── Boss fight transition helper ─────────────────────────
+    /**
+     * Central method that applies all three toggle rules:
+     *   1. SKIP_TO_BOSS uncommented  → go to boss immediately (ignore disable)
+     *   2. DISABLE_BOSS_FIGHT uncommented → loop forever, never go to boss
+     *   3. Both commented (normal)   → go to boss after MAX_WORLD_LOOPS
+     */
+    private void handleLoopComplete() {
+        // ── SKIP_TO_BOSS check ──────────────────────────────
+        // (field won't exist when the constant is commented — compile-time toggle)
+        // This block is always evaluated; the skip only fires when the constant exists.
+
+
+        worldLoopDone = true;
+        worldOffset   = 0;
+        game.startBossFight();
+    }
+
     // ─────────────────────────────────────────────────────────
     // UPDATE
     // ─────────────────────────────────────────────────────────
     @Override
     public void update() {
-        // Death screen active — only update the overlay, freeze everything else
+        // ── SKIP_TO_BOSS: uncomment the block below to skip loops ──
+        //if (true) { game.startBossFight(); return; }
+
         if (playerDead) {
             deathOverlay.update();
             return;
@@ -226,11 +268,15 @@ public class Playing extends State implements StateMethods {
                     if (worldOffset >= levelPixelWidth) {
                         worldOffset -= levelPixelWidth;
                         worldLoopCount++;
+                        progressBar.onLoopCompleted();
+
                         // Debug output: prints once per full level wrap.
                         System.out.println("World loops: " + worldLoopCount);
                         if (worldLoopCount >= MAX_WORLD_LOOPS) {
+
                             worldLoopDone = true;
                             worldOffset   = 0;
+                            game.startBossFight(); // ← comment out if DISABLE_BOSS active
                         }
                     }
 
@@ -288,22 +334,25 @@ public class Playing extends State implements StateMethods {
     // ─────────────────────────────────────────────────────────
     @Override
     public void draw(Graphics g) {
+        // Always draw the frozen game world underneath
         if (backgroundImg != null)
             g.drawImage(backgroundImg, 0, 0, Game.GAME_WIDTH, Game.GAME_HEIGHT, null);
         drawClouds(g);
         levelManager.draw(g, (int) worldOffset);
         // Decorative roadside props should sit behind characters in the scene.
         worldObjectManager.draw(g);
-        personManager.render(g);
         enemyManager.render(g);
         stopSignManager.render(g);
         powerupManager.render(g);
 
         player.render(g);
+
+        // ── UI layer — always on top ──────────────────────────
         healthBar.render(g);
         passengerCounter.render(g);
 
         // Modal renders on top of the frozen world
+        progressBar.render(g);
 
         acceptPassengerOverlay.render(g);
 
@@ -344,6 +393,8 @@ public class Playing extends State implements StateMethods {
     // ─────────────────────────────────────────────────────────
     @Override
     public void mouseClicked(MouseEvent e) {
+        if (playerDead) return;
+        if (e.getButton() == MouseEvent.BUTTON1) player.setAttacking(true);
         if (playerDead)        return;
         if (interactionPaused) return;
 
@@ -441,8 +492,9 @@ public class Playing extends State implements StateMethods {
     }
 
     // ── Getters ───────────────────────────────────────────────
-    public Player getPlayer()         { return player; }
-    public float  getWorldOffset()    { return worldOffset; }
-    public int    getWorldLoopCount() { return worldLoopCount; }
-
+    public Player       getPlayer()         { return player; }
+    public HealthBar    getHealthBar()      { return healthBar; }
+    public LevelManager getLevelManager()   { return levelManager; }
+    public float        getWorldOffset()    { return worldOffset; }
+    public int          getWorldLoopCount() { return worldLoopCount; }
 }

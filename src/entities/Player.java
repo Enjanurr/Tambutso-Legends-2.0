@@ -28,33 +28,56 @@ public class Player extends Entity {
     private static final float X_ACCEL       = 0.005f;
     private static final float X_MAX_SPEED   = 1.5f;
     private static final float X_DECEL_START = 0.001f;
-    private static final float X_DECEL_GROW  = 0.003f;
-    private static final float X_DECEL_MAX   = 0.15f;
+    private static final float X_DECEL_GROW  = 0.001f;  // slower buildup
+    private static final float X_DECEL_MAX   = 0.01f;   // gentler cap
 
     // ── Vertical speed ────────────────────────────────────────
     private static final float Y_SPEED = 0.8f;
 
     public static final int STOP = Game.GAME_WIDTH;
 
-    // Set by Playing every tick
+    // Set by Playing / BossFightState every tick
     private boolean worldScrolling = false;
     private boolean worldLoopDone  = false;
 
     private float currentMaxSpeed = X_MAX_SPEED;
 
     // ── Car Struck state ─────────────────────────────────────
-
-    private static final int STRUCK_DURATION_TICKS = 1 * 200; // 4 s at 200 UPS
+    // -------------------------------------------------------
+    // STRUCK DURATION  ← ADJUST (seconds × UPS)
+    // -------------------------------------------------------
+    private static final int STRUCK_DURATION_TICKS = 1 * 200; // 1 s at 200 UPS
     // -------------------------------------------------------
     private boolean struckActive = false;
     private int     struckTimer  = 0;
     // Ghost mode: true while struck — disables collision detection
     private boolean ghost        = false;
 
+    // ── Boss fight mode ───────────────────────────────────────
+    // When true: running animation is always on, hit does NOT lock movement.
+    private boolean bossMode = false;
+
+    // ── Boss running animation speed ← ADJUST ─────────────────
+    // -------------------------------------------------------
+    // Multiplied by scroll speed to match world pace.
+    // Higher = slower animation frames per unit of scroll speed.
+    // -------------------------------------------------------
+    private static final float BOSS_ANI_SPEED_DIVISOR = 0.8f;
+    // -------------------------------------------------------
+
     private GamePanel gamePanel;
     private int[][] lvlData;
     private float xDrawOffset = 21 * Game.SCALE;
     private float yDrawOffset = 4  * Game.SCALE;
+
+    // ── Boss fight hitbox offsets ← ADJUST ────────────────────
+    // -------------------------------------------------------
+    // These are used ONLY in boss mode. Normal hitbox is set in constructor.
+    private static final float BOSS_HB_X_OFFSET = 4  * Game.SCALE;
+    private static final float BOSS_HB_Y_OFFSET = 2  * Game.SCALE;
+    private static final float BOSS_HB_W        = 54 * Game.SCALE; // hitbox width
+    private static final float BOSS_HB_H        = 28 * Game.SCALE; // hitbox height
+    // -------------------------------------------------------
 
     public Player(float x, float y, int width, int height, GamePanel gamePanel) {
         super(x, y, width, height);
@@ -75,7 +98,7 @@ public class Player extends Entity {
                 (int)(hitBox.y - yDrawOffset),
                 width, height, null
         );
-        drawHitBox(g);
+        //drawHitBox(g);
     }
 
     public void render(Graphics g, int xLvlOffset) {
@@ -93,23 +116,27 @@ public class Player extends Entity {
     // ─────────────────────────────────────────────────────────
     public void update() {
         updateStruckState();
-        if (!struckActive) {
-            updatePos();
-        }
+        updatePos();            // Fix 5: movement always runs, even during struck
         updateAnimationTick();
         setAnimation();
     }
 
-
+    // ── Car-Struck ────────────────────────────────────────────
+    /**
+     * Triggers the car-struck animation and ghost mode.
+     * Fix 5: in boss mode, does NOT lock W/A/S/D keys — player can still move.
+     */
     public void triggerCarStruck() {
-        struckActive  = true;
-        struckTimer   = STRUCK_DURATION_TICKS;
-        ghost         = true;
-        // Kill speed so jeep stops instantly
-        currentXSpeed = 0f;
-        currentDecel  = X_DECEL_START;
-        // Force key flags off so input can't resume movement mid-animation
-        left = right = up = down = false;
+        struckActive = true;
+        struckTimer  = STRUCK_DURATION_TICKS;
+        ghost        = true;
+        if (!bossMode) {
+            // Normal mode: halt the jeep and clear key flags
+            currentXSpeed = 0f;
+            currentDecel  = X_DECEL_START;
+            left = right = up = down = false;
+        }
+        // Boss mode: animation plays but movement is NOT locked
     }
 
     private void updateStruckState() {
@@ -121,6 +148,24 @@ public class Player extends Entity {
         }
     }
 
+    // ── Boss mode toggle ──────────────────────────────────────
+    /**
+     * Called by BossFightState when entering/exiting boss fight.
+     * Switches hitbox to boss dimensions and enables always-running animation.
+     */
+    public void setBossMode(boolean enabled) {
+        bossMode = enabled;
+        if (enabled) {
+            // Resize hitbox for boss fight
+            hitBox.width  = BOSS_HB_W;
+            hitBox.height = BOSS_HB_H;
+        } else {
+            // Restore normal hitbox
+            hitBox.width  = 54 * Game.SCALE;
+            hitBox.height = 32 * Game.SCALE;
+        }
+    }
+
     // ─────────────────────────────────────────────────────────
     // ANIMATION
     // ─────────────────────────────────────────────────────────
@@ -129,7 +174,10 @@ public class Player extends Entity {
 
         if (struckActive) {
             playerAction = CAR_STRUCK;
-        } else if (moving) {
+        } else if (bossMode) {
+            // Fix 2: always RUNNING in boss mode regardless of movement
+            playerAction = RUNNING;
+        } else if (moving || currentXSpeed > 0) {
             playerAction = RUNNING;
         } else {
             playerAction = IDLE;
@@ -153,6 +201,20 @@ public class Player extends Entity {
                 attacking = false;
             }
         }
+    }
+
+    /**
+     * Fix 2: sets animation speed based on world scroll speed during boss fight.
+     * Called each tick by BossFightState.
+     * @param scrollSpeed current world scroll speed (pixels/tick)
+     */
+    public void updateBossAniSpeed(float scrollSpeed) {
+        if (!bossMode) return;
+        // Higher scroll speed → lower aniSpeed number → faster animation
+        int computed = (scrollSpeed > 0)
+                ? Math.max(4, (int)(BOSS_ANI_SPEED_DIVISOR / scrollSpeed))
+                : 25;
+        aniSpeed = computed;
     }
 
     // ─────────────────────────────────────────────────────────
@@ -229,15 +291,17 @@ public class Player extends Entity {
 
     // ─────────────────────────────────────────────────────────
     // LOAD ANIMATIONS
-    //   Row 0 = RUNNING
-    //   Row 1 = IDLE
-    //   Row 2 = CAR_STRUCK
+    //   Row 0 = RUNNING   (4 frames)
+    //   Row 1 = IDLE      (4 frames)
+    //   Row 2 = CAR_STRUCK (4 frames)
+    //   Row 3 = SHIELD    (2 frames) — loaded by BossFightState
+    //   Row 4 = SHOOT     (4 frames) — loaded by BossFightState
     // ─────────────────────────────────────────────────────────
     private void loadAnimations() {
         InputStream is = getClass().getResourceAsStream(LoadSave.PLAYER_ATLAS);
         try {
             BufferedImage img = ImageIO.read(is);
-            animations = new BufferedImage[3][4]; // 3 rows, 4 frames
+            animations = new BufferedImage[3][4]; // rows 0-2, 4 frames each
             for (int row = 0; row < animations.length; row++)
                 for (int col = 0; col < animations[row].length; col++)
                     animations[row][col] = img.getSubimage(col * 110, row * 40, 110, 40);
@@ -248,8 +312,10 @@ public class Player extends Entity {
         }
     }
 
-    public void loadLvlData(int[][] lvlData) { this.lvlData = lvlData; }
-
+    // ─────────────────────────────────────────────────────────
+    // PUBLIC API
+    // ─────────────────────────────────────────────────────────
+    public void loadLvlData(int[][] lvlData)         { this.lvlData = lvlData; }
     public void setWorldScrolling(boolean scrolling) { this.worldScrolling = scrolling; }
     public void setWorldLoopDone(boolean done)        { this.worldLoopDone  = done; }
 
@@ -262,14 +328,13 @@ public class Player extends Entity {
 
     public boolean isGhost()          { return ghost; }
     public boolean isStruckActive()   { return struckActive; }
+    public boolean isBossMode()       { return bossMode; }
     public float   getCurrentXSpeed() { return currentXSpeed; }
+    public void    setMaxSpeed(float maxSpeed) { this.currentMaxSpeed = maxSpeed; }
 
-    public void setMaxSpeed(float maxSpeed)      { this.currentMaxSpeed = maxSpeed; }
-
-
-    public void setAttacking(boolean attacking)  { this.attacking = attacking; }
-    public void setLeft(boolean left)            { this.left = left; }
-    public void setUp(boolean up)                { this.up = up; }
-    public void setRight(boolean right)          { this.right = right; }
-    public void setDown(boolean down)            { this.down = down; }
+    public void setAttacking(boolean attacking) { this.attacking = attacking; }
+    public void setLeft(boolean left)           { this.left = left; }
+    public void setUp(boolean up)               { this.up = up; }
+    public void setRight(boolean right)         { this.right = right; }
+    public void setDown(boolean down)           { this.down = down; }
 }

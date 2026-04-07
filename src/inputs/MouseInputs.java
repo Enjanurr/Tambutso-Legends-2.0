@@ -20,6 +20,9 @@ public class MouseInputs implements MouseListener, MouseMotionListener {
             case PLAYING:
                 gamePanel.getGame().getPlaying().mouseClicked(e);
                 break;
+            case BOSS_FIGHT:
+                gamePanel.getGame().getBossFightState().mouseClicked(e);
+                break;
             default:
                 break;
         }
@@ -36,6 +39,9 @@ public class MouseInputs implements MouseListener, MouseMotionListener {
                 break;
             case PLAYING:
                 gamePanel.getGame().getPlaying().mousePressed(e);
+                break;
+            case BOSS_FIGHT:
+                gamePanel.getGame().getBossFightState().mousePressed(e);
                 break;
             default:
                 break;
@@ -54,6 +60,9 @@ public class MouseInputs implements MouseListener, MouseMotionListener {
             case PLAYING:
                 gamePanel.getGame().getPlaying().mouseReleased(e);
                 break;
+            case BOSS_FIGHT:
+                gamePanel.getGame().getBossFightState().mouseReleased(e);
+                break;
             default:
                 break;
         }
@@ -67,6 +76,10 @@ public class MouseInputs implements MouseListener, MouseMotionListener {
         switch (GameStates.state) {
             case PLAYING:
                 gamePanel.getGame().getPlaying().mouseDragged(e);
+                break;
+            case BOSS_FIGHT:
+                // Routes to pause overlay volume slider when paused
+                gamePanel.getGame().getBossFightState().mouseDragged(e);
                 break;
             default:
                 break;
@@ -84,6 +97,9 @@ public class MouseInputs implements MouseListener, MouseMotionListener {
                 break;
             case PLAYING:
                 gamePanel.getGame().getPlaying().mouseMoved(e);
+                break;
+            case BOSS_FIGHT:
+                gamePanel.getGame().getBossFightState().mouseMoved(e);
                 break;
             default:
                 break;
