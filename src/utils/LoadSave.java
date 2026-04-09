@@ -1,7 +1,5 @@
 package utils;
 
-import main.Game;
-
 import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.image.BufferedImage;
@@ -11,7 +9,12 @@ import java.io.InputStream;
 public class LoadSave {
 
     // ── Core atlases ─────────────────────────────────────────
-    public static final String PLAYER_ATLAS = "/characters/player/jeepney_sprites.png";
+   //  public static final String PLAYER_ATLAS = "/characters/player/red_jeep.png";
+    public static final String PLAYER_ATLAS_1 = "characters/player/red_jeep.png";
+    public static final String PLAYER_ATLAS_2 = "characters/player/green_jeep.png";
+    public static final String PLAYER_ATLAS_3 = "characters/player/blue_jeep.png";
+    public static final String CHAR_SELECT_BG = "backgrounds/menu/background_menu.png";
+    public static final String CHAR_BG = "backgrounds/menu/menu_background.png";
     public static final String LEVEL_ATLAS  = "level/road_tiles.png";
     public static final String ROAD_DATA    = "level/road_data_new.png";
 
@@ -61,6 +64,8 @@ public class LoadSave {
     public static final String ACCEPT_PASSENGER_BACKGROUND = "ui/overlays/accept_passenger.png";
     public static final String ACCEPT_PASSENGER_BUTTONS = "ui/buttons/accept_passenger_buttons.png";
     public static final String PASSENGER_COUNTER = "ui/hud/passenger_counter.png";
+
+
 
     public static BufferedImage getSpriteAtlas(String fileName) {
         BufferedImage img = null;

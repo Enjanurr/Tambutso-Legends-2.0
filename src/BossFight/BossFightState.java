@@ -125,28 +125,55 @@ public class BossFightState extends State implements StateMethods {
                 Game.GAME_WIDTH * PLAYER_RIGHT_LIMIT_FRACTION
                         - player.getHitBox().width;
 
-        loadAssets();
+        // ✨ Load assets with default first (in case boss fight starts without selection)
+       // loadAssets(LoadSave.PLAYER_ATLAS_1);
+
         pauseOverlay = new BossPauseOverlay(this);
         buildDeathOverlay();
         buildDefeatOverlay();
         bossBar = new BossHealthBar();
-        walkerManager = new BossWalkerManager();   // NEW from first version
+        walkerManager = new BossWalkerManager();
         spawnBoss();
+    }
+
+    /**
+     * Reload shield and shoot sprites from selected driver.
+     * Called by Game when transitioning to boss fight.
+     */
+    public void applyDriverAssets(entities.DriverProfile profile) {
+        if (profile == null) {
+            System.out.println("⚠️ [BossFightState] No driver profile - keeping default assets");
+            return;
+        }
+
+        System.out.println("🎮 [BossFightState] Applying driver assets: " + profile.displayName);
+        loadAssets(profile.atlasPath);
     }
 
     // ─────────────────────────────────────────────────────────
     // ASSET LOADING
     // ─────────────────────────────────────────────────────────
-    private void loadAssets() {
+// Change loadAssets() signature to accept a parameter
+    private void loadAssets(String atlasPath) {
         backgroundImg = LoadSave.getSpriteAtlas(LoadSave.PLAYING_BACKGROUND_IMG);
         bigClouds     = LoadSave.getSpriteAtlas(LoadSave.BIG_CLOUDS);
         smallClouds   = LoadSave.getSpriteAtlas(LoadSave.SMALL_CLOUDS);
 
-        java.io.InputStream is =
-                getClass().getResourceAsStream(LoadSave.PLAYER_ATLAS);
+        // ✨ Add leading slash if missing
+        if (!atlasPath.startsWith("/")) {
+            atlasPath = "/" + atlasPath;
+        }
+
+        java.io.InputStream is = getClass().getResourceAsStream(atlasPath);
+
+        if (is == null) {
+            System.out.println("❌ [BossFightState] Failed to load atlas: " + atlasPath);
+            // Fall back to default
+            is = getClass().getResourceAsStream("/" + LoadSave.PLAYER_ATLAS_1);
+        }
+
         try {
-            java.awt.image.BufferedImage sheet =
-                    javax.imageio.ImageIO.read(is);
+            java.awt.image.BufferedImage sheet = javax.imageio.ImageIO.read(is);
 
             shieldFull = sheet.getSubimage(0 * 110, 3 * 40, 110, 40);
             shieldHalf = sheet.getSubimage(1 * 110, 3 * 40, 110, 40);
@@ -159,13 +186,14 @@ public class BossFightState extends State implements StateMethods {
                         PlayerProjectile.FRAME_W,
                         PlayerProjectile.FRAME_H);
 
+            System.out.println("✓ [BossFightState] Loaded assets from: " + atlasPath);
+
         } catch (Exception e) {
             System.err.println("[BossFightState] Could not load jeepney rows: " + e.getMessage());
         } finally {
             try { if (is != null) is.close(); } catch (Exception ignored) {}
         }
     }
-
     private void buildDeathOverlay() {
         deathScreenImg = LoadSave.getSpriteAtlas(LoadSave.DEATH_SCREEN);
         deathImgW = (int)(500 * Game.SCALE * 0.5f);
@@ -546,6 +574,11 @@ public class BossFightState extends State implements StateMethods {
         spawnBoss();
     }
 
-    public void resetAll() { fullReset(); }
+    public void resetAll() {
+        fullReset();
+        // ✨ Reapply driver assets after reset
+        if (game.getSelectedDriver() != null) {
+            applyDriverAssets(game.getSelectedDriver());
+        }}
     public boolean isPaused() { return paused; }
 }

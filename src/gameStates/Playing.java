@@ -6,11 +6,7 @@ import Ui.HealthBar;
 import Ui.PassengerCounter;
 import Ui.PauseOverlay;
 import Ui.ProgressBar;
-import entities.EnemyManager;
-import entities.Person;
-import entities.PersonManager;
-import entities.Player;
-import entities.PowerupManager;
+import entities.*;
 import objects.StopSignManager;
 import objects.WorldObjectManager;
 import levels.LevelManager;
@@ -108,6 +104,15 @@ public class Playing extends State implements StateMethods {
         loadBackgroundAssets();
     }
 
+    /** Called by CharSelectState before gameplay begins. */
+    public void applyDriver(entities.DriverProfile profile) {
+        player.applyDriver(profile);
+        System.out.println("Driver selected: " + profile.displayName
+                + " | Speed: " + profile.maxSpeed);
+    }
+
+    /** Used by Game.getDesiredMusicTrack(). */
+    //public boolean isPaused() { return paused; }
 
     public void resumeFromInteraction() {
         interactionPaused = false;
@@ -122,9 +127,14 @@ public class Playing extends State implements StateMethods {
         int spawnY      = 520;
 
         player = new Player(spawnX, spawnY,
-                (int)(110 * Game.SCALE), (int)(40 * Game.SCALE),
-                game.getGamePanel());
+                (int)(110 * Game.SCALE), (int)(40 * Game.SCALE), game.getGamePanel());
         player.loadLvlData(levelManager.getCurrentLevel().getLevelData());
+
+        // ✨ NEW: Apply default driver immediately
+        // This ensures animations[] is never null during char select/menu
+        DriverProfile defaultDriver = DriverProfile.ALL[0];  // Kuya Ben
+        player.applyDriver(defaultDriver);
+
 
         personManager   = new PersonManager(this);
         enemyManager    = new EnemyManager(this);
@@ -169,6 +179,7 @@ public class Playing extends State implements StateMethods {
         player.getHitBox().y = 520;
         player.resetDirBooleans();
         player.setWorldLoopDone(false);
+
         worldObjectManager.reset();
 
         personManager.resetAll();
@@ -310,6 +321,9 @@ public class Playing extends State implements StateMethods {
     // PASSENGER INTERACTION SCAN
     // ─────────────────────────────────────────────────────────
     private void checkPassengerInteractions() {
+        // if full 9/9 early return
+        if(passengerCounter.isFull()) return;
+
         Rectangle2D.Float jeepHB = player.getHitBox();
         if (jeepHB == null) return;
 

@@ -22,7 +22,7 @@ public class PassengerCounter {
     private static final int FRAME_COUNT   = 17;   // 0–16 inclusive
 
     // ── Max passengers ────────────────────────────────────────
-    public static final int MAX_PASSENGERS = 16;
+    public static final int MAX_PASSENGERS =9;
 
     // ── Position & size settings ← ADJUST ────────────────────
     private static final float COUNTER_SCALE = 0.2f;

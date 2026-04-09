@@ -144,6 +144,8 @@ public class AcceptPassengerOverlay {
     }
     // ── Input ─────────────────────────────────────────────────
     public void mousePressed(MouseEvent e) {
+        // incase
+        if(passengerCounter.isFull()) return;
         if (!open) return;
         if      (isIn(e, yesButton)) yesButton.setMousePressed(true);
         else if (isIn(e, noButton))  noButton.setMousePressed(true);
@@ -151,6 +153,8 @@ public class AcceptPassengerOverlay {
 
     public void mouseReleased(MouseEvent e) {
         if (!open) return;
+
+
 
         if (isIn(e, yesButton) && yesButton.isMousePressed()) {
             System.out.println("Passenger accepted");

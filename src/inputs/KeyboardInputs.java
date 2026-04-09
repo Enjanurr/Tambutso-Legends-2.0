@@ -4,10 +4,12 @@ import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 
 import gameStates.GameStates;
+import main.Game;
 import main.GamePanel;
 
 public class KeyboardInputs implements KeyListener {
     private GamePanel gamePanel;
+
 
     public KeyboardInputs(GamePanel gamePanel) {
         this.gamePanel = gamePanel;
@@ -18,6 +20,9 @@ public class KeyboardInputs implements KeyListener {
     @Override
     public void keyReleased(KeyEvent e) {
         switch (GameStates.state) {
+            case CHAR_SELECT:
+                gamePanel.getGame().getCharSelectState().keyReleased(e);
+                break;
             case MENU:
                 gamePanel.getGame().getMenu().keyReleased(e);
                 break;
@@ -38,6 +43,10 @@ public class KeyboardInputs implements KeyListener {
     @Override
     public void keyPressed(KeyEvent e) {
         switch (GameStates.state) {
+            case CHAR_SELECT:
+                gamePanel.getGame().getCharSelectState().keyPressed(e);
+
+                break;
             case MENU:
                 gamePanel.getGame().getMenu().keyPressed(e);
                 break;

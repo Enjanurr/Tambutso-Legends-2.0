@@ -68,7 +68,8 @@ public class Menu extends State implements StateMethods {
             MenuButton mb = buttons[i];
             if (isIn(e, mb) && mb.isMousePressed()) {
                 if (i == 0)
-                    game.startPlayingOrIntro(); // PLAY → always show intro first
+                   // game.startPlayingOrIntro(); // PLAY → always show intro first
+                    game.startCharSelect();
                 else
                     mb.applyGameState();        // OPTIONS / QUIT work normally
                 break;
@@ -92,7 +93,7 @@ public class Menu extends State implements StateMethods {
     @Override
     public void keyPressed(KeyEvent e) {
         if (e.getKeyCode() == KeyEvent.VK_ENTER)
-            game.startPlayingOrIntro();
+            game.startIntroOverlay();
     }
 
     @Override

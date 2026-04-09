@@ -1,10 +1,9 @@
 package main;
 
 import java.awt.Graphics;
-import gameStates.GameStates;
-import gameStates.Menu;
-import gameStates.Options;
-import gameStates.Playing;
+
+import entities.DriverProfile;
+import gameStates.*;
 import Ui.IntroOverlay;
 import BossFight.BossFightState;
 import utils.AudioPlayer;
@@ -22,6 +21,7 @@ public class Game implements Runnable {
     private IntroOverlay  introOverlay;
     private BossFightState bossFightState;
     private final AudioPlayer audioPlayer;
+    private CharSelectState charSelectState;
     private String activeMusicTrack;
 
     public final static int   TILES_DEFAULT_SIZE = 20;
@@ -31,6 +31,7 @@ public class Game implements Runnable {
     public final static int   TILES_IN_HEIGHT    = 20;
     public final static int   GAME_WIDTH         = TILES_SIZE * TILES_IN_WIDTH;
     public final static int   GAME_HEIGHT        = TILES_SIZE * TILES_IN_HEIGHT;
+    private DriverProfile selectedDriver;  // add this field
 
     public Game() {
         audioPlayer = new AudioPlayer();
@@ -42,10 +43,20 @@ public class Game implements Runnable {
         startGameLoop();
     }
 
+
+    public void setSelectedDriver(DriverProfile driver) {
+        this.selectedDriver = driver;
+    }
+
+    public DriverProfile getSelectedDriver() {
+        return selectedDriver;
+    }
+
     private void initClasses() {
         menu          = new Menu(this);
         options       = new Options(this);
         playing       = new Playing(this);
+        charSelectState = new CharSelectState(this);
         introOverlay  = new IntroOverlay();
         // BossFightState shares the Player and HealthBar from Playing
         bossFightState = new BossFightState(this,
@@ -58,25 +69,58 @@ public class Game implements Runnable {
         gameThread.start();
     }
 
-    public void startPlayingOrIntro() {
+    /** Called by Menu PLAY button — goes to char select first. */
+    public void startCharSelect() {
+        GameStates.state = GameStates.CHAR_SELECT;
+    }
+
+    /** Called by CharSelectState after confirming a driver. */
+    public void startIntroOverlay() {
         introOverlay.reset();
         GameStates.state = GameStates.INTRO;
     }
 
     /** Called by Playing when all 15 loops complete. */
     public void startBossFight() {
+        System.out.println("═══════════════════════════════");
+        System.out.println("🏁 STARTING BOSS FIGHT");
+        System.out.println("Selected Driver: " +
+                (selectedDriver != null ? selectedDriver.displayName : "NULL"));
+        System.out.println("═══════════════════════════════");
+
         bossFightState.resetAll();
+
+        if (selectedDriver != null) {
+            bossFightState.applyDriverAssets(selectedDriver);
+        }
+
         GameStates.state = GameStates.BOSS_FIGHT;
     }
 
     public void update() {
         switch (GameStates.state) {
+            case CHAR_SELECT:
+                charSelectState.update();
+                break;
             case MENU:
                 menu.update();
                 break;
             case INTRO:
                 boolean done = introOverlay.update();
-                if (done) GameStates.state = GameStates.PLAYING;
+                if (done) {
+                    GameStates.state = GameStates.PLAYING;
+
+                    // ✨ DEBUG OUTPUT
+                    System.out.println("───────────────────────────────");
+                    System.out.println("INTRO COMPLETE");
+                    System.out.println("Selected Driver: " +
+                            (selectedDriver != null ? selectedDriver.displayName : "NULL"));
+                    System.out.println("───────────────────────────────");
+
+                    if (selectedDriver != null) {
+                        playing.applyDriver(selectedDriver);
+                    }
+                }
                 break;
             case PLAYING:
                 gamePanel.updateFade();
@@ -118,6 +162,8 @@ public class Game implements Runnable {
 
     private String getDesiredMusicTrack() {
         switch (GameStates.state) {
+            case CHAR_SELECT:
+                return "menu";
             case MENU:
             case INTRO:
             case OPTIONS:
@@ -134,11 +180,14 @@ public class Game implements Runnable {
 
     public void render(Graphics g) {
         switch (GameStates.state) {
+            case CHAR_SELECT:
+                charSelectState.draw(g);
+                break;
             case MENU:
                 menu.draw(g);
                 break;
             case INTRO:
-                menu.draw(g);
+                menu.draw(g);                  // optional background/menu layer
                 introOverlay.render(g);
                 break;
             case PLAYING:
@@ -154,6 +203,8 @@ public class Game implements Runnable {
                 break;
         }
     }
+// In Game.java
+
 
     public void onJeepLooped() {
         playing.onJeepLooped();
@@ -190,11 +241,12 @@ public class Game implements Runnable {
     }
 
     // ── Getters ───────────────────────────────────────────────
-    public GamePanel      getGamePanel()      { return gamePanel; }
-    public Menu           getMenu()           { return menu; }
-    public Options        getOptions()        { return options; }
-    public Playing        getPlaying()        { return playing; }
-    public IntroOverlay   getIntroOverlay()   { return introOverlay; }
-    public BossFightState getBossFightState() { return bossFightState; }
-    public AudioPlayer    getAudioPlayer()    { return audioPlayer; }
+    public GamePanel       getGamePanel()      { return gamePanel; }
+    public Menu            getMenu()           { return menu; }
+    public Options         getOptions()        { return options; }
+    public Playing         getPlaying()        { return playing; }
+    public IntroOverlay    getIntroOverlay()   { return introOverlay; }
+    public BossFightState  getBossFightState() { return bossFightState; }
+    public AudioPlayer     getAudioPlayer()    { return audioPlayer; }
+    public CharSelectState getCharSelectState() { return charSelectState; }
 }

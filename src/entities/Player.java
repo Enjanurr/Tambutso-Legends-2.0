@@ -78,11 +78,12 @@ public class Player extends Entity {
     private static final float BOSS_HB_W        = 54 * Game.SCALE; // hitbox width
     private static final float BOSS_HB_H        = 28 * Game.SCALE; // hitbox height
     // -------------------------------------------------------
+    private java.util.List<String> activeAbilities = java.util.Collections.emptyList();
 
     public Player(float x, float y, int width, int height, GamePanel gamePanel) {
         super(x, y, width, height);
         this.gamePanel = gamePanel;
-        loadAnimations();
+       // loadAnimations();
         initHitbox(x, y,
                 54 * Game.SCALE,
                 32 * Game.SCALE);
@@ -202,7 +203,64 @@ public class Player extends Entity {
             }
         }
     }
+    // Add this field to Player class:
 
+
+    // Update applyDriver():
+    public void applyDriver(entities.DriverProfile profile) {
+        this.currentMaxSpeed  = profile.maxSpeed;
+        this.activeAbilities  = profile.abilities;   // store for future ability logic
+        loadAnimationsFrom(profile.atlasPath);
+        System.out.println("Driver applied: " + profile.displayName
+                + " | Speed: " + profile.maxSpeed
+                + " | Abilities: " + profile.abilities);
+    }
+
+    // Getter for BossFightState or powerup system to query abilities:
+    public java.util.List<String> getActiveAbilities() { return activeAbilities; }
+
+    private void loadAnimationsFrom(String atlasPath) {
+        System.out.println("▼▼▼ LOADING SPRITE ▼▼▼");
+        System.out.println("Atlas Path: " + atlasPath);
+
+        // ✨ Add leading slash if missing (match LoadSave.getSpriteAtlas behavior)
+        if (!atlasPath.startsWith("/")) {
+            atlasPath = "/" + atlasPath;
+        }
+
+        System.out.println("Normalized Path: " + atlasPath);
+
+        java.io.InputStream is = getClass().getResourceAsStream(atlasPath);
+
+        if (is == null) {
+            System.out.println("❌ STREAM IS NULL - FILE NOT FOUND!");
+            System.out.println("▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲");
+            return;
+        }
+
+        try {
+            java.awt.image.BufferedImage img = javax.imageio.ImageIO.read(is);
+
+            System.out.println("✓ Image loaded: " + img.getWidth() + "x" + img.getHeight());
+
+            animations = new java.awt.image.BufferedImage[3][4];
+            for (int row = 0; row < animations.length; row++) {
+                for (int col = 0; col < animations[row].length; col++) {
+                    animations[row][col] = img.getSubimage(col * 110, row * 40, 110, 40);
+                }
+            }
+
+            System.out.println("✓ Animations array populated");
+            System.out.println("▲▲▲ SPRITE LOADED ▲▲▲");
+
+        } catch (Exception e) {
+            System.out.println("❌ EXCEPTION DURING LOAD:");
+            e.printStackTrace();
+            System.out.println("▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲");
+        } finally {
+            try { if (is != null) is.close(); } catch (Exception ignored) {}
+        }
+    }
     /**
      * Fix 2: sets animation speed based on world scroll speed during boss fight.
      * Called each tick by BossFightState.
@@ -297,8 +355,10 @@ public class Player extends Entity {
     //   Row 3 = SHIELD    (2 frames) — loaded by BossFightState
     //   Row 4 = SHOOT     (4 frames) — loaded by BossFightState
     // ─────────────────────────────────────────────────────────
-    private void loadAnimations() {
-        InputStream is = getClass().getResourceAsStream(LoadSave.PLAYER_ATLAS);
+
+/*
+    private void loadAnimations(String atlas) {
+        InputStream is = getClass().getResourceAsStream(atlas);
         try {
             BufferedImage img = ImageIO.read(is);
             animations = new BufferedImage[3][4]; // rows 0-2, 4 frames each
@@ -311,6 +371,8 @@ public class Player extends Entity {
             try { if (is != null) is.close(); } catch (IOException e) { e.printStackTrace(); }
         }
     }
+    */
+
 
     // ─────────────────────────────────────────────────────────
     // PUBLIC API
