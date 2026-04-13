@@ -144,10 +144,10 @@ public class Constants {
 
         // Frame counts per row
         public static int getSpriteAmount(int playerAction) {
-            switch (playerAction) {
-                case SHIELD: return 2;
-                default:     return 4;
-            }
+            return switch (playerAction) {
+                case SHIELD -> 2;
+                default -> 4;
+            };
         }
     }
 

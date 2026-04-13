@@ -80,22 +80,25 @@ public class LoadSave {
     public static BufferedImage getSpriteAtlas(String fileName) {
         BufferedImage img = null;
         InputStream is = LoadSave.class.getResourceAsStream("/" + fileName);
-        if (is == null) {
-            System.err.println("[LoadSave] File not found on classpath: /" + fileName);
-            return null;
-        }
-        try {
-            img = ImageIO.read(is);
+        try (is) {
+            try {
+                if (is == null) {
+                    System.err.println("[LoadSave] File not found on classpath: /" + fileName);
+                    return null;
+                }
+                img = ImageIO.read(is);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         } catch (IOException e) {
             e.printStackTrace();
-        } finally {
-            try { is.close(); } catch (IOException e) { e.printStackTrace(); }
         }
         return img;
     }
 
     public static int[][] GetLevelData() {
         BufferedImage img = getSpriteAtlas(ROAD_DATA);
+        assert img != null;
         int[][] lvlData = new int[img.getHeight()][img.getWidth()];
         for (int j = 0; j < img.getHeight(); j++)
             for (int i = 0; i < img.getWidth(); i++) {

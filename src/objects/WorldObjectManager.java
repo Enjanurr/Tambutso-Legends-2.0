@@ -75,9 +75,7 @@ public class WorldObjectManager {
         }
 
         if (definition != null) {
-            for (WorldObject building : definition.spawnBuildings()) {
-                worldObjects.add(building);
-            }
+            worldObjects.addAll(definition.spawnBuildings());
         }
     }
 
