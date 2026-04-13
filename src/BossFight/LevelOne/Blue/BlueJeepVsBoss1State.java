@@ -48,7 +48,7 @@ public class BlueJeepVsBoss1State extends State implements StateMethods {
     private final Player       player;
     private final HealthBar    healthBar;    // jeepney life bar (shared with Playing)
     private       BossHealthBar bossBar;     // boss life bar (new)
-    private Boss1              boss;
+    private Boss1 boss;
 
     // ── Walkers during boss fight ─────────────────────────────
     private BossWalkerManager walkerManager;              // NEW from first version

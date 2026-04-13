@@ -1,5 +1,7 @@
-package BossFight.LevelOne.Red;
+package BossFight.LevelThree.Blue;
 
+import BossFight.LevelOne.Blue.BlueJeepVsBoss1State;
+import BossFight.LevelTwo.Blue.BlueJeepVsBoss2State;
 import Ui.PauseButton;
 import Ui.SoundButton;
 import Ui.UrmButton;
@@ -29,7 +31,7 @@ import static utils.Constants.UI.VolumeButtons.*;
  */
 public class BossPauseOverlay {
 
-    private final BossFight.LevelOne.Red.RedJeepVsBoss1State redJeepVsBoss1State;
+    private final BlueJeepVsBoss3State blueJeepVsBoss3State;
 
     private BufferedImage backgroundImg;
     private int bgX, bgY, bgW, bgH;
@@ -38,8 +40,8 @@ public class BossPauseOverlay {
     private UrmButton    resumeBtn, restartBtn, menuBtn;
     private VolumeButton volumeButton;
 
-    public BossPauseOverlay(BossFight.LevelOne.Red.RedJeepVsBoss1State blueJeepVsBoss1State) {
-        this.redJeepVsBoss1State = blueJeepVsBoss1State;
+    public BossPauseOverlay(BlueJeepVsBoss3State blueJeepVsBoss3State) {
+        this.blueJeepVsBoss3State = blueJeepVsBoss3State;
         loadBackground();
         createSoundButtons();
         createUrmButtons();
@@ -137,15 +139,15 @@ public class BossPauseOverlay {
 
         } else if (isIn(e, resumeBtn)) {
             if (resumeBtn.isMousePressed())
-                redJeepVsBoss1State.unpause();          // resume
+                blueJeepVsBoss3State.unpause();          // resume
 
         } else if (isIn(e, restartBtn)) {
             if (restartBtn.isMousePressed())
-                redJeepVsBoss1State.fullReset();        // full boss fight restart
+                blueJeepVsBoss3State.fullReset();        // full boss fight restart
 
         } else if (isIn(e, menuBtn)) {
             if (menuBtn.isMousePressed()) {
-                redJeepVsBoss1State.unpause();
+                blueJeepVsBoss3State.unpause();
                 GameStates.state = GameStates.MENU; // back to main menu
             }
         }
@@ -179,6 +181,6 @@ public class BossPauseOverlay {
     }
 
     private AudioPlayer getAudioPlayer() {
-        return redJeepVsBoss1State.getGame().getAudioPlayer();
+        return blueJeepVsBoss3State.getGame().getAudioPlayer();
     }
 }

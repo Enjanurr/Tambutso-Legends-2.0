@@ -28,6 +28,8 @@ public class LoadSave {
     public static final String BOSS1_ATLAS = "boss/boss1.png";       // 550×316, 4 rows × 5 cols
     public static final String BOSS1_LIFE  = "boss/boss1_life.png";  // 2700×224, 2 rows × 9 cols
     public static final String BOSS_DEFEAT = "boss/BossDefeat.png";  // 434×323, single image
+    public static final String BOSS2_ATLAS = "boss/boss2.png";
+    public static final String BOSS3_ATLAS = "boss/boss3.png";
 
     // ── Objects ───────────────────────────────────────────────
     public static final String STOP_SIGN        = "objects/stop_sign.png";

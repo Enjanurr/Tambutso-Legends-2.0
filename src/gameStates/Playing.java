@@ -250,7 +250,12 @@ public class Playing extends State implements StateMethods {
     @Override
     public void update() {
         // ── SKIP_TO_BOSS: uncomment the block below to skip loops ──
-        if (true) { game.startBossFight(); return; }
+        if (true) {
+            System.out.println("[Playing] ⏭️  Skipping to boss fight...");
+            game.setCurrentGameLevel(2);  // ← FORCE LEVEL 2
+            game.startBossFight();
+            return;
+        }
 
         if (playerDead) {
             deathOverlay.update();
@@ -284,6 +289,7 @@ public class Playing extends State implements StateMethods {
                         progressBar.onLoopCompleted();
 
                         // Debug output: prints once per full level wrap.
+
                         System.out.println("World loops: " + worldLoopCount);
                         if (worldLoopCount >= MAX_WORLD_LOOPS) {
 

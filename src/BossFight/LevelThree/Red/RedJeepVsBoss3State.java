@@ -1,7 +1,8 @@
-package BossFight.LevelOne.Green;
+package BossFight.LevelThree.Red;
+
 
 import BossFight.BossWalkerManager;
-import BossFight.LevelOne.Green.*;
+import BossFight.LevelOne.GarbagePile;
 import Ui.BossDefeatOverlay;
 import Ui.BossHealthBar;
 import Ui.HealthBar;
@@ -12,7 +13,7 @@ import gameStates.State;
 import gameStates.StateMethods;
 import main.Game;
 import utils.LoadSave;
-import BossFight.LevelOne.GarbagePile;
+
 import java.awt.*;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
@@ -21,21 +22,21 @@ import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 import static utils.Constants.Environment.*;
-import static utils.Constants.UI.URMButtons.*;
+import static utils.Constants.Environment.SMALL_CLOUD_HEIGHT;
+import static utils.Constants.Environment.SMALL_CLOUD_WIDTH;
+import static utils.Constants.UI.URMButtons.URM_SIZE;
 
-
-public class GreenJeepVsBoss1State extends State implements StateMethods {
-
+public class RedJeepVsBoss3State extends State implements StateMethods {
     // -------------------------------------------------------
     // BOSS FIGHT SETTINGS  ← ADJUST
     // -------------------------------------------------------
-    private static final float SCROLL_SPEED                = BossFight.LevelOne.Green.Boss1.BOSS_SCROLL_SPEED;
+    private static final float SCROLL_SPEED                = BossFight.LevelOne.Red.Boss1.BOSS_SCROLL_SPEED;
     private static final float LEFT_BORDER_PUSH            = 0.3f;
     private static final float PLAYER_RIGHT_LIMIT_FRACTION = 0.50f;
 
     // ── Shoot settings ← ADJUST ──────────────────────────────
     private static final int MAX_BULLETS_PER_USE = 5;        // bullets per E press
-    private static final int SHOOT_FULL_COOLDOWN = 4 * 200;  // 3 s at 200 UPS
+    private static final int SHOOT_FULL_COOLDOWN = 3 * 200;  // 3 s at 200 UPS
 
 
     // ── Death overlay fade ← ADJUST ──────────────────────────
@@ -43,20 +44,22 @@ public class GreenJeepVsBoss1State extends State implements StateMethods {
     private static final float DEATH_FADE_MAX   = 0.85f;
     // -------------------------------------------------------
 
-    private final Player       player;
-    private final HealthBar    healthBar;    // jeepney life bar (shared with Playing)
-    private       BossHealthBar bossBar;     // boss life bar (new)
-    private BossFight.LevelOne.Green.Boss1 boss;
+    private final Player player;
+    private final HealthBar healthBar;    // jeepney life bar (shared with Playing)
+    private BossHealthBar bossBar;     // boss life bar (new)
+    private BossFight.LevelOne.Red.Boss1 boss;
 
     // ── Walkers during boss fight ─────────────────────────────
     private BossWalkerManager walkerManager;              // NEW from first version
 
 
+
     // ── Shoot state ───────────────────────────────────────────
     // Thread-safe list — safe to iterate during concurrent updates
-    private final List<GreenJeepProjectile> playerBullets =
+    private final List<RedJeepProjectile> playerBullets =
             new CopyOnWriteArrayList<>();
-    private BufferedImage[] shootFrames;
+    private BufferedImage[] shootFramesSkill1;
+
     private int     shootCooldown   = 0;
     private int     bulletsRemaining = 0;
     private boolean canShoot        = true;
@@ -84,7 +87,7 @@ public class GreenJeepVsBoss1State extends State implements StateMethods {
     private boolean       playerDead    = false;
     private float         deathAlpha    = 0f;
     private boolean       deathFadeDone = false;
-    private UrmButton     deathRestartBtn;
+    private UrmButton deathRestartBtn;
     private BufferedImage deathScreenImg;
     private int deathImgW, deathImgH, deathImgX, deathImgY;
 
@@ -93,20 +96,15 @@ public class GreenJeepVsBoss1State extends State implements StateMethods {
     private BossDefeatOverlay defeatOverlay;
 
     // ─────────────────────────────────────────────────────────
-// ── Heal cooldown ← CHANGE from slow ball to heal ──────
-    private static final int HEAL_COOLDOWN = 10000;  // ← CHANGE: 10 seconds in milliseconds
+    // Second Skill
+    // ─────────────────────────────────────────────────────────
 
-    // ── Heal (Skill 2) tracking ← ADD THESE ─────────────────
-    private long healLastUsed = 0;
-    private BufferedImage healEffectSprite;  // Optional: visual feedback sprite
-    // ── Heal animation ← ADD THESE ─────────────────────────────
-    private BufferedImage[] healAnimationFrames;  // 12 frames for heal
-    private int healAnimTick = 0;
-    private int healAnimIndex = 0;
-    private boolean isHealing = false;
-    private static final int HEAL_ANI_SPEED = 70;  // ticks per frame
-
-    public GreenJeepVsBoss1State(Game game, Player player, HealthBar healthBar) {
+    // ── Slow Ball (Skill 2) tracking ← ADD THESE ────────────
+    private final List<SlowBallProjectile> slowBalls = new CopyOnWriteArrayList<>();
+    private long skill2LastUsed = 0;
+    private static final int SKILL2_COOLDOWN = 7000;  // 7 seconds in milliseconds
+    private BufferedImage[] slowBallFrames;  // if you have sprite frames for slow ball
+    public RedJeepVsBoss3State(Game game, Player player, HealthBar healthBar) {
         super(game);
         this.player    = player;
         this.healthBar = healthBar;
@@ -128,10 +126,7 @@ public class GreenJeepVsBoss1State extends State implements StateMethods {
         spawnBoss();
     }
 
-    /**
-     * Reload shield and shoot sprites from selected driver.
-     * Called by Game when transitioning to boss fight.
-     */
+
     public void applyDriverAssets(entities.DriverProfile profile) {
         if (profile == null) {
             System.out.println("⚠️ [BossFightState] No driver profile - keeping default assets");
@@ -151,44 +146,58 @@ public class GreenJeepVsBoss1State extends State implements StateMethods {
         bigClouds     = LoadSave.getSpriteAtlas(LoadSave.BIG_CLOUDS);
         smallClouds   = LoadSave.getSpriteAtlas(LoadSave.SMALL_CLOUDS);
 
-        // ── Load shield from main atlas ───────────────────────────
-        java.awt.image.BufferedImage mainSheet = LoadSave.getSpriteAtlas(LoadSave.PLAYER_ATLAS_2);
-
-
-        // ── Load Skill 1 frames (6 frames from separate skill1 sprite sheet) ──
-        java.awt.image.BufferedImage skill1Sheet = LoadSave.getSpriteAtlas(LoadSave.GREEN_JEEP_SKILL1);
-        if (skill1Sheet != null) {
-            shootFrames = new BufferedImage[6];
-            for (int i = 0; i < 6; i++)
-                shootFrames[i] = skill1Sheet.getSubimage(
-                        i * GreenJeepProjectile.FRAME_W,
-                        0,  // Row 0 (only one row in skill sheet)
-                        GreenJeepProjectile.FRAME_W,
-                        GreenJeepProjectile.FRAME_H);
-
-            System.out.println("✓ [GreenJeepBossFightState] Loaded Skill 1 frames: " + shootFrames.length);
-        } else {
-            System.err.println("❌ [GreenJeepBossFightState] Failed to load " + LoadSave.GREEN_JEEP_SKILL1);
+        if (!atlasPath.startsWith("/")) {
+            atlasPath = "/" + atlasPath;
         }
 
+        java.io.InputStream is = getClass().getResourceAsStream(atlasPath);
 
-        // ── Load Skill 2 heal animation (12 frames from separate skill2 sprite sheet) ──
-        java.awt.image.BufferedImage skill2Sheet = LoadSave.getSpriteAtlas(LoadSave.GREEN_JEEP_SKILL2);
-        if (skill2Sheet != null) {
-            healAnimationFrames = new BufferedImage[12];
-            for (int i = 0; i < 12; i++)
-                healAnimationFrames[i] = skill2Sheet.getSubimage(
-                        i * 110,  // ← Use GreenJeepProjectile.FRAME_W (110)
-                        0,
-                        110,      // ← Use GreenJeepProjectile.FRAME_W (110)
-                       40);     // ← Use GreenJeepProjectile.FRAME_H (40)
-
-            System.out.println("✓ [GreenJeepBossFightState] Loaded Skill 2 heal frames: " + healAnimationFrames.length);
-        } else {
-            System.err.println("❌ [GreenJeepBossFightState] Failed to load " + LoadSave.GREEN_JEEP_SKILL2);
+        if (is == null) {
+            System.out.println("❌ [BossFightState] Failed to load atlas: " + atlasPath);
+            is = getClass().getResourceAsStream("/" + LoadSave.PLAYER_ATLAS_1);
         }
 
-        System.out.println("✓ [GreenJeepBossFightState] All assets loaded successfully");
+        try {
+            java.awt.image.BufferedImage sheet = javax.imageio.ImageIO.read(is);
+
+
+            shootFramesSkill1 = new BufferedImage[RedJeepProjectile.FRAME_COUNT];
+
+
+            for (int i = 0; i < RedJeepProjectile.FRAME_COUNT; i++)
+                shootFramesSkill1[i] = sheet.getSubimage(
+                        i * RedJeepProjectile.FRAME_W,
+                        RedJeepProjectile.SPRITE_ROW * RedJeepProjectile.FRAME_H,
+                        RedJeepProjectile.FRAME_W,
+                        RedJeepProjectile.FRAME_H);
+
+            // Load Skill 2 slow ball frames SEPARATELY (don't reuse shootFramesSkill2 for skill1)
+            BufferedImage[] slowBallFrames_Temp = new BufferedImage[SlowBallProjectile.FRAME_COUNT];
+
+            for (int i = 0; i < SlowBallProjectile.FRAME_COUNT; i++) {
+                slowBallFrames_Temp[i] = sheet.getSubimage(
+                        i * SlowBallProjectile.FRAME_W,
+                        SlowBallProjectile.SPRITE_ROW * SlowBallProjectile.FRAME_H,  // ← Must match SPRITE_ROW constant
+                        SlowBallProjectile.FRAME_W,
+                        SlowBallProjectile.FRAME_H
+                );
+            }
+
+            slowBallFrames = slowBallFrames_Temp;
+            System.out.println("✓ [BossFightState] Skill 1 frames loaded: " + shootFramesSkill1.length);
+            System.out.println("✓ [BossFightState] Skill 2 frames loaded: " + slowBallFrames.length);
+
+            if (shootFramesSkill1[0] == null) System.out.println("❌ Skill 1 frame 0 is NULL!");
+            if (slowBallFrames[0] == null) System.out.println("❌ Skill 2 frame 0 is NULL!");
+            System.out.println("✓ [BossFightState] Loaded assets from: " + atlasPath);
+            System.out.println("  Skill 1 frames: " + shootFramesSkill1.length);
+            System.out.println("  Skill 2 frames: " + slowBallFrames.length);
+
+        } catch (Exception e) {
+            System.err.println("[BossFightState] Could not load jeepney rows: " + e.getMessage());
+        } finally {
+            try { if (is != null) is.close(); } catch (Exception ignored) {}
+        }
     }
     private void buildDeathOverlay() {
         deathScreenImg = LoadSave.getSpriteAtlas(LoadSave.DEATH_SCREEN);
@@ -210,9 +219,9 @@ public class GreenJeepVsBoss1State extends State implements StateMethods {
     }
 
     private void spawnBoss() {
-        float bx = Game.GAME_WIDTH + BossFight.LevelOne.Green.Boss1.FRAME_W * Game.SCALE;
+        float bx = Game.GAME_WIDTH + BossFight.LevelOne.Blue.Boss1.FRAME_W * Game.SCALE;
         float by = 480;
-        boss = new BossFight.LevelOne.Green.Boss1(bx, by);
+        boss = new BossFight.LevelOne.Red.Boss1(bx, by);
     }
 
     // ─────────────────────────────────────────────────────────
@@ -264,21 +273,18 @@ public class GreenJeepVsBoss1State extends State implements StateMethods {
             if (shootCooldown == 0) canShoot = true;
         }
 
-        // ── Heal animation update ← ADD THIS ────────────────────────
-        if (isHealing) {
-            healAnimTick++;
-            if (healAnimTick >= HEAL_ANI_SPEED) {
-                healAnimTick = 0;
-                healAnimIndex++;
-                if (healAnimIndex >= 12) {  // 12 frames total
-                    isHealing = false;
-                    healAnimIndex = 0;
-                }
-            }
-        }
 
         // ── Player bullets (CopyOnWriteArrayList — thread-safe) ──
+        // ── Player bullets (CopyOnWriteArrayList — thread-safe) ──
         playerBullets.removeIf(pb -> { pb.update(); return !pb.isActive(); });
+
+        // ── Slow balls update & collision ← ADD THIS ────────────
+        slowBalls.removeIf(ball -> {
+            ball.update();
+            return !ball.isActive();
+        });
+
+
 
         // ── Walkers ── NEW from first version ─────────────────────
         walkerManager.update(SCROLL_SPEED);
@@ -308,13 +314,24 @@ public class GreenJeepVsBoss1State extends State implements StateMethods {
             }
         }
 
-        // Player bullets → boss
+        // Check slow ball collision with boss
         Rectangle bossHB = boss.getHitbox();
-        for (GreenJeepProjectile pb : playerBullets) {
+        for (SlowBallProjectile ball : slowBalls) {
+            if (ball.isActive() && ball.getHitbox().intersects(bossHB)) {
+                ball.setActive(false);
+                boss.applySlowEffect();
+                System.out.println("[RedJeep] Slow ball hit boss! Slow effect applied.");
+            }
+        }
+        // Player bullets → boss
+        //Rectangle bossHB = boss.getHitbox();
+        for (RedJeepProjectile pb : playerBullets) {
             if (pb.isActive() && pb.getHitbox().intersects(bossHB)) {
+                System.out.println("[RedJeep] Skill 1 hit boss!");
                 pb.setActive(false);
                 boss.triggerHit();
                 handleBossHit();
+
             }
         }
     }
@@ -323,14 +340,13 @@ public class GreenJeepVsBoss1State extends State implements StateMethods {
     // HIT HANDLING
     // ─────────────────────────────────────────────────────────
     private void handleJeepHit() {
-
-            player.triggerCarStruck();
-            boolean dead = healthBar.takeDamage();  // ← healthBar handles HP
-            if (dead) {
-                playerDead = true;
-                resetDeathOverlay();
-
+        player.triggerCarStruck();
+        boolean dead = healthBar.takeDamage();
+        if (dead) {
+            playerDead = true;
+            resetDeathOverlay();
         }
+
     }
 
     private void handleBossHit() {
@@ -341,78 +357,69 @@ public class GreenJeepVsBoss1State extends State implements StateMethods {
         }
     }
 
-    // ─────────────────────────────────────────────────────────
-    // SHOOT Player
-    // ─────────────────────────────────────────────────────────
-    // ─────────────────────────────────────────────────────────
-// SHOOT Player (GREEN JEEP)
+
+// SHOOT Player (RED JEEP)
 // ─────────────────────────────────────────────────────────
-    private void fireSingleBulletGreen() {  // ← RENAME
+
+    // ─────────────────────────────────────────────────────────
+// SLOW BALL (RED JEEP SKILL 2)
+// ─────────────────────────────────────────────────────────
+    private void attemptSlowBall() {
+        if (paused || playerDead) return;
+
+        long now = System.currentTimeMillis();
+        if (now - skill2LastUsed >= SKILL2_COOLDOWN) {
+            fireSlowBall();
+            skill2LastUsed = now;
+        } else {
+            long remaining = SKILL2_COOLDOWN - (now - skill2LastUsed);
+            System.out.println("[RedJeep] Slow ball on cooldown: " + (remaining / 1000) + "s remaining");
+        }
+    }
+
+    private void fireSlowBall() {
+        // ── Spawn from jeep RIGHT EDGE, centered vertically ──────
+        float spawnX = player.getHitBox().x + player.getHitBox().width;
+        float spawnY = player.getHitBox().y + player.getHitBox().height / 2f
+                - (SlowBallProjectile.FRAME_H * Game.SCALE) / 2f;
+
+        // ── Create slow ball with loaded frames ─────────────────
+        SlowBallProjectile ball = new SlowBallProjectile(spawnX, spawnY, slowBallFrames);
+        slowBalls.add(ball);
+
+        System.out.println("[RedJeep] Slow ball fired! Frames: "
+                + (slowBallFrames != null ? slowBallFrames.length : "NULL")
+                + " | Position: (" + spawnX + ", " + spawnY + ")");
+    }
+    private void fireSingleBulletRed() {
         if (!canShoot || shootCooldown > 0 || paused || playerDead) return;
 
-        spawnOneBulletGreen();  // ← RENAME
+        spawnOneBulletRed();
 
         bulletsRemaining--;
 
         if (bulletsRemaining <= 0) {
-            shootCooldown    = SHOOT_FULL_COOLDOWN; // now 4s
+            shootCooldown    = SHOOT_FULL_COOLDOWN; // now 4s for RedJeep
             canShoot         = false;
             bulletsRemaining = 0;
         }
     }
 
-    private void attemptShootGreen() {  // ← RENAME
+    private void attemptShootRed() {
         if (shootCooldown > 0 || !canShoot || paused || playerDead) return;
 
         if (bulletsRemaining == 0 && canShoot && shootCooldown == 0)
-            bulletsRemaining = MAX_BULLETS_PER_USE;
+            bulletsRemaining = MAX_BULLETS_PER_USE; // still 5 shots
 
         if (bulletsRemaining > 0)
-            fireSingleBulletGreen();  // ← RENAME
+            fireSingleBulletRed();
     }
 
-    private void spawnOneBulletGreen() {  // ← RENAME
+    private void spawnOneBulletRed() {
         float bx = player.getHitBox().x + player.getHitBox().width;
         float by = player.getHitBox().y;
 
-        playerBullets.add(new GreenJeepProjectile(bx, by, shootFrames));  // ← CHANGE type
-    }
-
-    // ─────────────────────────────────────────────────────────
-// HEAL (GREEN JEEP SKILL 2)
-// ─────────────────────────────────────────────────────────
-    private void attemptHeal() {
-        if (paused || playerDead) return;
-
-        long now = System.currentTimeMillis();
-        if (now - healLastUsed >= HEAL_COOLDOWN) {
-            performHeal();
-            healLastUsed = now;
-        } else {
-            // Optional: feedback for cooldown
-            long remaining = HEAL_COOLDOWN - (now - healLastUsed);
-            System.out.println("[GreenJeep] Heal on cooldown: " + (remaining / 1000) + "s remaining");
-        }
-    }
-
-    private void performHeal() {
-        if (healAnimationFrames == null) {
-            System.err.println("[GreenJeep] Heal animation frames not loaded!");
-            return;
-        }
-
-        boolean healed = healthBar.heal();
-
-        if (healed) {
-            System.out.println("[GreenJeep] Healed! +1 half bar");
-
-            // ← TRIGGER ANIMATION ─────────────────────────────
-            isHealing = true;
-            healAnimTick = 0;
-            healAnimIndex = 0;
-        } else {
-            System.out.println("[GreenJeep] Already at full health!");
-        }
+        playerBullets.add(new RedJeepProjectile(bx, by, shootFramesSkill1));
     }
 
     // ─────────────────────────────────────────────────────────
@@ -463,32 +470,14 @@ public class GreenJeepVsBoss1State extends State implements StateMethods {
 
         boss.render(g);
 
-        for (GreenJeepProjectile pb : playerBullets) pb.render(g);
+        // ── Player skill1 bullets ──
+        for (RedJeepProjectile pb : playerBullets) pb.render(g);
+
+        // ── Player skill2 slow balls ← RENDER AFTER BOSS ────
+        for (SlowBallProjectile ball : slowBalls) ball.render(g);
 
         player.render(g);
 
-        if (isHealing && healAnimationFrames != null && healAnimIndex < healAnimationFrames.length) {
-
-            BufferedImage healFrame = healAnimationFrames[healAnimIndex];
-
-            if (healFrame != null) {
-
-                float healScale = 2.5f;
-
-                int healW = (int)(GreenJeepProjectile.FRAME_W * Game.SCALE * healScale);
-                int healH = (int)(GreenJeepProjectile.FRAME_H * Game.SCALE * healScale);
-
-                // Center of player hitbox
-                float centerX = player.getHitBox().x + player.getHitBox().width / 2f;
-                float centerY = player.getHitBox().y + player.getHitBox().height / 2f;
-
-                // Center animation on player
-                int healX = (int)(centerX - healW / 2f);
-                int healY = (int)(centerY - healH / 2f);
-
-                g.drawImage(healFrame, healX, healY, healW, healH, null);
-            }
-        }
 
 
         // ── UI bars ───────────────────────────────────────────
@@ -542,13 +531,11 @@ public class GreenJeepVsBoss1State extends State implements StateMethods {
             case KeyEvent.VK_W: player.setUp(true);    break;
             case KeyEvent.VK_S: player.setDown(true);  break;
             case KeyEvent.VK_Q:
-                if (!paused) attemptHeal();  // ← CHANGE to heal
+                if (!paused) attemptSlowBall();
                 break;
-
             case KeyEvent.VK_E:
-                if (!paused) attemptShootGreen();  // ← CHANGE method name
+                if (!paused) attemptShootRed();
                 break;
-
 
         }
     }
@@ -622,16 +609,15 @@ public class GreenJeepVsBoss1State extends State implements StateMethods {
         paused           = false;
         playerDead       = false;
         bossDefeated     = false;
+
         shootCooldown    = 0;
         bulletsRemaining = 0;
         canShoot         = true;
         playerBullets.clear();
 
-        // ── Reset heal state ← UPDATE ──────────────────────────────
-        isHealing = false;
-        healAnimTick = 0;
-        healAnimIndex = 0;
-        healLastUsed = 0;
+        // ── Clear slow balls ← ADD THIS ─────────────────────────
+        slowBalls.clear();
+        skill2LastUsed = 0;
 
         worldOffset      = 0;
         bigCloudOffset   = 0;
@@ -650,3 +636,4 @@ public class GreenJeepVsBoss1State extends State implements StateMethods {
         }}
     public boolean isPaused() { return paused; }
 }
+

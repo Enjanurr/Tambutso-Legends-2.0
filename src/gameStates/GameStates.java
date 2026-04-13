@@ -6,10 +6,18 @@ public enum GameStates {
     OPTIONS,
     INTRO,
     CHAR_SELECT,
-
-    BLUE_JEEP_VS_BOSS1,    // ← ADD
-    RED_JEEP_VS_BOSS1,     // ← ADD
-    GREEN_JEEP_VS_BOSS1,   // ← ADD
+    // Level 1
+    BLUE_JEEP_VS_BOSS1,
+    RED_JEEP_VS_BOSS1,
+    GREEN_JEEP_VS_BOSS1,
+    // Level 2 ← ADD
+    BLUE_JEEP_VS_BOSS2,
+    RED_JEEP_VS_BOSS2,
+    GREEN_JEEP_VS_BOSS2,
+    // Level 3 ← ADD
+    BLUE_JEEP_VS_BOSS3,
+    RED_JEEP_VS_BOSS3,
+    GREEN_JEEP_VS_BOSS3,
     QUIT;
 
     public static GameStates state = MENU;

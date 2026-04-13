@@ -1,7 +1,6 @@
-package BossFight.LevelOne.Green;
+package BossFight.LevelTwo.Green;
 
 import BossFight.BossWalkerManager;
-import BossFight.LevelOne.Green.*;
 import Ui.BossDefeatOverlay;
 import Ui.BossHealthBar;
 import Ui.HealthBar;
@@ -24,7 +23,7 @@ import static utils.Constants.Environment.*;
 import static utils.Constants.UI.URMButtons.*;
 
 
-public class GreenJeepVsBoss1State extends State implements StateMethods {
+public class GreenJeepVsBoss2State extends State implements StateMethods {
 
     // -------------------------------------------------------
     // BOSS FIGHT SETTINGS  ← ADJUST
@@ -106,7 +105,7 @@ public class GreenJeepVsBoss1State extends State implements StateMethods {
     private boolean isHealing = false;
     private static final int HEAL_ANI_SPEED = 70;  // ticks per frame
 
-    public GreenJeepVsBoss1State(Game game, Player player, HealthBar healthBar) {
+    public GreenJeepVsBoss2State(Game game, Player player, HealthBar healthBar) {
         super(game);
         this.player    = player;
         this.healthBar = healthBar;
@@ -181,7 +180,7 @@ public class GreenJeepVsBoss1State extends State implements StateMethods {
                         i * 110,  // ← Use GreenJeepProjectile.FRAME_W (110)
                         0,
                         110,      // ← Use GreenJeepProjectile.FRAME_W (110)
-                       40);     // ← Use GreenJeepProjectile.FRAME_H (40)
+                        40);     // ← Use GreenJeepProjectile.FRAME_H (40)
 
             System.out.println("✓ [GreenJeepBossFightState] Loaded Skill 2 heal frames: " + healAnimationFrames.length);
         } else {
@@ -324,11 +323,11 @@ public class GreenJeepVsBoss1State extends State implements StateMethods {
     // ─────────────────────────────────────────────────────────
     private void handleJeepHit() {
 
-            player.triggerCarStruck();
-            boolean dead = healthBar.takeDamage();  // ← healthBar handles HP
-            if (dead) {
-                playerDead = true;
-                resetDeathOverlay();
+        player.triggerCarStruck();
+        boolean dead = healthBar.takeDamage();  // ← healthBar handles HP
+        if (dead) {
+            playerDead = true;
+            resetDeathOverlay();
 
         }
     }
