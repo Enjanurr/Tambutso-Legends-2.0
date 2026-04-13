@@ -1,0 +1,64 @@
+@startuml
+title Tambutso Legends 2.0 - High-Level Use Case Diagram
+left to right direction
+
+skinparam packageStyle rectangle
+skinparam shadowing false
+
+actor Player
+
+rectangle "Tambutso Legends 2.0" {
+  usecase "Launch Game" as UC_Launch
+  usecase "Browse Main Menu" as UC_Menu
+  usecase "Adjust Audio Options" as UC_Options
+  usecase "Select Driver" as UC_SelectDriver
+  usecase "View Intro / Tutorial" as UC_Intro
+
+  usecase "Play Main Route" as UC_Play
+  usecase "Drive Jeepney" as UC_Drive
+  usecase "Pick Up Passenger" as UC_Pickup
+  usecase "Avoid Enemies and Hazards" as UC_Avoid
+  usecase "Collect Powerups" as UC_Powerups
+  usecase "Track Route Progress" as UC_Progress
+  usecase "Pause / Resume Game" as UC_Pause
+  usecase "Recover From Death" as UC_Death
+
+  usecase "Enter Boss Fight" as UC_BossEnter
+  usecase "Fight Boss" as UC_BossFight
+  usecase "Shoot Boss" as UC_Shoot
+  usecase "Use Shield" as UC_Shield
+  usecase "Defeat Boss or Restart" as UC_BossOutcome
+}
+
+Player --> UC_Launch
+Player --> UC_Menu
+Player --> UC_Options
+Player --> UC_SelectDriver
+Player --> UC_Intro
+Player --> UC_Play
+Player --> UC_Pause
+Player --> UC_Death
+Player --> UC_BossFight
+Player --> UC_BossOutcome
+
+UC_Launch .> UC_Menu : <<include>>
+UC_Menu .> UC_SelectDriver : <<include>>
+UC_SelectDriver .> UC_Intro : <<include>>
+UC_Intro .> UC_Play : <<include>>
+UC_Play .> UC_Drive : <<include>>
+UC_Play .> UC_Pickup : <<include>>
+UC_Play .> UC_Avoid : <<include>>
+UC_Play .> UC_Powerups : <<include>>
+UC_Play .> UC_Progress : <<include>>
+UC_Play .> UC_Pause : <<extend>>
+UC_Play .> UC_Death : <<extend>>
+UC_Progress .> UC_BossEnter : <<include>>
+UC_BossEnter .> UC_BossFight : <<include>>
+UC_BossFight .> UC_Shoot : <<include>>
+UC_BossFight .> UC_Shield : <<include>>
+UC_BossFight .> UC_Pause : <<extend>>
+UC_BossFight .> UC_Death : <<extend>>
+UC_BossFight .> UC_BossOutcome : <<include>>
+UC_Menu .> UC_Options : <<extend>>
+
+@enduml

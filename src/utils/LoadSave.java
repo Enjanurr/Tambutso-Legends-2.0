@@ -42,6 +42,16 @@ public class LoadSave {
 
     // ── Playing state background / stops ───────────────
     public static final String BUS_STOP = "objects/bus_stop.png";
+    public static final String MAP1_KEPCO = "buildings/map1/kepco.png";
+    public static final String MAP1_GAISANO = "buildings/map1/gaisano.png";
+    public static final String MAP1_MARKETPLACE = "buildings/map1/marketplace.png";
+    public static final String MAP2_CITU = "buildings/map2/citu.png";
+    public static final String MAP2_EMALL = "buildings/map2/emall.png";
+    public static final String MAP2_SHOPWISE = "buildings/map2/shopwise.png";
+    public static final String MAP2_STARMALL = "buildings/map2/starmall.png";
+    public static final String MAP2_USJR = "buildings/map2/usjr.png";
+    public static final String MAP3_CATHEDRAL = "buildings/map3/cathedral.png";
+    public static final String MAP3_SMCITY = "buildings/map3/smcity.png";
 
     // ── Menu atlases ─────────────────────────────────────────
     public static final String MENU_BUTTONS        = "ui/buttons/button_atlas.png";

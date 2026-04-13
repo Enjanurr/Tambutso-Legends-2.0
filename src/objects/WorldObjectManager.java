@@ -4,58 +4,79 @@ import entities.WorldObject;
 import main.Game;
 import utils.Constants;
 import utils.LoadSave;
+import utils.RouteMap;
 
 import java.awt.Graphics;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
+import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class WorldObjectManager {
+    public record LandmarkDebugEntry(String label, float x, int y, int width, int height,
+                                     float scale, float xOffset, int anchorY) {}
+
     // Decorative roadside objects can appear immediately at run start and can
     // also spawn from the right edge when a stop-count milestone is reached.
     private static final float SPAWN_X = Game.GAME_WIDTH;
     private static final float INITIAL_BUS_STOP_X = 250f;
-    private static final int BUS_STOP_Y = 215;
+    private static final int BUS_STOP_Y = 175;
     private static final int CLEANUP_INTERVAL_FRAMES = 60;
     private static final int CLEANUP_THRESHOLD = 8;
 
     private final List<WorldObject> worldObjects = new ArrayList<>();
-    private final List<SpawnRule> spawnRules = new ArrayList<>();
+    private final Map<RouteMap, Map<Integer, StopSpawnDefinition>> stopSpawnDefinitions = new EnumMap<>(RouteMap.class);
+    private final BufferedImage busStopImage;
+    private RouteMap currentMap;
     private int cleanupCounter = 0;
 
-    public WorldObjectManager() {
-        loadSpawnRules();
+    public WorldObjectManager(RouteMap initialMap) {
+        currentMap = initialMap;
+        busStopImage = LoadSave.getSpriteAtlas(LoadSave.BUS_STOP);
+        loadStopSpawnDefinitions();
         spawnInitialObjects();
     }
 
-    private void loadSpawnRules() {
-        BufferedImage busStop = LoadSave.getSpriteAtlas(LoadSave.BUS_STOP);
-        if (busStop != null) {
-            // Bus stops appear at run start and again every time a stop sign spawns.
-            spawnRules.add(new SpawnRule(
-                    busStop,
-                    INITIAL_BUS_STOP_X,
-                    BUS_STOP_Y,
-                    Constants.Environment.BUS_STOP_WIDTH,
-                    Constants.Environment.BUS_STOP_HEIGHT,
-                    true,
-                    1,
-                    1
-            ));
+    private void loadStopSpawnDefinitions() {
+        for (RouteMap map : RouteMap.values()) {
+            stopSpawnDefinitions.put(map, new HashMap<>());
         }
 
-        // Register future decorative buildings here with their own stop-count cadence.
-        // Example: spawn at run start only:
-        // spawnRules.add(new SpawnRule(buildingImage, 50f, 140, width, height, true, 0, 0));
-        // Example: first at stop 3, then every 3 stops after that:
-        // spawnRules.add(new SpawnRule(buildingImage, 50f, 140, width, height, false, 3, 3));
+        registerBuilding(RouteMap.MAP_1, 1, true, LoadSave.MAP1_KEPCO, Constants.Landmarks.MAP1_KEPCO);
+        registerBuilding(RouteMap.MAP_1, 3, true, LoadSave.MAP1_MARKETPLACE, Constants.Landmarks.MAP1_MARKETPLACE);
+        registerBuilding(RouteMap.MAP_1, 5, true, LoadSave.MAP1_GAISANO, Constants.Landmarks.MAP1_GAISANO);
+
+        registerBuilding(RouteMap.MAP_2, 1, true, LoadSave.MAP2_CITU, Constants.Landmarks.MAP2_CITU);
+        registerBuilding(RouteMap.MAP_2, 2, true, LoadSave.MAP2_USJR, Constants.Landmarks.MAP2_USJR);
+        registerBuilding(RouteMap.MAP_2, 3, true, LoadSave.MAP2_EMALL, Constants.Landmarks.MAP2_EMALL);
+        registerBuilding(RouteMap.MAP_2, 4, true, LoadSave.MAP2_SHOPWISE, Constants.Landmarks.MAP2_SHOPWISE);
+        registerBuilding(RouteMap.MAP_2, 5, true, LoadSave.MAP2_STARMALL, Constants.Landmarks.MAP2_STARMALL);
+
+        registerBuilding(RouteMap.MAP_3, 2, true, LoadSave.MAP3_CATHEDRAL, Constants.Landmarks.MAP3_CATHEDRAL);
+        registerBuilding(RouteMap.MAP_3, 4, true, LoadSave.MAP3_SMCITY, Constants.Landmarks.MAP3_SMCITY);
     }
 
-    public void onStopSignSpawned(int totalStopsSpawned) {
-        // One stop-sign spawn can fan out into multiple decorative spawns.
-        for (SpawnRule rule : spawnRules) {
-            if (rule.matches(totalStopsSpawned)) {
-                worldObjects.add(rule.spawn());
+    public void setCurrentMap(RouteMap map) {
+        currentMap = map;
+        reset();
+    }
+
+    public RouteMap getCurrentMap() {
+        return currentMap;
+    }
+
+    public void onStopSignSpawned(int stopIndex) {
+        StopSpawnDefinition definition = getDefinition(currentMap, stopIndex);
+
+        if (definition == null || !definition.overrideBusStop()) {
+            spawnBusStop(SPAWN_X);
+        }
+
+        if (definition != null) {
+            for (WorldObject building : definition.spawnBuildings()) {
+                worldObjects.add(building);
             }
         }
     }
@@ -74,6 +95,28 @@ public class WorldObjectManager {
         for (WorldObject obj : snapshot) {
             obj.draw(g);
         }
+    }
+
+    public List<LandmarkDebugEntry> getActiveLandmarkDebugEntries() {
+        List<LandmarkDebugEntry> entries = new ArrayList<>();
+        for (WorldObject obj : worldObjects) {
+            if (!obj.hasDebugInfo() || obj.isRemovable()) {
+                continue;
+            }
+
+            WorldObject.DebugInfo info = obj.getDebugInfo();
+            entries.add(new LandmarkDebugEntry(
+                    info.label(),
+                    obj.getX(),
+                    obj.getDrawY(),
+                    obj.getWidth(),
+                    obj.getHeight(),
+                    info.scale(),
+                    info.xOffset(),
+                    info.anchorY()
+            ));
+        }
+        return entries;
     }
 
     public void reset() {
@@ -113,37 +156,99 @@ public class WorldObjectManager {
 
     private void spawnInitialObjects() {
         // Startup props are restored on construction and after a run reset.
-        for (SpawnRule rule : spawnRules) {
-            if (rule.spawnAtStart()) {
-                worldObjects.add(rule.spawnInitial());
-            }
+        if (busStopImage != null) {
+            spawnBusStop(INITIAL_BUS_STOP_X);
         }
     }
 
-    private record SpawnRule(BufferedImage image, float initialX, int y, int width, int height,
-                             boolean spawnAtStart,
-                             int firstStopCount,
-                             int repeatInterval) {
+    private void spawnBusStop(float x) {
+        worldObjects.add(new WorldObject(
+                x,
+                BUS_STOP_Y,
+                Constants.Environment.BUS_STOP_WIDTH,
+                Constants.Environment.BUS_STOP_HEIGHT,
+                busStopImage
+        ));
+    }
 
-        private boolean matches(int totalStopsSpawned) {
-                if (totalStopsSpawned < firstStopCount) {
-                    return false;
-                }
-
-                if (repeatInterval <= 0) {
-                    // Non-repeating landmarks spawn only once at their first threshold.
-                    return totalStopsSpawned == firstStopCount;
-                }
-
-                return (totalStopsSpawned - firstStopCount) % repeatInterval == 0;
-            }
-
-            private WorldObject spawn() {
-                return new WorldObject(SPAWN_X, y, width, height, image);
-            }
-
-            private WorldObject spawnInitial() {
-                return new WorldObject(initialX, y, width, height, image);
-            }
+    private StopSpawnDefinition getDefinition(RouteMap map, int stopIndex) {
+        Map<Integer, StopSpawnDefinition> byStop = stopSpawnDefinitions.get(map);
+        if (byStop == null) {
+            return null;
         }
+
+        return byStop.get(stopIndex);
+    }
+
+    private void registerBuilding(RouteMap map, int stopIndex, boolean overrideBusStop,
+                                  String imagePath, Constants.Landmarks.LandmarkTuning tuning) {
+        BufferedImage image = LoadSave.getSpriteAtlas(imagePath);
+        if (image == null) {
+            return;
+        }
+
+        int width = Math.max(1, Math.round(image.getWidth() * Game.SCALE * tuning.scale()));
+        int height = Math.max(1, Math.round(image.getHeight() * Game.SCALE * tuning.scale()));
+        BuildingSpawn buildingSpawn = new BuildingSpawn(imagePath, image, tuning.y(), width, height,
+                tuning.scale(), tuning.xOffset());
+
+        Map<Integer, StopSpawnDefinition> byStop = stopSpawnDefinitions.get(map);
+        StopSpawnDefinition existing = byStop.get(stopIndex);
+        if (existing == null) {
+            List<BuildingSpawn> buildings = new ArrayList<>();
+            buildings.add(buildingSpawn);
+            byStop.put(stopIndex, new StopSpawnDefinition(overrideBusStop, buildings));
+            return;
+        }
+
+        existing.buildings().add(buildingSpawn);
+        if (overrideBusStop) {
+            existing.setOverrideBusStop(true);
+        }
+    }
+
+    private static final class StopSpawnDefinition {
+        private boolean overrideBusStop;
+        private final List<BuildingSpawn> buildings;
+
+        private StopSpawnDefinition(boolean overrideBusStop, List<BuildingSpawn> buildings) {
+            this.overrideBusStop = overrideBusStop;
+            this.buildings = buildings;
+        }
+
+        private boolean overrideBusStop() {
+            return overrideBusStop;
+        }
+
+        private void setOverrideBusStop(boolean overrideBusStop) {
+            this.overrideBusStop = overrideBusStop;
+        }
+
+        private List<BuildingSpawn> buildings() {
+            return buildings;
+        }
+
+        private List<WorldObject> spawnBuildings() {
+            List<WorldObject> spawned = new ArrayList<>();
+            for (BuildingSpawn building : buildings) {
+                spawned.add(building.spawn());
+            }
+            return spawned;
+        }
+    }
+
+    private record BuildingSpawn(String label, BufferedImage image, int y, int width, int height,
+                                 float scale, float xOffset) {
+        private WorldObject spawn() {
+            return new WorldObject(
+                    SPAWN_X + xOffset,
+                    y,
+                    width,
+                    height,
+                    image,
+                    new WorldObject.DebugInfo(label, scale, y, xOffset),
+                    true
+            );
+        }
+    }
 }

@@ -16,8 +16,6 @@ public class StopSignManager {
 
     // Tracks which completed world loop last triggered a roadside spawn.
     private int lastSpawnedLoop = -1;
-    private int totalSignsSpawned = 0;
-
     public StopSignManager(Playing playing, WorldObjectManager worldObjectManager) {
         this.playing = playing;
         this.worldObjectManager = worldObjectManager;
@@ -49,10 +47,10 @@ public class StopSignManager {
 
     private void spawnSign() {
         float spawnX = Game.GAME_WIDTH; // spawn just outside the right edge
+        int stopIndex = playing.getWorldLoopCount();
         signs.add(new StopSign(spawnX));
-        totalSignsSpawned++;
         // Decorative roadside props are scheduled off the stop count.
-        worldObjectManager.onStopSignSpawned(totalSignsSpawned);
+        worldObjectManager.onStopSignSpawned(stopIndex);
     }
 
     // ─────────────────────────────────────────────────────────
@@ -70,6 +68,5 @@ public class StopSignManager {
     public void resetAll() {
         signs.clear();
         lastSpawnedLoop = -1;
-        totalSignsSpawned = 0;
     }
 }

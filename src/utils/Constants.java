@@ -24,6 +24,35 @@ public class Constants {
         public static final int BUS_STOP_HEIGHT   = (int)(BUS_STOP_HEIGHT_DEFAULT * Game.SCALE * BUS_STOP_SCALE);
     }
 
+    public static class Landmarks {
+        public record LandmarkTuning(float scale, int y, float xOffset) {}
+
+        // These values are intentionally centralized so landmark alignment can be
+        // tuned without touching spawn logic.
+        public static final LandmarkTuning MAP1_KEPCO =
+                new LandmarkTuning(0.70f, 360, -10f); // 1012x598
+        public static final LandmarkTuning MAP1_GAISANO =
+                new LandmarkTuning(0.70f, 132, 0f);   // 1256x417
+        public static final LandmarkTuning MAP1_MARKETPLACE =
+                new LandmarkTuning(0.50f, 120, -12f); // 1480x552
+
+        public static final LandmarkTuning MAP2_CITU =
+                new LandmarkTuning(0.25f, 132, 0f);   // 827x431
+        public static final LandmarkTuning MAP2_EMALL =
+                new LandmarkTuning(0.23f, 132, -6f);  // 968x377
+        public static final LandmarkTuning MAP2_SHOPWISE =
+                new LandmarkTuning(0.23f, 134, -6f);  // 915x370
+        public static final LandmarkTuning MAP2_STARMALL =
+                new LandmarkTuning(0.18f, 106, -14f); // 1325x641
+        public static final LandmarkTuning MAP2_USJR =
+                new LandmarkTuning(0.22f, 128, -6f);  // 1015x395
+
+        public static final LandmarkTuning MAP3_CATHEDRAL =
+                new LandmarkTuning(0.16f, 82, -18f);  // 1181x837
+        public static final LandmarkTuning MAP3_SMCITY =
+                new LandmarkTuning(0.18f, 124, -10f); // 1734x530
+    }
+
     // ── Person sprites ───────────────────────────────────────
     public static class PersonConstants {
         // Sprite sheet per person: 610 × 120 — 10 columns, 2 rows, each cell 61 × 60 px
