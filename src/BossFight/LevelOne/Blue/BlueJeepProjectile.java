@@ -1,4 +1,4 @@
-package BossFight;
+package BossFight.LevelOne.Blue;
 
 import main.Game;
 
@@ -6,22 +6,21 @@ import java.awt.*;
 import java.awt.image.BufferedImage;
 
 /**
- * Projectile fired by Boss Skill 1.
- * Travels left, animated using Row 0 columns 0-4 of boss1.png.
- * Destroyed when it reaches the left border or hits the jeepney.
+ * Projectile fired by the jeepney's Shoot skill (E key).
+ * Travels right, animated using Row 4, columns 0-3 of the jeepney sprite sheet.
+ * Destroyed when it reaches the right border or hits the boss.
  */
-public class BossProjectile {
+public class BlueJeepProjectile {
 
     // -------------------------------------------------------
     // PROJECTILE SETTINGS  ← ADJUST
     // -------------------------------------------------------
-    public static final float TRAVEL_SPEED = 2f;  // pixels per tick (pre-scale)
-    public static final int   ANI_SPEED    = 6;   // ticks per frame ← ADJUST
-    // Boss bullet frame dimensions (from boss1.png Row 0)
-    public static final int   FRAME_W     = 110;
-    public static final int   FRAME_H     = 79;
-    public static final int   FRAME_COUNT = 5;
-
+    public static final float TRAVEL_SPEED   = 2f;   // pixels per tick (pre-scale)
+    public static final int   ANI_SPEED      = 22;    // ticks per frame
+    public static final int   FRAME_W        = 110;  // matches jeepney sprite sheet cell
+    public static final int   FRAME_H        = 40;
+    public static final int   FRAME_COUNT    = 4;    // columns 0-3 of Row 4
+    public static final int   SPRITE_ROW     = 4;
     // -------------------------------------------------------
 
     private float x, y;
@@ -32,7 +31,7 @@ public class BossProjectile {
     private int aniTick  = 0;
     private int aniIndex = 0;
 
-    public BossProjectile(float startX, float startY, BufferedImage[] frames) {
+    public BlueJeepProjectile(float startX, float startY, BufferedImage[] frames) {
         this.x      = startX;
         this.y      = startY;
         this.width  = (int)(FRAME_W * Game.SCALE);
@@ -41,8 +40,8 @@ public class BossProjectile {
     }
 
     public void update() {
-        x -= TRAVEL_SPEED * Game.SCALE;
-        if (x + width < 0) active = false;
+        x += TRAVEL_SPEED * Game.SCALE;
+        if (x > Game.GAME_WIDTH) active = false;
 
         aniTick++;
         if (aniTick >= ANI_SPEED) {
@@ -57,10 +56,9 @@ public class BossProjectile {
 
     }
 
-    /** Inset hitbox for fairer collision feel. */
-    private static final float HB_INSET_PERCENT = 0.8f;
-    private static final int X_OFFSET = 0;  // Negative = left, Positive = right
-    private static final int Y_OFFSET = 30; // Negative = up, Positive = down
+    private static final float HB_INSET_PERCENT = 0.7f;
+    private static final int X_OFFSET = -30;  // Negative = left, Positive = right
+    private static final int Y_OFFSET = 20; // Negative = up, Positive = down
 
     public Rectangle getHitbox() {
         int insetX = (int)(width * HB_INSET_PERCENT / 2);
@@ -71,7 +69,8 @@ public class BossProjectile {
                 width - (insetX * 2),
                 height - (insetY * 2));
     }
-
-    public boolean isActive()           { return active; }
+    public boolean isActive() { return active; }
     public void    setActive(boolean v) { active = v; }
+    public float   getX() { return x; }
+    public float   getY() { return y; }
 }

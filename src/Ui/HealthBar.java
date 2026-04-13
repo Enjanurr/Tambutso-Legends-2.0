@@ -66,6 +66,14 @@ public class HealthBar {
                         col * FRAME_W, row * FRAME_H, FRAME_W, FRAME_H);
     }
 
+
+    public boolean heal() {
+        if (hitStep <= 0) return false; // already full HP
+
+        hitStep--;
+
+        return true;
+    }
     // ─────────────────────────────────────────────────────────
     // DAMAGE / HEAL
     // ─────────────────────────────────────────────────────────
@@ -83,9 +91,7 @@ public class HealthBar {
      * Reverses one damage step (Heal powerup).
      * Does nothing at full health.
      */
-    public void heal() {
-        if (hitStep > 0) hitStep--;
-    }
+
 
     /** Resets to full health. */
     public void reset() {

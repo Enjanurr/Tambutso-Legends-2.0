@@ -26,8 +26,16 @@ public class MouseInputs implements MouseListener, MouseMotionListener {
             case PLAYING:
                 gamePanel.getGame().getPlaying().mouseClicked(e);
                 break;
-            case BOSS_FIGHT:
-                gamePanel.getGame().getBossFightState().mouseClicked(e);
+            case BLUE_JEEP_VS_BOSS1:
+                gamePanel.getGame().getBlueJeepVsBoss1State().mouseClicked(e);
+                break;
+
+            case RED_JEEP_VS_BOSS1:
+                gamePanel.getGame().getRedJeepVsBoss1State().mouseClicked(e);
+                break;
+
+            case GREEN_JEEP_VS_BOSS1:
+                gamePanel.getGame().getGreenJeepVsBoss1State().mouseClicked(e);
                 break;
             default:
                 break;
@@ -52,8 +60,16 @@ public class MouseInputs implements MouseListener, MouseMotionListener {
             case PLAYING:
                 gamePanel.getGame().getPlaying().mousePressed(e);
                 break;
-            case BOSS_FIGHT:
-                gamePanel.getGame().getBossFightState().mousePressed(e);
+            case BLUE_JEEP_VS_BOSS1:
+                gamePanel.getGame().getBlueJeepVsBoss1State().mousePressed(e);
+                break;
+
+            case RED_JEEP_VS_BOSS1:
+                gamePanel.getGame().getRedJeepVsBoss1State().mousePressed(e);
+                break;
+
+            case GREEN_JEEP_VS_BOSS1:
+                gamePanel.getGame().getGreenJeepVsBoss1State().mousePressed(e);
                 break;
             default:
                 break;
@@ -78,8 +94,16 @@ public class MouseInputs implements MouseListener, MouseMotionListener {
             case PLAYING:
                 gamePanel.getGame().getPlaying().mouseReleased(e);
                 break;
-            case BOSS_FIGHT:
-                gamePanel.getGame().getBossFightState().mouseReleased(e);
+            case BLUE_JEEP_VS_BOSS1:
+                gamePanel.getGame().getBlueJeepVsBoss1State().mouseReleased(e);
+                break;
+
+            case RED_JEEP_VS_BOSS1:
+                gamePanel.getGame().getRedJeepVsBoss1State().mouseReleased(e);
+                break;
+
+            case GREEN_JEEP_VS_BOSS1:
+                gamePanel.getGame().getGreenJeepVsBoss1State().mouseReleased(e);
                 break;
             default:
                 break;
@@ -98,9 +122,16 @@ public class MouseInputs implements MouseListener, MouseMotionListener {
             case PLAYING:
                 gamePanel.getGame().getPlaying().mouseDragged(e);
                 break;
-            case BOSS_FIGHT:
-                // Routes to pause overlay volume slider when paused
-                gamePanel.getGame().getBossFightState().mouseDragged(e);
+            case BLUE_JEEP_VS_BOSS1:
+                gamePanel.getGame().getBlueJeepVsBoss1State().mouseDragged(e);
+                break;
+
+            case RED_JEEP_VS_BOSS1:
+                gamePanel.getGame().getRedJeepVsBoss1State().mouseDragged(e);
+                break;
+
+            case GREEN_JEEP_VS_BOSS1:
+                gamePanel.getGame().getGreenJeepVsBoss1State().mouseDragged(e);
                 break;
             default:
                 break;
@@ -125,8 +156,16 @@ public class MouseInputs implements MouseListener, MouseMotionListener {
             case PLAYING:
                 gamePanel.getGame().getPlaying().mouseMoved(e);
                 break;
-            case BOSS_FIGHT:
-                gamePanel.getGame().getBossFightState().mouseMoved(e);
+            case BLUE_JEEP_VS_BOSS1:
+                gamePanel.getGame().getBlueJeepVsBoss1State().mouseMoved(e);
+                break;
+
+            case RED_JEEP_VS_BOSS1:
+                gamePanel.getGame().getRedJeepVsBoss1State().mouseMoved(e);
+                break;
+
+            case GREEN_JEEP_VS_BOSS1:
+                gamePanel.getGame().getGreenJeepVsBoss1State().mouseMoved(e);
                 break;
             default:
                 break;

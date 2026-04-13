@@ -250,7 +250,7 @@ public class Playing extends State implements StateMethods {
     @Override
     public void update() {
         // ── SKIP_TO_BOSS: uncomment the block below to skip loops ──
-        //if (true) { game.startBossFight(); return; }
+        if (true) { game.startBossFight(); return; }
 
         if (playerDead) {
             deathOverlay.update();

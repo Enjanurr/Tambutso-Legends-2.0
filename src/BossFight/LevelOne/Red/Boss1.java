@@ -1,5 +1,6 @@
-package BossFight;
+package BossFight.LevelOne.Red;
 
+import BossFight.LevelOne.GarbagePile;
 import main.Game;
 import utils.LoadSave;
 
@@ -8,26 +9,6 @@ import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
-
-/**
- * Boss 1 — Garbage Truck
- *
- * Sprite sheet: boss1.png  550 × 316,  4 rows
- *   Row 0  – Skill 1 / Shoot  (5 cols,  each 110 × 79)  ← bullet frames only, NOT drawn on boss
- *   Row 1  – Running          (5 cols)
- *   Row 2  – Skill 2 / Lay    (5 cols: col 0-3 tailgate anim; col 4 = trash pile image only)
- *   Row 3  – Being Hit        (2 cols)
- *
- * Tweaks applied:
- *   T1 – Scroll speed: constant, defined in BOSS_SCROLL_SPEED.
- *   T2 – Boss X is locked near the right border; Y is lane-clamped always.
- *   T3 – During wait phases boss moves randomly up/down within road lanes.
- *         During Skill 1 & 2 boss follows jeep Y (lane-clamped).
- *   T4 – Bullets spawn from the front (left edge) of the boss at boss centre Y.
- *         Bullets are lane-clamped before firing.
- *   T5 – Skill 2: col 0 → loop cols 1-2 while laying piles → col 3 once → back to ROW_RUNNING.
- *         Pile Y is aligned to the boss's current lane. Pile never lands on sidewalk.
- */
 public class Boss1 {
 
     // ── Sprite sheet dimensions ───────────────────────────────
@@ -85,7 +66,7 @@ public class Boss1 {
     private static final int S2_PILE_DELAY  = 60;  // ticks between pile spawns
     // ─────────────────────────────────────────────────────────
 
-    // ── Tweak 2: vertical pile spacing ← ADJUST ──────────────    
+    // ── Tweak 2: vertical pile spacing ← ADJUST ──────────────
     // -------------------------------------------------------
     /** Vertical gap between the 3 garbage piles (pre-scale pixels). */
     private static final float PILE_VERTICAL_GAP = 50f;
@@ -167,12 +148,29 @@ public class Boss1 {
     private int   wanderInterval   = 80;
 
     // ── Spawned objects ───────────────────────────────────────
-    private final List<BossProjectile> bullets = new ArrayList<>();
+    private final List<GarbagePile.BossProjectile> bullets = new ArrayList<>();
     private final List<GarbagePile>    piles   = new ArrayList<>();
     private BufferedImage[]            bulletFrames;
     private BufferedImage              pileImage;
 
     private final Random rng = new Random();
+   // __________________________
+    // Stun Effect
+    //_________________
+    private boolean stunned = false;
+    private int stunTick = 0;
+    private static final int STUN_DURATION = 3 * 200; // 3 seconds
+
+    //___________________
+    // ── Slow effect constants ← CORRECTED ───────────────────
+    private static final int   SLOW_DURATION = 3 * 200;     // 3 seconds at 200 UPS
+    private static final float SLOW_SPEED_MULT = 0.5f;      // 50% movement speed
+    private static final float SLOW_FIRE_MULT = 1.5f;       // 50% slower firing (1.5x delay multiplier)
+
+    // ── Slow state tracking ────────────────────────────────
+    private boolean slowed = false;
+    private int slowTick = 0;
+    //_______________
 
     // ─────────────────────────────────────────────────────────
     public Boss1(float startX, float startY) {
@@ -214,6 +212,29 @@ public class Boss1 {
         pileImage = frames[ROW_SKILL2][4];
     }
 
+    private void updateStunState() {
+
+        currentRow = ROW_HIT;   // reuse hit animation (visual feedback)
+
+        stunTick++;
+
+        // ❄️ During stun: freeze movement + suppress attacks
+        // (IMPORTANT: do NOT call wanderY or followJeepY)
+
+        if (stunTick >= STUN_DURATION) {
+            stunned = false;
+            stunTick = 0;
+        }
+
+        // still allow hit animation exit logic if needed
+        hitTick++;
+        if (hitTick >= HIT_ANIM_TICKS) {
+            hitTick = 0;
+            state = stateAfterHit;
+            stateTick = 0;
+        }
+    }
+
     private float clampY(float candidateY) {
         if (candidateY < laneTopY)  candidateY = laneTopY;
         if (candidateY > laneBotY)  candidateY = laneBotY;
@@ -230,7 +251,44 @@ public class Boss1 {
         updateAnimation();
     }
 
+
+    // ─────────────────────────────────────────────────────────
+    // Jeep skill effect
+    // ─────────────────────────────────────────────────────────
+
+    // ── Public API for applying slow effect ─────────────────
+    // ── Public API for applying slow effect ─────────────────
+    public void applySlowEffect() {
+        slowed = true;
+        slowTick = 0;
+        System.out.println("[Boss1] Slowed! Duration: 3 seconds. Movement & firing reduced by 50%.");
+    }
+
+
+
+    public boolean isSlowed() {
+        return slowed;
+    }
+    public void applyStun() {
+        stunned = true;
+        stunTick = 0;
+    }
     private void updateStateMachine(float jeepX, float jeepY) {
+        if (stunned) {
+            updateStunState();
+            return;
+        }
+
+        // ── Handle slow effect timer ────────────────────────────
+        if (slowed) {
+            slowTick++;
+            if (slowTick >= SLOW_DURATION) {
+                slowed = false;
+                slowTick = 0;
+                System.out.println("[Boss1] Slow effect expired.");
+            }
+        }
+
         stateTick++;
         x = lockedX;
 
@@ -244,12 +302,12 @@ public class Boss1 {
                 break;
 
             // ── SKILL1: reposition first, then fire ───────────
+            // ── SKILL1: reposition first, then fire ───────────
             case SKILL1:
-                currentRow = ROW_RUNNING;   // running animation throughout
+                currentRow = ROW_RUNNING;
 
                 if (!skill1Firing) {
-                    // ── Sub-phase A: run toward target Y ─────────
-                    // jeepY is now the CENTRE of the jeep hitbox (passed from BossFightState)
+                    // ── Sub-phase A: run toward target Y ─────────────
                     skill1TargetY = jeepY;
                     followJeepY(skill1TargetY);
 
@@ -258,24 +316,34 @@ public class Boss1 {
                     float diff = Math.abs(bossCentreY - skill1TargetY);
                     if (diff <= ALIGN_THRESHOLD) {
                         // Snap boss centre exactly onto target and begin firing
-                        y             = clampY(skill1TargetY - height / 2f);
-                        skill1Firing  = true;
-                        bulletTick    = BULLET_DELAY; // fire first bullet immediately
+                        y = clampY(skill1TargetY - height / 2f);
+                        skill1Firing = true;
+
+                        // ── Apply slow multiplier to first bullet delay ──
+                        int effectiveDelay = slowed
+                                ? (int)(BULLET_DELAY * SLOW_FIRE_MULT)
+                                : BULLET_DELAY;
+                        bulletTick = effectiveDelay;
                     }
                 } else {
                     // ── Sub-phase B: fire bullets at jeep hitbox centre ──
-                    // Keep gently tracking so we stay on target if jeep moves
                     followJeepY(jeepY);
 
                     bulletTick++;
-                    if (bulletTick >= BULLET_DELAY && bulletsFired < MAX_BULLETS) {
+
+                    // ── Apply slow multiplier to bullet delay ────────────
+                    int effectiveDelay = slowed
+                            ? (int)(BULLET_DELAY * SLOW_FIRE_MULT)
+                            : BULLET_DELAY;
+
+                    if (bulletTick >= effectiveDelay && bulletsFired < MAX_BULLETS) {
                         fireBullet();
-                        bulletTick   = 0;
+                        bulletTick = 0;
                         bulletsFired++;
                     }
                 }
 
-                if (stateTick >= SKILL1_TICKS) enterWait(BossState.WAIT_AFTER1);
+                if (stateTick >= SKILL1_TICKS) enterSkill1();
                 break;
 
             // ── WAIT after Skill 1: wander freely (Tweak 1) ──
@@ -317,25 +385,37 @@ public class Boss1 {
 
     // ── Vertical movement ─────────────────────────────────────
     /** Smooth lerp — aligns the BOSS'S CENTRE to the jeep hitbox centre Y. */
+    /** Smooth lerp — aligns the BOSS'S CENTRE to the jeep hitbox centre Y. */
+    /** Smooth lerp — aligns the BOSS'S CENTRE to the jeep hitbox centre Y. */
     private void followJeepY(float jeepCenterY) {
+        // ── Apply slow multiplier to lerp speed ────────────────
+        float baseLerp = FOLLOW_Y_DELAY;
+        float effectiveLerp = slowed ? baseLerp * SLOW_SPEED_MULT : baseLerp;
+
         // Convert: we want (y + height/2) to approach jeepCenterY
         float targetTopY = jeepCenterY - height / 2f;
-        y += (targetTopY - y) * FOLLOW_Y_DELAY;
-        y  = clampY(y);
+        y += (targetTopY - y) * effectiveLerp;
+        y = clampY(y);
     }
 
+    /** Free random wander — used in all other states. */
+    /** Free random wander — used in all other states. */
     /** Free random wander — used in all other states. */
     private void wanderY() {
         wanderChangeTick++;
         if (wanderChangeTick >= wanderInterval) {
             wanderChangeTick = 0;
-            wanderInterval   = WANDER_CHANGE_MIN + rng.nextInt(WANDER_CHANGE_MAX - WANDER_CHANGE_MIN);
+            wanderInterval = WANDER_CHANGE_MIN + rng.nextInt(WANDER_CHANGE_MAX - WANDER_CHANGE_MIN);
             int roll = rng.nextInt(3);
             wanderDir = (roll == 0) ? -1f : (roll == 1) ? 1f : 0f;
         }
 
-        float nextY = y + wanderDir * WANDER_SPEED * Game.SCALE;
-        if (nextY < laneTopY) { nextY = laneTopY; wanderDir = 1f;  }
+        // ── Apply slow multiplier to movement speed ────────────
+        float baseSpeed = WANDER_SPEED * Game.SCALE;
+        float effectiveSpeed = slowed ? baseSpeed * SLOW_SPEED_MULT : baseSpeed;
+
+        float nextY = y + wanderDir * effectiveSpeed;
+        if (nextY < laneTopY) { nextY = laneTopY; wanderDir = 1f; }
         else if (nextY > laneBotY) { nextY = laneBotY; wanderDir = -1f; }
         y = nextY;
     }
@@ -462,7 +542,7 @@ public class Boss1 {
      */
     private void fireBullet() {
         float bx      = x;                              // left edge of boss → travels left
-        float bulletH = BossProjectile.FRAME_H * Game.SCALE;
+        float bulletH = GarbagePile.BossProjectile.FRAME_H * Game.SCALE;
         // Boss centre Y — this is already aligned to jeep hitbox centre during Skill 1
         float byCentre = y + height / 2f - bulletH / 2f;
 
@@ -472,7 +552,7 @@ public class Boss1 {
         if (byCentre < bulletTopLimit) byCentre = bulletTopLimit;
         if (byCentre > bulletBotLimit) byCentre = bulletBotLimit;
 
-        bullets.add(new BossProjectile(bx, byCentre, bulletFrames));
+        bullets.add(new GarbagePile.BossProjectile(bx, byCentre, bulletFrames));
     }
 
     /**
@@ -541,7 +621,7 @@ public class Boss1 {
         if (frame != null)
             g.drawImage(frame, (int) x, (int) y, width, height, null);
 
-        for (BossProjectile b : bullets) b.render(g);
+        for (GarbagePile.BossProjectile b : bullets) b.render(g);
     }
 
     // ─────────────────────────────────────────────────────────
@@ -561,7 +641,7 @@ public class Boss1 {
                 height - (insetY * 2));
     }
 
-    public List<BossProjectile> getBullets()      { return bullets; }
+    public List<GarbagePile.BossProjectile> getBullets()      { return bullets; }
     public List<GarbagePile>    getGarbagePiles() { return piles;   }
     public float getX() { return x; }
     public float getY() { return y; }

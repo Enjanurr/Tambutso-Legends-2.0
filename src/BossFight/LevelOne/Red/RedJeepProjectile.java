@@ -1,7 +1,6 @@
-package BossFight;
+package BossFight.LevelOne.Red;
 
 import main.Game;
-import utils.LoadSave;
 
 import java.awt.*;
 import java.awt.image.BufferedImage;
@@ -11,7 +10,7 @@ import java.awt.image.BufferedImage;
  * Travels right, animated using Row 4, columns 0-3 of the jeepney sprite sheet.
  * Destroyed when it reaches the right border or hits the boss.
  */
-public class PlayerProjectile {
+public class RedJeepProjectile {
 
     // -------------------------------------------------------
     // PROJECTILE SETTINGS  ← ADJUST
@@ -32,7 +31,7 @@ public class PlayerProjectile {
     private int aniTick  = 0;
     private int aniIndex = 0;
 
-    public PlayerProjectile(float startX, float startY, BufferedImage[] frames) {
+    public RedJeepProjectile(float startX, float startY, BufferedImage[] frames) {
         this.x      = startX;
         this.y      = startY;
         this.width  = (int)(FRAME_W * Game.SCALE);

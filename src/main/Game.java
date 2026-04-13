@@ -5,8 +5,11 @@ import java.awt.Graphics;
 import entities.DriverProfile;
 import gameStates.*;
 import Ui.IntroOverlay;
-import BossFight.BossFightState;
+import BossFight.LevelOne.Blue.BlueJeepVsBoss1State;
+import BossFight.LevelOne.Red.RedJeepVsBoss1State;
+import BossFight.LevelOne.Green.GreenJeepVsBoss1State;
 import utils.AudioPlayer;
+import gameStates.BossFightMatchmaker;
 
 public class Game implements Runnable {
     private GameWindow    gameWindow;
@@ -19,7 +22,9 @@ public class Game implements Runnable {
     private Menu          menu;
     private Options       options;
     private IntroOverlay  introOverlay;
-    private BossFightState bossFightState;
+    private BlueJeepVsBoss1State blueJeepVsBoss1State;
+    private RedJeepVsBoss1State redJeepVsBoss1State;
+    private GreenJeepVsBoss1State greenJeepVsBoss1State;
     private final AudioPlayer audioPlayer;
     private CharSelectState charSelectState;
     private String activeMusicTrack;
@@ -32,6 +37,11 @@ public class Game implements Runnable {
     public final static int   GAME_WIDTH         = TILES_SIZE * TILES_IN_WIDTH;
     public final static int   GAME_HEIGHT        = TILES_SIZE * TILES_IN_HEIGHT;
     private DriverProfile selectedDriver;  // add this field
+    // ── Boss Fight Matchmaker ─────────────────────────────────
+    private BossFightMatchmaker bossFightMatchmaker;
+    private int currentBossLevel = 1; // Current boss level (1, 2, 3...)
+
+
 
     public Game() {
         audioPlayer = new AudioPlayer();
@@ -58,8 +68,23 @@ public class Game implements Runnable {
         playing       = new Playing(this);
         charSelectState = new CharSelectState(this);
         introOverlay  = new IntroOverlay();
-        // BossFightState shares the Player and HealthBar from Playing
-        bossFightState = new BossFightState(this,
+
+        // BossFightStates share the Player and HealthBar from Playing
+        blueJeepVsBoss1State = new BlueJeepVsBoss1State(this,
+                playing.getPlayer(),
+                playing.getHealthBar());
+
+        // ── Initialize Red and Green boss fight states ← ADD ─────
+        redJeepVsBoss1State = new RedJeepVsBoss1State(this,
+                playing.getPlayer(),
+                playing.getHealthBar());
+
+        greenJeepVsBoss1State = new GreenJeepVsBoss1State(this,
+                playing.getPlayer(),
+                playing.getHealthBar());
+
+        // ── Initialize matchmaker ← ADD ─────────────────────────
+        bossFightMatchmaker = new BossFightMatchmaker(this,
                 playing.getPlayer(),
                 playing.getHealthBar());
     }
@@ -81,6 +106,7 @@ public class Game implements Runnable {
     }
 
     /** Called by Playing when all 15 loops complete. */
+    /** Called by Playing when all 15 loops complete. */
     public void startBossFight() {
         System.out.println("═══════════════════════════════");
         System.out.println("🏁 STARTING BOSS FIGHT");
@@ -88,13 +114,58 @@ public class Game implements Runnable {
                 (selectedDriver != null ? selectedDriver.displayName : "NULL"));
         System.out.println("═══════════════════════════════");
 
-        bossFightState.resetAll();
+        // ── Use matchmaker to route to correct boss fight ← CHANGE ──
+        startLevel1BossFight();
+    }
 
-        if (selectedDriver != null) {
-            bossFightState.applyDriverAssets(selectedDriver);
+    /**
+     * Starts boss fight for the selected driver and level.
+     * Called from IntroOverlay or level complete screen.
+     */
+    public void startBossFightWithLevel(int levelIndex) {
+        if (selectedDriver == null) {
+            System.err.println("❌ [Game] Cannot start boss fight - no driver selected!");
+            GameStates.state = GameStates.MENU;
+            return;
         }
 
-        GameStates.state = GameStates.BOSS_FIGHT;
+        currentBossLevel = levelIndex;
+
+        System.out.println("🎮 [Game] Starting Boss Fight - Level " + levelIndex +
+                " - Driver: " + selectedDriver.displayName);
+
+        // Route to correct state based on driver
+        switch (selectedDriver.id) {
+            case "driver_3": // Kuya Ben (Blue Jeep)
+                blueJeepVsBoss1State.resetAll();
+                blueJeepVsBoss1State.applyDriverAssets(selectedDriver);
+                GameStates.state = GameStates.BLUE_JEEP_VS_BOSS1;
+                break;
+
+            case "driver_1": // Manong Ricky (Red Jeep)
+                redJeepVsBoss1State.resetAll();
+                redJeepVsBoss1State.applyDriverAssets(selectedDriver);
+                GameStates.state = GameStates.RED_JEEP_VS_BOSS1;
+                break;
+
+            case "driver_2": // Ate Gloria (Green Jeep)
+                greenJeepVsBoss1State.resetAll();
+                greenJeepVsBoss1State.applyDriverAssets(selectedDriver);
+                GameStates.state = GameStates.GREEN_JEEP_VS_BOSS1;
+                break;
+
+            default:
+                System.err.println("❌ [Game] Unknown driver: " + selectedDriver.id);
+                GameStates.state = GameStates.MENU;
+                break;
+        }
+    }
+
+    /**
+     * Quick start Level 1 boss fight (most common).
+     */
+    public void startLevel1BossFight() {
+        startBossFightWithLevel(1);
     }
 
     public void update() {
@@ -110,7 +181,6 @@ public class Game implements Runnable {
                 if (done) {
                     GameStates.state = GameStates.PLAYING;
 
-                    // ✨ DEBUG OUTPUT
                     System.out.println("───────────────────────────────");
                     System.out.println("INTRO COMPLETE");
                     System.out.println("Selected Driver: " +
@@ -126,9 +196,22 @@ public class Game implements Runnable {
                 gamePanel.updateFade();
                 playing.update();
                 break;
-            case BOSS_FIGHT:
-                bossFightState.update();
+
+            // ── Boss Fight States ← CHANGE/ADD ──────────────────
+            case BLUE_JEEP_VS_BOSS1:
+                blueJeepVsBoss1State.update();
                 break;
+
+            case RED_JEEP_VS_BOSS1:
+                redJeepVsBoss1State.update();
+                break;
+
+            case GREEN_JEEP_VS_BOSS1:
+                greenJeepVsBoss1State.update();
+                break;
+
+
+
             case OPTIONS:
                 options.update();
                 break;
@@ -170,8 +253,15 @@ public class Game implements Runnable {
                 return "menu";
             case PLAYING:
                 return playing.isPaused() ? "menu" : "main";
-            case BOSS_FIGHT:
-                return bossFightState.isPaused() ? "menu" : "main";
+            case BLUE_JEEP_VS_BOSS1:
+                return blueJeepVsBoss1State.isPaused() ? "menu" : "main";
+
+            case RED_JEEP_VS_BOSS1:
+                return redJeepVsBoss1State.isPaused() ? "menu" : "main";
+
+            case GREEN_JEEP_VS_BOSS1:
+                return greenJeepVsBoss1State.isPaused() ? "menu" : "main";
+
             case QUIT:
             default:
                 return "none";
@@ -187,15 +277,28 @@ public class Game implements Runnable {
                 menu.draw(g);
                 break;
             case INTRO:
-                menu.draw(g);                  // optional background/menu layer
+                menu.draw(g);
                 introOverlay.render(g);
                 break;
             case PLAYING:
                 playing.draw(g);
                 break;
-            case BOSS_FIGHT:
-                bossFightState.draw(g);
+
+            // ── Boss Fight States ← CHANGE/ADD ──────────────────
+            case BLUE_JEEP_VS_BOSS1:
+                blueJeepVsBoss1State.draw(g);
                 break;
+
+            case RED_JEEP_VS_BOSS1:
+                redJeepVsBoss1State.draw(g);
+                break;
+
+            case GREEN_JEEP_VS_BOSS1:
+                greenJeepVsBoss1State.draw(g);
+                break;
+
+
+
             case OPTIONS:
                 options.draw(g);
                 break;
@@ -203,7 +306,6 @@ public class Game implements Runnable {
                 break;
         }
     }
-// In Game.java
 
 
     public void onJeepLooped() {
@@ -246,7 +348,30 @@ public class Game implements Runnable {
     public Options         getOptions()        { return options; }
     public Playing         getPlaying()        { return playing; }
     public IntroOverlay    getIntroOverlay()   { return introOverlay; }
-    public BossFightState  getBossFightState() { return bossFightState; }
+    public BlueJeepVsBoss1State getBossFightState() { return blueJeepVsBoss1State; }
     public AudioPlayer     getAudioPlayer()    { return audioPlayer; }
     public CharSelectState getCharSelectState() { return charSelectState; }
+
+    public BossFightMatchmaker getBossFightMatchmaker() {
+        return bossFightMatchmaker;
+    }
+
+    public int getCurrentBossLevel() {
+        return currentBossLevel;
+    }
+
+    public RedJeepVsBoss1State getRedJeepVsBoss1State() {
+        return redJeepVsBoss1State;
+    }
+
+    public GreenJeepVsBoss1State getGreenJeepVsBoss1State() {
+        return greenJeepVsBoss1State;
+    }
+
+    // RENAME THIS GETTER for consistency:
+// OLD: public BlueJeepVsBoss1State getBossFightState()
+// NEW:
+    public BlueJeepVsBoss1State getBlueJeepVsBoss1State() {
+        return blueJeepVsBoss1State;
+    }
 }

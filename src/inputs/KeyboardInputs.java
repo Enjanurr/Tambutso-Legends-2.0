@@ -10,7 +10,6 @@ import main.GamePanel;
 public class KeyboardInputs implements KeyListener {
     private GamePanel gamePanel;
 
-
     public KeyboardInputs(GamePanel gamePanel) {
         this.gamePanel = gamePanel;
     }
@@ -32,9 +31,25 @@ public class KeyboardInputs implements KeyListener {
             case PLAYING:
                 gamePanel.getGame().getPlaying().keyReleased(e);
                 break;
-            case BOSS_FIGHT:
-                gamePanel.getGame().getBossFightState().keyReleased(e);
+
+            // ── Boss Fight States ← CHANGE ──────────────────────
+            case BLUE_JEEP_VS_BOSS1:
+                gamePanel.getGame().getBlueJeepVsBoss1State().keyReleased(e);
                 break;
+
+            case RED_JEEP_VS_BOSS1:
+                gamePanel.getGame().getRedJeepVsBoss1State().keyReleased(e);
+                break;
+
+            case GREEN_JEEP_VS_BOSS1:
+                gamePanel.getGame().getGreenJeepVsBoss1State().keyReleased(e);
+                break;
+
+            // REMOVE THIS OLD CASE:
+            // case BOSS_FIGHT:
+            //     gamePanel.getGame().getBossFightState().keyReleased(e);
+            //     break;
+
             default:
                 break;
         }
@@ -45,7 +60,6 @@ public class KeyboardInputs implements KeyListener {
         switch (GameStates.state) {
             case CHAR_SELECT:
                 gamePanel.getGame().getCharSelectState().keyPressed(e);
-
                 break;
             case MENU:
                 gamePanel.getGame().getMenu().keyPressed(e);
@@ -56,9 +70,25 @@ public class KeyboardInputs implements KeyListener {
             case PLAYING:
                 gamePanel.getGame().getPlaying().keyPressed(e);
                 break;
-            case BOSS_FIGHT:
-                gamePanel.getGame().getBossFightState().keyPressed(e);
+
+            // ── Boss Fight States ← CHANGE ──────────────────────
+            case BLUE_JEEP_VS_BOSS1:
+                gamePanel.getGame().getBlueJeepVsBoss1State().keyPressed(e);
                 break;
+
+            case RED_JEEP_VS_BOSS1:
+                gamePanel.getGame().getRedJeepVsBoss1State().keyPressed(e);
+                break;
+
+            case GREEN_JEEP_VS_BOSS1:
+                gamePanel.getGame().getGreenJeepVsBoss1State().keyPressed(e);
+                break;
+
+            // REMOVE THIS OLD CASE:
+            // case BOSS_FIGHT:
+            //     gamePanel.getGame().getBossFightState().keyPressed(e);
+            //     break;
+
             default:
                 break;
         }

@@ -9,9 +9,11 @@ import java.io.InputStream;
 public class LoadSave {
 
     // ── Core atlases ─────────────────────────────────────────
-   //  public static final String PLAYER_ATLAS = "/characters/player/red_jeep.png";
+
     public static final String PLAYER_ATLAS_1 = "characters/player/red_jeep.png";
     public static final String PLAYER_ATLAS_2 = "characters/player/green_jeep.png";
+    public static final String GREEN_JEEP_SKILL1 = "characters/player/greenjeep_skill1.png";
+    public static final String GREEN_JEEP_SKILL2 = "characters/player/greenjeep_skill2.png";
     public static final String PLAYER_ATLAS_3 = "characters/player/blue_jeep.png";
     public static final String CHAR_SELECT_BG = "backgrounds/menu/background_menu.png";
     public static final String CHAR_BG = "backgrounds/menu/menu_background.png";
