@@ -37,9 +37,6 @@ public class MouseInputs implements MouseListener, MouseMotionListener {
             case OPTIONS:
                 gamePanel.getGame().getOptions().mousePressed(e);
                 break;
-            case INTRO:
-                gamePanel.getGame().getIntroOverlay().mousePressed(e);
-                break;
             case PLAYING:
                 gamePanel.getGame().getPlaying().mousePressed(e);
                 break;
@@ -59,9 +56,6 @@ public class MouseInputs implements MouseListener, MouseMotionListener {
                 break;
             case OPTIONS:
                 gamePanel.getGame().getOptions().mouseReleased(e);
-                break;
-            case INTRO:
-                gamePanel.getGame().getIntroOverlay().mouseReleased(e);
                 break;
             case PLAYING:
                 gamePanel.getGame().getPlaying().mouseReleased(e);
@@ -87,7 +81,6 @@ public class MouseInputs implements MouseListener, MouseMotionListener {
                 gamePanel.getGame().getPlaying().mouseDragged(e);
                 break;
             case BOSS_FIGHT:
-                // Routes to pause overlay volume slider when paused
                 gamePanel.getGame().getBossFightState().mouseDragged(e);
                 break;
             default:
@@ -103,9 +96,6 @@ public class MouseInputs implements MouseListener, MouseMotionListener {
                 break;
             case OPTIONS:
                 gamePanel.getGame().getOptions().mouseMoved(e);
-                break;
-            case INTRO:
-                gamePanel.getGame().getIntroOverlay().mouseMoved(e);
                 break;
             case PLAYING:
                 gamePanel.getGame().getPlaying().mouseMoved(e);

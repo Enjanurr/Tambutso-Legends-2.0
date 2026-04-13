@@ -5,7 +5,6 @@ import gameStates.GameStates;
 import gameStates.Menu;
 import gameStates.Options;
 import gameStates.Playing;
-import Ui.IntroOverlay;
 import BossFight.BossFightState;
 import utils.AudioPlayer;
 
@@ -19,7 +18,6 @@ public class Game implements Runnable {
     private Playing       playing;
     private Menu          menu;
     private Options       options;
-    private IntroOverlay  introOverlay;
     private BossFightState bossFightState;
     private final AudioPlayer audioPlayer;
     private String activeMusicTrack;
@@ -46,7 +44,6 @@ public class Game implements Runnable {
         menu          = new Menu(this);
         options       = new Options(this);
         playing       = new Playing(this);
-        introOverlay  = new IntroOverlay();
         // BossFightState shares the Player and HealthBar from Playing
         bossFightState = new BossFightState(this,
                 playing.getPlayer(),
@@ -58,9 +55,17 @@ public class Game implements Runnable {
         gameThread.start();
     }
 
+    /**
+     * Called from Menu / keyboard when the player presses Play.
+     *
+     * Always transitions directly to PLAYING — no INTRO game state needed.
+     * Playing.tryShowIntro() handles the show-once logic internally:
+     *   • First call  → game starts paused, intro overlay fades in over the world.
+     *   • Later calls → game starts immediately unpaused, intro is skipped.
+     */
     public void startPlayingOrIntro() {
-        introOverlay.reset();
-        GameStates.state = GameStates.INTRO;
+        GameStates.state = GameStates.PLAYING;
+        playing.tryShowIntro();
     }
 
     /** Called by Playing when all 15 loops complete. */
@@ -74,10 +79,6 @@ public class Game implements Runnable {
             case MENU:
                 menu.update();
                 break;
-            case INTRO:
-                boolean done = introOverlay.update();
-                if (done) GameStates.state = GameStates.PLAYING;
-                break;
             case PLAYING:
                 gamePanel.updateFade();
                 playing.update();
@@ -87,6 +88,10 @@ public class Game implements Runnable {
                 break;
             case OPTIONS:
                 options.update();
+                break;
+            // INTRO state is no longer used; kept in enum for safety
+            case INTRO:
+                GameStates.state = GameStates.PLAYING;
                 break;
             case QUIT:
             default:
@@ -119,7 +124,6 @@ public class Game implements Runnable {
     private String getDesiredMusicTrack() {
         switch (GameStates.state) {
             case MENU:
-            case INTRO:
             case OPTIONS:
                 return "menu";
             case PLAYING:
@@ -137,10 +141,6 @@ public class Game implements Runnable {
             case MENU:
                 menu.draw(g);
                 break;
-            case INTRO:
-                menu.draw(g);
-                introOverlay.render(g);
-                break;
             case PLAYING:
                 playing.draw(g);
                 break;
@@ -149,6 +149,10 @@ public class Game implements Runnable {
                 break;
             case OPTIONS:
                 options.draw(g);
+                break;
+            // INTRO is no longer used as a standalone state
+            case INTRO:
+                playing.draw(g);
                 break;
             default:
                 break;
@@ -194,7 +198,6 @@ public class Game implements Runnable {
     public Menu           getMenu()           { return menu; }
     public Options        getOptions()        { return options; }
     public Playing        getPlaying()        { return playing; }
-    public IntroOverlay   getIntroOverlay()   { return introOverlay; }
     public BossFightState getBossFightState() { return bossFightState; }
     public AudioPlayer    getAudioPlayer()    { return audioPlayer; }
 }
