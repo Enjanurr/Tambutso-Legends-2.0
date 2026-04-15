@@ -46,6 +46,11 @@ public class LoadSave {
     public static final String MENU_BACKGROUND_IMG = "backgrounds/menu/background_menu.png";
     // Add this line to LoadSave.java with the other constants
     public static final String STOP_HERE = "characters/npc/stop_here.png";
+
+    // ── Status Check overlays ─────────────────────────────────
+    public static final String BEFORE_BOSS_PASSED = "ui/overlays/before_boss_passed.png";
+    public static final String BEFORE_BOSS_FAILED = "ui/overlays/before_boss_failed.png";
+
     // ── Pause UI atlases ─────────────────────────────────────
     public static final String PAUSE_BACKGROUNDS  = "ui/overlays/pause_menu.png";
     public static final String OPTIONS_BACKGROUND = "ui/overlays/options_menu.png";

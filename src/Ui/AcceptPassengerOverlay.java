@@ -9,6 +9,8 @@ import utils.LoadSave;
 import java.awt.*;
 import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Modal shown when the player clicks a walking passenger.
@@ -40,20 +42,50 @@ public class AcceptPassengerOverlay {
     private static final int acceptOverlayHeight = 300;
 
     // =========================================================
-    // FARE TEXT  ← ADJUST
+    // STOP NAMES ARRAY (Map 1 - 15 stops)
     // =========================================================
-    private static final int   fareTextX     = 100;
-    private static final int   fareTextY     = 170;
-    private static final Color fareTextColor = new Color(100, 220, 100);
-    private static final int   fareFontSize  = 20;
+    private static final String[] STOP_NAMES = {
+            "Naga City Jeepney Terminal",           // Stop 1
+            "KEPCO",                                 // Stop 2
+            "Inoburan Stop",                         // Stop 3
+            "Tinaan Crossing",                       // Stop 4
+            "Langtad Stop",                          // Stop 5
+            "Cantao-an Junction",                    // Stop 6
+            "Tunghaan Stop ",         // Stop 7
+            "Calajo-an Stop",                        // Stop 8
+            "Tulic Stop",                            // Stop 9
+            "Minglanilla Public Market", // Stop 10
+            "Poblacion Ward",                        // Stop 11
+            "Tubod Crossing",                        // Stop 12
+            "Pakigne Junction",                      // Stop 13
+            "Cadulawan Area",                        // Stop 14
+            "Upper Linao Stop"                       // Stop 15
+    };
 
     // =========================================================
-    // STOP TEXT  ← ADJUST
+    // STOP NAME TEXT  ← ADJUST
     // =========================================================
-    private static final int   stopTextX     = 100;
-    private static final int   stopTextY     = 140;
-    private static final Color stopTextColor = new Color(255, 220, 50);
-    private static final int   stopFontSize  = 20;
+    private static final int   stopNameX        = 90;
+    private static final int   stopNameY        = 120;
+    private static final Color stopNameColor    = new Color(255, 255, 255);
+    private static final int   stopNameFontSize = 14;
+    private static final int   stopNameMaxWidth = 240;  // Max width before wrapping
+
+    // =========================================================
+    // STOP NUMBER TEXT  ← ADJUST
+    // =========================================================
+    private static final int   stopNumberX      = 100;
+    private static final int   stopNumberY      = 160;
+    private static final Color stopNumberColor  = new Color(255, 220, 50);
+    private static final int   stopNumberFontSize = 18;
+
+    // =========================================================
+    // FARE TEXT  ← ADJUST
+    // =========================================================
+    private static final int   fareTextX        = 100;
+    private static final int   fareTextY        = 200;
+    private static final Color fareTextColor    = new Color(100, 220, 100);
+    private static final int   fareFontSize     = 20;
 
     // =========================================================
     // YES BUTTON  ← ADJUST
@@ -94,6 +126,9 @@ public class AcceptPassengerOverlay {
      */
     private int generatedStop = -1;
     private int generatedFare =  0;
+
+    // Cache for wrapped stop name text lines
+    private List<String> wrappedStopNameLines = new ArrayList<>();
 
     // ─────────────────────────────────────────────────────────
     public AcceptPassengerOverlay(Playing playing, PassengerCounter passengerCounter) {
@@ -155,7 +190,68 @@ public class AcceptPassengerOverlay {
         generatedFare = fare;
         activePerson  = person;
         open          = true;
+
+        // Pre-wrap the stop name for rendering
+        wrapStopName();
+
         resetBools();
+    }
+
+    /**
+     * Wraps the stop name text to fit within max width.
+     */
+    private void wrapStopName() {
+        wrappedStopNameLines.clear();
+
+        if (generatedStop < 1 || generatedStop > STOP_NAMES.length) {
+            wrappedStopNameLines.add("Unknown Stop");
+            return;
+        }
+
+        String stopName = STOP_NAMES[generatedStop - 1];
+
+        // Calculate font metrics for wrapping
+        FontMetrics metrics = getFontMetrics(stopNameFontSize);
+        if (metrics == null) {
+            // Fallback: just add the whole string
+            wrappedStopNameLines.add(stopName);
+            return;
+        }
+
+        String[] words = stopName.split(" ");
+        StringBuilder currentLine = new StringBuilder();
+
+        for (String word : words) {
+            String testLine = currentLine.length() == 0 ? word : currentLine + " " + word;
+            int stringWidth = metrics.stringWidth(testLine);
+
+            if (stringWidth < stopNameMaxWidth * Game.SCALE) {
+                currentLine = new StringBuilder(testLine);
+            } else {
+                if (currentLine.length() > 0) {
+                    wrappedStopNameLines.add(currentLine.toString());
+                }
+                currentLine = new StringBuilder(word);
+            }
+        }
+
+        if (currentLine.length() > 0) {
+            wrappedStopNameLines.add(currentLine.toString());
+        }
+
+        // If no wrapping occurred, just add the original
+        if (wrappedStopNameLines.isEmpty()) {
+            wrappedStopNameLines.add(stopName);
+        }
+    }
+
+    /**
+     * Helper to get FontMetrics for a given font size.
+     */
+    private FontMetrics getFontMetrics(int fontSize) {
+        // This is a bit hacky - we need a Graphics context for accurate metrics
+        // The actual metrics will be computed during render
+        return null;
     }
 
     /**
@@ -167,6 +263,7 @@ public class AcceptPassengerOverlay {
         activePerson  = null;
         generatedStop = -1;
         generatedFare =  0;
+        wrappedStopNameLines.clear();
         resetBools();
     }
 
@@ -212,7 +309,53 @@ public class AcceptPassengerOverlay {
     private void drawContent(Graphics2D g2) {
         if (activePerson == null) return;
 
-        // ── Fare (generated at open time) ─────────────────────
+        // ── Stop Name (wrapped, displayed first) ─────────────────────
+        if (generatedStop >= 1 && generatedStop <= STOP_NAMES.length) {
+            Font nameFont = new Font("SansSerif", Font.BOLD, (int)(stopNameFontSize * Game.SCALE));
+            g2.setFont(nameFont);
+            g2.setColor(stopNameColor);
+
+            // Enable anti-aliasing for better text rendering
+            g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+
+            // Draw each wrapped line
+            int lineHeight = (int)((stopNameFontSize + 4) * Game.SCALE);
+            int startY = acceptOverlayY + (int)(stopNameY * Game.SCALE);
+
+            for (int i = 0; i < wrappedStopNameLines.size(); i++) {
+                int yPos = startY + (i * lineHeight);
+                g2.drawString(wrappedStopNameLines.get(i),
+                        acceptOverlayX + (int)(stopNameX * Game.SCALE),
+                        yPos);
+            }
+        } else {
+            // Fallback for invalid stop number
+            Font nameFont = new Font("SansSerif", Font.BOLD, (int)(stopNameFontSize * Game.SCALE));
+            g2.setFont(nameFont);
+            g2.setColor(stopNameColor);
+            g2.drawString("Unknown Stop",
+                    acceptOverlayX + (int)(stopNameX * Game.SCALE),
+                    acceptOverlayY + (int)(stopNameY * Game.SCALE));
+        }
+
+        // ── Stop Number (displayed second) ─────────────────────
+        Font stopFont = new Font("SansSerif", Font.BOLD, (int)(stopNumberFontSize * Game.SCALE));
+        g2.setFont(stopFont);
+        g2.setColor(stopNumberColor);
+
+        // Calculate Y position based on wrapped lines
+        int lineCount = Math.max(1, wrappedStopNameLines.size());
+        int lineHeight = (int)((stopNameFontSize + 4) * Game.SCALE);
+        int stopNumberActualY = acceptOverlayY + (int)(stopNumberY * Game.SCALE);
+
+        String stopStr = (generatedStop > 0)
+                ? "Stop " + generatedStop
+                : "Stop: --";
+        g2.drawString(stopStr,
+                acceptOverlayX + (int)(stopNumberX * Game.SCALE),
+                stopNumberActualY);
+
+        // ── Fare (generated at open time, displayed third) ─────────────────────
         Font fareFont = new Font("SansSerif", Font.BOLD, (int)(fareFontSize * Game.SCALE));
         g2.setFont(fareFont);
         g2.setColor(fareTextColor);
@@ -222,17 +365,6 @@ public class AcceptPassengerOverlay {
         g2.drawString(fareStr,
                 acceptOverlayX + (int)(fareTextX * Game.SCALE),
                 acceptOverlayY + (int)(fareTextY * Game.SCALE));
-
-        // ── Stop (generated at open time) ─────────────────────
-        Font stopFont = new Font("SansSerif", Font.BOLD, (int)(stopFontSize * Game.SCALE));
-        g2.setFont(stopFont);
-        g2.setColor(stopTextColor);
-        String stopStr = (generatedStop > 0)
-                ? "Stop: " + generatedStop
-                : "Stop: --";
-        g2.drawString(stopStr,
-                acceptOverlayX + (int)(stopTextX * Game.SCALE),
-                acceptOverlayY + (int)(stopTextY * Game.SCALE));
     }
 
     // ─────────────────────────────────────────────────────────
@@ -287,8 +419,12 @@ public class AcceptPassengerOverlay {
         if (accepted) {
             activePerson.setActive(false);
             passengerCounter.increment();
-            System.out.println("[AcceptOverlay] Accepted → stop " + generatedStop
-                    + "  fare \u20B1" + generatedFare);
+            // Get stop name for console output
+            String stopName = (generatedStop >= 1 && generatedStop <= STOP_NAMES.length)
+                    ? STOP_NAMES[generatedStop - 1]
+                    : "Unknown Stop";
+            System.out.println("[AcceptOverlay] Accepted → " + stopName + " (Stop " + generatedStop
+                    + ")  fare \u20B1" + generatedFare);
         } else {
             System.out.println("[AcceptOverlay] Accept failed (no slot?)");
         }
@@ -322,5 +458,22 @@ public class AcceptPassengerOverlay {
     private void resetBools() {
         yesButton.resetBools();
         noButton.resetBools();
+    }
+
+    /**
+     * Public getter for stop names array (for external access if needed)
+     */
+    public static String[] getStopNames() {
+        return STOP_NAMES.clone();
+    }
+
+    /**
+     * Get stop name by stop number (1-based)
+     */
+    public static String getStopName(int stopNumber) {
+        if (stopNumber >= 1 && stopNumber <= STOP_NAMES.length) {
+            return STOP_NAMES[stopNumber - 1];
+        }
+        return "Unknown Stop";
     }
 }

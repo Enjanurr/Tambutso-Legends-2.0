@@ -1,6 +1,7 @@
 package gameStates;
 
 import Ui.*;
+import Ui.StatusCheckOverlay;
 import entities.EnemyManager;
 import entities.PassengerManager;
 import entities.Person;
@@ -64,12 +65,14 @@ public class Playing extends State implements StateMethods {
     private PassengerListOverlay   passengerListOverlay;
     private IntroOverlay           introOverlay;
     private StopHereIndicator stopHereIndicator;
+    private StatusCheckOverlay statusCheckOverlay;
     // ── Overlay-state flags ───────────────────────────────────
     private boolean paused            = false;
     private boolean playerDead        = false;
     private boolean interactionPaused = false;   // AcceptPassengerOverlay is open
     private boolean listPopupPaused   = false;   // PassengerListOverlay popup is open
     private boolean introPaused       = false;
+    private boolean statusCheckPaused = false;   // StatusCheckOverlay is active
 
     // ── World ─────────────────────────────────────────────────
     private float worldOffset    = 0;
@@ -84,6 +87,7 @@ public class Playing extends State implements StateMethods {
     private int     worldLoopCount = 0;
     private boolean worldLoopDone  = false;
     private boolean dKeyHeld       = false;
+    private int     passengersDroppedCount = 0;
 
     private float bigCloudOffset   = 0f;
     private float smallCloudOffset = 0f;
@@ -147,6 +151,7 @@ public class Playing extends State implements StateMethods {
         );
 
         introOverlay = new IntroOverlay(this::onIntroDone);
+        statusCheckOverlay = new StatusCheckOverlay(this);
     }
 
     private void loadBackgroundAssets() {
@@ -167,9 +172,10 @@ public class Playing extends State implements StateMethods {
      * Returns a token identifying the single topmost active overlay,
      * or NONE if no overlay is active.  All mouse routing is driven by this.
      */
-    private enum ActiveOverlay { INTRO, DEATH, ACCEPT, LIST_POPUP, PAUSE, NONE }
+    private enum ActiveOverlay { STATUS_CHECK, INTRO, DEATH, ACCEPT, LIST_POPUP, PAUSE, NONE }
 
     private ActiveOverlay activeOverlay() {
+        if (statusCheckPaused) return ActiveOverlay.STATUS_CHECK;
         if (introPaused)       return ActiveOverlay.INTRO;
         if (playerDead)        return ActiveOverlay.DEATH;
         if (interactionPaused) return ActiveOverlay.ACCEPT;
@@ -207,8 +213,10 @@ public class Playing extends State implements StateMethods {
         if (fare >= 0) {
             passengerListOverlay.addFare(fare);
             passengerListOverlay.clearSelection();
+            passengersDroppedCount++;
             System.out.println("[Playing] Dropped passenger — fare \u20B1" + fare
-                    + "  total \u20B1" + passengerListOverlay.getTotalFareEarned());
+                    + "  total \u20B1" + passengerListOverlay.getTotalFareEarned()
+                    + "  dropped " + passengersDroppedCount + "/12");
         }
     }
 
@@ -234,6 +242,7 @@ public class Playing extends State implements StateMethods {
         listPopupPaused  = false;
         interactionPaused = false;
         introPaused      = false;
+        statusCheckPaused = false;
 
         bigCloudOffset   = 0f;
         smallCloudOffset = 0f;
@@ -263,6 +272,8 @@ public class Playing extends State implements StateMethods {
         acceptPassengerOverlay.close();
         acceptPassengerOverlay.resetPassengerCount();
         acceptPassengerOverlay.resetEarnings();
+        statusCheckOverlay.close();
+        passengersDroppedCount = 0;
         paused = false;
     }
 
@@ -279,7 +290,8 @@ public class Playing extends State implements StateMethods {
         boolean hasSpeed = player.getCurrentXSpeed() > 0;
         return (dKeyHeld || hasSpeed) && isJeepCentered() && !paused && !worldLoopDone
                 && !player.isStruckActive() && !playerDead
-                && !introPaused && !listPopupPaused && !interactionPaused;
+                && !introPaused && !listPopupPaused && !interactionPaused
+                && !statusCheckPaused;
     }
 
     public float getScrollSpeed() { return player.getCurrentXSpeed(); }
@@ -296,6 +308,7 @@ public class Playing extends State implements StateMethods {
     @Override
     public void update() {
         if (playerDead)  { deathOverlay.update(); return; }
+        if (statusCheckPaused) { statusCheckOverlay.update(); return; }
         if (introPaused) { introOverlay.update(); return; }
 
         if (listPopupPaused) {
@@ -327,7 +340,18 @@ public class Playing extends State implements StateMethods {
                         if (worldLoopCount >= MAX_WORLD_LOOPS) {
                             worldLoopDone = true;
                             worldOffset   = 0;
-                            game.startBossFight();
+
+                            // Status Check: Only proceed if all passengers are dropped
+                            int occupied = passengerManager.occupiedCount();
+                            if (occupied > 0) {
+                                System.out.println("[Playing] Cannot proceed to status check - " + occupied + " passengers still seated");
+                            } else {
+                                // All passengers dropped - show status check
+                                int totalFare = passengerManager.getTotalFareEarned();
+                                if (statusCheckOverlay.open(passengersDroppedCount, totalFare)) {
+                                    statusCheckPaused = true;
+                                }
+                            }
                         }
                     }
 
@@ -396,6 +420,7 @@ public class Playing extends State implements StateMethods {
         passengerListOverlay.render(g, seats, worldLoopCount);
 
         // Overlays — rendered on top in priority order
+        if (statusCheckPaused) { statusCheckOverlay.render(g);   return; }
         if (introPaused)       { introOverlay.render(g);         return; }
         acceptPassengerOverlay.render(g);
         if (playerDead)        { deathOverlay.render(g);         return; }
@@ -465,6 +490,7 @@ public class Playing extends State implements StateMethods {
     @Override
     public void mousePressed(MouseEvent e) {
         switch (activeOverlay()) {
+            case STATUS_CHECK: statusCheckOverlay.mousePressed(e);                    return;
             case INTRO:      introOverlay.mousePressed(e);                            return;
             case DEATH:      deathOverlay.mousePressed(e);                            return;
             case ACCEPT:     acceptPassengerOverlay.mousePressed(e);                  return;
@@ -480,6 +506,7 @@ public class Playing extends State implements StateMethods {
     @Override
     public void mouseReleased(MouseEvent e) {
         switch (activeOverlay()) {
+            case STATUS_CHECK: statusCheckOverlay.mouseReleased(e);             return;
             case INTRO:      introOverlay.mouseReleased(e);                  return;
             case DEATH:      deathOverlay.mouseReleased(e);                  return;
             case ACCEPT:     acceptPassengerOverlay.mouseReleased(e);        return;
@@ -494,6 +521,7 @@ public class Playing extends State implements StateMethods {
     @Override
     public void mouseMoved(MouseEvent e) {
         switch (activeOverlay()) {
+            case STATUS_CHECK: statusCheckOverlay.mouseMoved(e);           return;
             case INTRO:      introOverlay.mouseMoved(e);              return;
             case DEATH:      deathOverlay.mouseMoved(e);              return;
             case ACCEPT:     acceptPassengerOverlay.mouseMoved(e);    return;
@@ -515,17 +543,19 @@ public class Playing extends State implements StateMethods {
 
     /**
      * ESC behaviour:
+     *   StatusCheckOverlay open     → do nothing (must click button)
      *   AcceptPassengerOverlay open → close it (NO action)
      *   PassengerListOverlay open   → close it
      *   PauseOverlay open           → resume
      *   None                        → open PauseOverlay
      *
-     *   Intro and Death overlays block ESC entirely (they have their own buttons).
+     *   Intro, Death, and StatusCheck overlays block ESC entirely (they have their own buttons).
      */
     @Override
     public void keyPressed(KeyEvent e) {
         if (e.getKeyCode() == KeyEvent.VK_ESCAPE) {
             switch (activeOverlay()) {
+                case STATUS_CHECK:
                 case INTRO:
                 case DEATH:
                     // These overlays consume ESC — do nothing
@@ -581,6 +611,14 @@ public class Playing extends State implements StateMethods {
     }
 
     public void unPauseGame() { paused = false; }
+
+    /**
+     * Called by StatusCheckOverlay when player clicks Next button.
+     * Proceeds to boss fight.
+     */
+    public void startBossFight() {
+        game.startBossFight();
+    }
 
     // ── Getters ───────────────────────────────────────────────
     public Player           getPlayer()           { return player; }
