@@ -217,7 +217,36 @@ public class Playing extends State implements StateMethods {
             System.out.println("[Playing] Dropped passenger — fare \u20B1" + fare
                     + "  total \u20B1" + passengerListOverlay.getTotalFareEarned()
                     + "  dropped " + passengersDroppedCount + "/12");
+
+            // Check if status check should trigger (e.g., last passenger dropped at Stop 15)
+            tryTriggerStatusCheck();
         }
+    }
+
+    /**
+     * Attempts to trigger the status check overlay if all conditions are met.
+     * Call this after passenger drops when worldLoopDone is true.
+     *
+     * @return true if status check was triggered
+     */
+    private boolean tryTriggerStatusCheck() {
+        if (!worldLoopDone) return false;
+        if (statusCheckPaused) return false;
+
+        int occupied = passengerManager.occupiedCount();
+        if (occupied > 0) {
+            System.out.println("[Playing] Cannot proceed to status check - " + occupied + " passengers still seated");
+            return false;
+        }
+
+        // All passengers dropped - show status check
+        int totalFare = passengerManager.getTotalFareEarned();
+        if (statusCheckOverlay.open(passengersDroppedCount, totalFare)) {
+            statusCheckPaused = true;
+            System.out.println("[Playing] Status check triggered after all passengers dropped");
+            return true;
+        }
+        return false;
     }
 
     // ─────────────────────────────────────────────────────────
@@ -341,17 +370,8 @@ public class Playing extends State implements StateMethods {
                             worldLoopDone = true;
                             worldOffset   = 0;
 
-                            // Status Check: Only proceed if all passengers are dropped
-                            int occupied = passengerManager.occupiedCount();
-                            if (occupied > 0) {
-                                System.out.println("[Playing] Cannot proceed to status check - " + occupied + " passengers still seated");
-                            } else {
-                                // All passengers dropped - show status check
-                                int totalFare = passengerManager.getTotalFareEarned();
-                                if (statusCheckOverlay.open(passengersDroppedCount, totalFare)) {
-                                    statusCheckPaused = true;
-                                }
-                            }
+                            // Status Check: Trigger if all passengers already dropped
+                            tryTriggerStatusCheck();
                         }
                     }
 
@@ -581,7 +601,15 @@ public class Playing extends State implements StateMethods {
 
         switch (e.getKeyCode()) {
             case KeyEvent.VK_A: player.setLeft(true);                   break;
-            case KeyEvent.VK_D: player.setRight(true); dKeyHeld = true; break;
+            case KeyEvent.VK_D:
+                // Block forward movement after reaching MAX_WORLD_LOOPS
+                if (worldLoopDone) {
+                    System.out.println("[Playing] D key ignored - world loop complete, drop remaining passengers");
+                    break;
+                }
+                player.setRight(true);
+                dKeyHeld = true;
+                break;
             case KeyEvent.VK_W: player.setUp(true);                     break;
             case KeyEvent.VK_S: player.setDown(true);                   break;
         }

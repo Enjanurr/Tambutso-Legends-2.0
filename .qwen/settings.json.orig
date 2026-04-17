@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(C:\\Users\\benzs\\IdeaProjects\\Yu\\Tambatso-Legends-2.0\\src\\main/**)"
+    ]
+  }
+}

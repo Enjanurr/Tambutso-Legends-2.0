@@ -10,11 +10,11 @@ import java.io.InputStream;
 public class SpriteAnimationTester extends JPanel implements Runnable {
 
 
-    private static final String SPRITE_PATH  = "/tornado.png"; // ← ADJUST: path to sprite sheet
-    private static final int    FRAME_WIDTH  = 36;   // ← ADJUST: width of each frame
-    private static final int    FRAME_HEIGHT = 34;   // ← ADJUST: height of each frame
-    private static final int    COLUMNS      = 4;   // ← ADJUST: columns in the sheet
-    private static final int    ROWS         = 1;    // ← ADJUST: rows in the sheet
+    private static final String SPRITE_PATH  = "/boss.png"; // ← ADJUST: path to sprite sheet
+    private static final int    FRAME_WIDTH  = 300;   // ← ADJUST: width of each frame
+    private static final int    FRAME_HEIGHT = 112;   // ← ADJUST: height of each frame
+    private static final int    COLUMNS      = 11;   // ← ADJUST: columns in the sheet
+    private static final int    ROWS         = 2;    // ← ADJUST: rows in the sheet
     private static final float  SCALE        = 3f;   // ← ADJUST: render scale (zoom)
 
 
