@@ -2,7 +2,7 @@ package BossFight.LevelTwo.Red;
 
 
 import BossFight.BossWalkerManager;
-import BossFight.LevelOne.GarbagePile;
+import BossFight.LevelTwo.NukeProjectile;
 import Ui.BossDefeatOverlay;
 import Ui.BossHealthBar;
 import Ui.HealthBar;
@@ -30,7 +30,7 @@ public class RedJeepVsBoss2State extends State implements StateMethods {
     // -------------------------------------------------------
     // BOSS FIGHT SETTINGS  ← ADJUST
     // -------------------------------------------------------
-    private static final float SCROLL_SPEED                = BossFight.LevelOne.Red.Boss1.BOSS_SCROLL_SPEED;
+    private static final float SCROLL_SPEED                = BossFight.LevelTwo.Red.Boss2.BOSS_SCROLL_SPEED;
     private static final float LEFT_BORDER_PUSH            = 0.3f;
     private static final float PLAYER_RIGHT_LIMIT_FRACTION = 0.50f;
 
@@ -47,7 +47,7 @@ public class RedJeepVsBoss2State extends State implements StateMethods {
     private final Player player;
     private final HealthBar healthBar;    // jeepney life bar (shared with Playing)
     private BossHealthBar bossBar;     // boss life bar (new)
-    private BossFight.LevelOne.Red.Boss1 boss;
+    private BossFight.LevelTwo.Red.Boss2 boss;
 
     // ── Walkers during boss fight ─────────────────────────────
     private BossWalkerManager walkerManager;              // NEW from first version
@@ -219,9 +219,9 @@ public class RedJeepVsBoss2State extends State implements StateMethods {
     }
 
     private void spawnBoss() {
-        float bx = Game.GAME_WIDTH + BossFight.LevelOne.Blue.Boss1.FRAME_W * Game.SCALE;
+        float bx = Game.GAME_WIDTH + BossFight.LevelTwo.Blue.Boss2.FRAME_W * Game.SCALE;
         float by = 480;
-        boss = new BossFight.LevelOne.Red.Boss1(bx, by);
+        boss = new Boss2(bx, by);
     }
 
     // ─────────────────────────────────────────────────────────
@@ -289,31 +289,39 @@ public class RedJeepVsBoss2State extends State implements StateMethods {
         // ── Walkers ── NEW from first version ─────────────────────
         walkerManager.update(SCROLL_SPEED);
 
-        // ── Boss ──────────────────────────────────────────────
-        float jeepCentreY = player.getHitBox().y + player.getHitBox().height / 2f;
-        boss.update(player.getHitBox().x, jeepCentreY);
-
-        // ── Collisions ────────────────────────────────────────
         Rectangle jeepHB = new Rectangle(
-                (int) player.getHitBox().x,     (int) player.getHitBox().y,
-                (int) player.getHitBox().width, (int) player.getHitBox().height);
+                (int) player.getHitBox().x,
+                (int) player.getHitBox().y,
+                (int) player.getHitBox().width,
+                (int) player.getHitBox().height
+        );
+
+        float jeepCentreY = jeepHB.y + jeepHB.height / 2f;
+
+        boss.update(
+                jeepHB.x,
+                jeepCentreY,
+                jeepHB.width,
+                jeepHB.height
+        );
 
         // Boss bullets → jeep
-        for (GarbagePile.BossProjectile bp : boss.getBullets()) {
+
+        // Boss bullets → jeep
+        for (NukeProjectile.BossProjectile bp : boss.getBullets()) {
             if (bp.isActive() && bp.getHitbox().intersects(jeepHB)) {
                 bp.setActive(false);
                 handleJeepHit();
             }
         }
 
-        // Garbage piles → jeep
-        for (GarbagePile pile : boss.getGarbagePiles()) {
-            if (pile.isActive() && pile.getHitbox().intersects(jeepHB)) {
-                pile.setActive(false);
+        // Nukes → jeep (animated, scrolling projectiles)
+        for (NukeProjectile.Nuke nuke : boss.getNukes()) {
+            if (nuke.isActive() && nuke.getHitbox().intersects(jeepHB)) {
+                nuke.setActive(false);
                 handleJeepHit();
             }
         }
-
         // Check slow ball collision with boss
         Rectangle bossHB = boss.getHitbox();
         for (SlowBallProjectile ball : slowBalls) {
@@ -340,12 +348,12 @@ public class RedJeepVsBoss2State extends State implements StateMethods {
     // HIT HANDLING
     // ─────────────────────────────────────────────────────────
     private void handleJeepHit() {
-        player.triggerCarStruck();
-        boolean dead = healthBar.takeDamage();
-        if (dead) {
-            playerDead = true;
-            resetDeathOverlay();
-        }
+            player.triggerCarStruck();
+            boolean dead = healthBar.takeDamage();
+            if (dead) {
+                playerDead = true;
+                resetDeathOverlay();
+            }
 
     }
 

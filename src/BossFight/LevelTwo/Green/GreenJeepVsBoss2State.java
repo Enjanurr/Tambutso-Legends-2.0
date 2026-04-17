@@ -1,6 +1,8 @@
 package BossFight.LevelTwo.Green;
 
 import BossFight.BossWalkerManager;
+import BossFight.LevelTwo.Green.GreenJeepProjectile;
+import BossFight.LevelTwo.NukeProjectile;
 import Ui.BossDefeatOverlay;
 import Ui.BossHealthBar;
 import Ui.HealthBar;
@@ -11,7 +13,6 @@ import gameStates.State;
 import gameStates.StateMethods;
 import main.Game;
 import utils.LoadSave;
-import BossFight.LevelOne.GarbagePile;
 import java.awt.*;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
@@ -28,7 +29,7 @@ public class GreenJeepVsBoss2State extends State implements StateMethods {
     // -------------------------------------------------------
     // BOSS FIGHT SETTINGS  ← ADJUST
     // -------------------------------------------------------
-    private static final float SCROLL_SPEED                = BossFight.LevelOne.Green.Boss1.BOSS_SCROLL_SPEED;
+    private static final float SCROLL_SPEED                = Boss2.BOSS_SCROLL_SPEED;
     private static final float LEFT_BORDER_PUSH            = 0.3f;
     private static final float PLAYER_RIGHT_LIMIT_FRACTION = 0.50f;
 
@@ -45,7 +46,7 @@ public class GreenJeepVsBoss2State extends State implements StateMethods {
     private final Player       player;
     private final HealthBar    healthBar;    // jeepney life bar (shared with Playing)
     private       BossHealthBar bossBar;     // boss life bar (new)
-    private BossFight.LevelOne.Green.Boss1 boss;
+    private Boss2             boss;
 
     // ── Walkers during boss fight ─────────────────────────────
     private BossWalkerManager walkerManager;              // NEW from first version
@@ -103,7 +104,7 @@ public class GreenJeepVsBoss2State extends State implements StateMethods {
     private int healAnimTick = 0;
     private int healAnimIndex = 0;
     private boolean isHealing = false;
-    private static final int HEAL_ANI_SPEED = 70;  // ticks per frame
+    private static final int HEAL_ANI_SPEED = 20;  // ticks per frame
 
     public GreenJeepVsBoss2State(Game game, Player player, HealthBar healthBar) {
         super(game);
@@ -160,10 +161,10 @@ public class GreenJeepVsBoss2State extends State implements StateMethods {
             shootFrames = new BufferedImage[6];
             for (int i = 0; i < 6; i++)
                 shootFrames[i] = skill1Sheet.getSubimage(
-                        i * GreenJeepProjectile.FRAME_W,
+                        i * BossFight.LevelOne.Green.GreenJeepProjectile.FRAME_W,
                         0,  // Row 0 (only one row in skill sheet)
-                        GreenJeepProjectile.FRAME_W,
-                        GreenJeepProjectile.FRAME_H);
+                        BossFight.LevelOne.Green.GreenJeepProjectile.FRAME_W,
+                        BossFight.LevelOne.Green.GreenJeepProjectile.FRAME_H);
 
             System.out.println("✓ [GreenJeepBossFightState] Loaded Skill 1 frames: " + shootFrames.length);
         } else {
@@ -189,6 +190,8 @@ public class GreenJeepVsBoss2State extends State implements StateMethods {
 
         System.out.println("✓ [GreenJeepBossFightState] All assets loaded successfully");
     }
+
+
     private void buildDeathOverlay() {
         deathScreenImg = LoadSave.getSpriteAtlas(LoadSave.DEATH_SCREEN);
         deathImgW = (int)(500 * Game.SCALE * 0.5f);
@@ -209,9 +212,9 @@ public class GreenJeepVsBoss2State extends State implements StateMethods {
     }
 
     private void spawnBoss() {
-        float bx = Game.GAME_WIDTH + BossFight.LevelOne.Green.Boss1.FRAME_W * Game.SCALE;
+        float bx = Game.GAME_WIDTH + Boss2.FRAME_W * Game.SCALE;
         float by = 480;
-        boss = new BossFight.LevelOne.Green.Boss1(bx, by);
+        boss = new Boss2(bx, by);
     }
 
     // ─────────────────────────────────────────────────────────
@@ -262,8 +265,7 @@ public class GreenJeepVsBoss2State extends State implements StateMethods {
             shootCooldown--;
             if (shootCooldown == 0) canShoot = true;
         }
-
-        // ── Heal animation update ← ADD THIS ────────────────────────
+// ── Heal animation update ← ADD THIS ────────────────────────
         if (isHealing) {
             healAnimTick++;
             if (healAnimTick >= HEAL_ANI_SPEED) {
@@ -282,27 +284,34 @@ public class GreenJeepVsBoss2State extends State implements StateMethods {
         // ── Walkers ── NEW from first version ─────────────────────
         walkerManager.update(SCROLL_SPEED);
 
-        // ── Boss ──────────────────────────────────────────────
-        float jeepCentreY = player.getHitBox().y + player.getHitBox().height / 2f;
-        boss.update(player.getHitBox().x, jeepCentreY);
-
-        // ── Collisions ────────────────────────────────────────
         Rectangle jeepHB = new Rectangle(
-                (int) player.getHitBox().x,     (int) player.getHitBox().y,
-                (int) player.getHitBox().width, (int) player.getHitBox().height);
+                (int) player.getHitBox().x,
+                (int) player.getHitBox().y,
+                (int) player.getHitBox().width,
+                (int) player.getHitBox().height
+        );
+
+        float jeepCentreY = jeepHB.y + jeepHB.height / 2f;
+
+        boss.update(
+                jeepHB.x,
+                jeepCentreY,
+                jeepHB.width,
+                jeepHB.height
+        );
 
         // Boss bullets → jeep
-        for (GarbagePile.BossProjectile bp : boss.getBullets()) {
+        for (NukeProjectile.BossProjectile bp : boss.getBullets()) {
             if (bp.isActive() && bp.getHitbox().intersects(jeepHB)) {
                 bp.setActive(false);
                 handleJeepHit();
             }
         }
 
-        // Garbage piles → jeep
-        for (GarbagePile pile : boss.getGarbagePiles()) {
-            if (pile.isActive() && pile.getHitbox().intersects(jeepHB)) {
-                pile.setActive(false);
+        // Nukes → jeep (animated, scrolling projectiles)
+        for (NukeProjectile.Nuke nuke : boss.getNukes()) {
+            if (nuke.isActive() && nuke.getHitbox().intersects(jeepHB)) {
+                nuke.setActive(false);
                 handleJeepHit();
             }
         }
@@ -462,7 +471,7 @@ public class GreenJeepVsBoss2State extends State implements StateMethods {
 
         boss.render(g);
 
-        for (GreenJeepProjectile pb : playerBullets) pb.render(g);
+        for (BossFight.LevelTwo.Green.GreenJeepProjectile pb : playerBullets) pb.render(g);
 
         player.render(g);
 
@@ -474,8 +483,8 @@ public class GreenJeepVsBoss2State extends State implements StateMethods {
 
                 float healScale = 2.5f;
 
-                int healW = (int)(GreenJeepProjectile.FRAME_W * Game.SCALE * healScale);
-                int healH = (int)(GreenJeepProjectile.FRAME_H * Game.SCALE * healScale);
+                int healW = (int)(BossFight.LevelOne.Green.GreenJeepProjectile.FRAME_W * Game.SCALE * healScale);
+                int healH = (int)(BossFight.LevelOne.Green.GreenJeepProjectile.FRAME_H * Game.SCALE * healScale);
 
                 // Center of player hitbox
                 float centerX = player.getHitBox().x + player.getHitBox().width / 2f;

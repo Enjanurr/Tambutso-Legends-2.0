@@ -221,7 +221,7 @@ public class RedJeepVsBoss1State extends State implements StateMethods {
     private void spawnBoss() {
         float bx = Game.GAME_WIDTH + BossFight.LevelOne.Blue.Boss1.FRAME_W * Game.SCALE;
         float by = 480;
-        boss = new BossFight.LevelOne.Red.Boss1(bx, by);
+        boss = new Boss1(bx, by);
     }
 
     // ─────────────────────────────────────────────────────────

@@ -29,7 +29,7 @@ import static utils.Constants.UI.VolumeButtons.*;
  */
 public class BossPauseOverlay {
 
-    private final BossFight.LevelTwo.Red.RedJeepVsBoss2State redJeepVsBoss2State;
+    private final RedJeepVsBoss2State redJeepVsBoss1State;
 
     private BufferedImage backgroundImg;
     private int bgX, bgY, bgW, bgH;
@@ -38,8 +38,8 @@ public class BossPauseOverlay {
     private UrmButton    resumeBtn, restartBtn, menuBtn;
     private VolumeButton volumeButton;
 
-    public BossPauseOverlay(BossFight.LevelTwo.Red.RedJeepVsBoss2State redJeepVsBoss2State) {
-        this.redJeepVsBoss2State = redJeepVsBoss2State;
+    public BossPauseOverlay(RedJeepVsBoss2State blueJeepVsBoss1State) {
+        this.redJeepVsBoss1State = blueJeepVsBoss1State;
         loadBackground();
         createSoundButtons();
         createUrmButtons();
@@ -137,15 +137,15 @@ public class BossPauseOverlay {
 
         } else if (isIn(e, resumeBtn)) {
             if (resumeBtn.isMousePressed())
-                redJeepVsBoss2State.unpause();          // resume
+                redJeepVsBoss1State.unpause();          // resume
 
         } else if (isIn(e, restartBtn)) {
             if (restartBtn.isMousePressed())
-                redJeepVsBoss2State.fullReset();        // full boss fight restart
+                redJeepVsBoss1State.fullReset();        // full boss fight restart
 
         } else if (isIn(e, menuBtn)) {
             if (menuBtn.isMousePressed()) {
-                redJeepVsBoss2State.unpause();
+                redJeepVsBoss1State.unpause();
                 GameStates.state = GameStates.MENU; // back to main menu
             }
         }
@@ -179,6 +179,6 @@ public class BossPauseOverlay {
     }
 
     private AudioPlayer getAudioPlayer() {
-        return redJeepVsBoss2State.getGame().getAudioPlayer();
+        return redJeepVsBoss1State.getGame().getAudioPlayer();
     }
 }

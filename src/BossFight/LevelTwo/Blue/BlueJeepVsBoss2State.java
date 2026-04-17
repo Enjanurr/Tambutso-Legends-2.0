@@ -1,7 +1,7 @@
 package BossFight.LevelTwo.Blue;
 
 import BossFight.BossWalkerManager;
-import BossFight.LevelOne.GarbagePile;
+import BossFight.LevelTwo.NukeProjectile;
 import Ui.BossDefeatOverlay;
 import Ui.BossHealthBar;
 import Ui.HealthBar;
@@ -29,7 +29,7 @@ public class BlueJeepVsBoss2State extends State implements StateMethods {
     // -------------------------------------------------------
     // BOSS FIGHT SETTINGS  ← ADJUST
     // -------------------------------------------------------
-    private static final float SCROLL_SPEED                = BossFight.LevelOne.Blue.Boss1.BOSS_SCROLL_SPEED;
+    private static final float SCROLL_SPEED                = BossFight.LevelTwo.Blue.Boss2.BOSS_SCROLL_SPEED;
     private static final float LEFT_BORDER_PUSH            = 0.3f;
     private static final float PLAYER_RIGHT_LIMIT_FRACTION = 0.50f;
 
@@ -48,7 +48,7 @@ public class BlueJeepVsBoss2State extends State implements StateMethods {
     private final Player       player;
     private final HealthBar    healthBar;    // jeepney life bar (shared with Playing)
     private       BossHealthBar bossBar;     // boss life bar (new)
-    private BossFight.LevelOne.Blue.Boss1 boss;
+    private BossFight.LevelTwo.Blue.Boss2 boss;
 
     // ── Walkers during boss fight ─────────────────────────────
     private BossWalkerManager walkerManager;              // NEW from first version
@@ -110,7 +110,7 @@ public class BlueJeepVsBoss2State extends State implements StateMethods {
                         - player.getHitBox().width;
 
         // ✨ Load assets with default first (in case boss fight starts without selection)
-       // loadAssets(LoadSave.PLAYER_ATLAS_1);
+        // loadAssets(LoadSave.PLAYER_ATLAS_1);
 
         pauseOverlay = new BossPauseOverlay(this);
         buildDeathOverlay();
@@ -198,9 +198,9 @@ public class BlueJeepVsBoss2State extends State implements StateMethods {
     }
 
     private void spawnBoss() {
-        float bx = Game.GAME_WIDTH + BossFight.LevelOne.Blue.Boss1.FRAME_W * Game.SCALE;
+        float bx = Game.GAME_WIDTH + BossFight.LevelTwo.Blue.Boss2.FRAME_W * Game.SCALE;
         float by = 480;
-        boss = new BossFight.LevelOne.Blue.Boss1(bx, by);
+        boss = new BossFight.LevelTwo.Blue.Boss2(bx, by);
     }
 
     // ─────────────────────────────────────────────────────────
@@ -259,27 +259,34 @@ public class BlueJeepVsBoss2State extends State implements StateMethods {
         // ── Walkers ── NEW from first version ─────────────────────
         walkerManager.update(SCROLL_SPEED);
 
-        // ── Boss ──────────────────────────────────────────────
-        float jeepCentreY = player.getHitBox().y + player.getHitBox().height / 2f;
-        boss.update(player.getHitBox().x, jeepCentreY);
-
-        // ── Collisions ────────────────────────────────────────
         Rectangle jeepHB = new Rectangle(
-                (int) player.getHitBox().x,     (int) player.getHitBox().y,
-                (int) player.getHitBox().width, (int) player.getHitBox().height);
+                (int) player.getHitBox().x,
+                (int) player.getHitBox().y,
+                (int) player.getHitBox().width,
+                (int) player.getHitBox().height
+        );
+
+        float jeepCentreY = jeepHB.y + jeepHB.height / 2f;
+
+        boss.update(
+                jeepHB.x,
+                jeepCentreY,
+                jeepHB.width,
+                jeepHB.height
+        );
 
         // Boss bullets → jeep
-        for (GarbagePile.BossProjectile bp : boss.getBullets()) {
+        for (NukeProjectile.BossProjectile bp : boss.getBullets()) {
             if (bp.isActive() && bp.getHitbox().intersects(jeepHB)) {
                 bp.setActive(false);
                 handleJeepHit();
             }
         }
 
-        // Garbage piles → jeep
-        for (GarbagePile pile : boss.getGarbagePiles()) {
-            if (pile.isActive() && pile.getHitbox().intersects(jeepHB)) {
-                pile.setActive(false);
+        // Nukes → jeep (animated, scrolling projectiles)
+        for (NukeProjectile.Nuke nuke : boss.getNukes()) {
+            if (nuke.isActive() && nuke.getHitbox().intersects(jeepHB)) {
+                nuke.setActive(false);
                 handleJeepHit();
             }
         }

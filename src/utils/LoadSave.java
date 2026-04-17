@@ -15,8 +15,8 @@ public class LoadSave {
     public static final String GREEN_JEEP_SKILL1 = "characters/player/greenjeep_skill1.png";
     public static final String GREEN_JEEP_SKILL2 = "characters/player/greenjeep_skill2.png";
     public static final String PLAYER_ATLAS_3 = "characters/player/blue_jeep.png";
-    public static final String CHAR_SELECT_BG = "backgrounds/menu/background_menu.png";
-    public static final String CHAR_BG = "backgrounds/menu/menu_background.png";
+    //public static final String CHAR_SELECT_BG = "backgrounds/menu/background_menu.png";
+    //public static final String CHAR_BG = "backgrounds/menu/menu_background.png";
     public static final String LEVEL_ATLAS  = "level/road_tiles.png";
     public static final String ROAD_DATA    = "level/road_data_new.png";
 
@@ -28,8 +28,10 @@ public class LoadSave {
     public static final String BOSS1_ATLAS = "boss/boss1.png";       // 550×316, 4 rows × 5 cols
     public static final String BOSS1_LIFE  = "boss/boss1_life.png";  // 2700×224, 2 rows × 9 cols
     public static final String BOSS_DEFEAT = "boss/BossDefeat.png";  // 434×323, single image
-    public static final String BOSS2_ATLAS = "boss/boss2.png";
-    public static final String BOSS3_ATLAS = "boss/boss3.png";
+    public static final String BOSS2_ATLAS = "boss/boss2.png";       // 550×316, 4 rows × 5 cols
+    public static final String BOSS2_SKILL1 = "boss/boss2_skill1.png";       // 550×316, 4 rows × 5 cols
+    public static final String BOSS2_SKILL2 = "boss/boss2_skill2.png";       // 550×316, 4 rows × 5 cols
+    public static final String BOSS3_ATLAS = "boss/boss3.png";       // 550×316, 4 rows × 5 cols
 
     // ── Objects ───────────────────────────────────────────────
     public static final String STOP_SIGN        = "objects/stop_sign.png";

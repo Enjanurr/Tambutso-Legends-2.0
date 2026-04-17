@@ -346,34 +346,6 @@ public class Player extends Entity {
         if (worldScrolling && right)
             moving = true;
     }
-
-    // ─────────────────────────────────────────────────────────
-    // LOAD ANIMATIONS
-    //   Row 0 = RUNNING   (4 frames)
-    //   Row 1 = IDLE      (4 frames)
-    //   Row 2 = CAR_STRUCK (4 frames)
-    //   Row 3 = SHIELD    (2 frames) — loaded by BossFightState
-    //   Row 4 = SHOOT     (4 frames) — loaded by BossFightState
-    // ─────────────────────────────────────────────────────────
-
-/*
-    private void loadAnimations(String atlas) {
-        InputStream is = getClass().getResourceAsStream(atlas);
-        try {
-            BufferedImage img = ImageIO.read(is);
-            animations = new BufferedImage[3][4]; // rows 0-2, 4 frames each
-            for (int row = 0; row < animations.length; row++)
-                for (int col = 0; col < animations[row].length; col++)
-                    animations[row][col] = img.getSubimage(col * 110, row * 40, 110, 40);
-        } catch (IOException e) {
-            e.printStackTrace();
-        } finally {
-            try { if (is != null) is.close(); } catch (IOException e) { e.printStackTrace(); }
-        }
-    }
-    */
-
-
     // ─────────────────────────────────────────────────────────
     // PUBLIC API
     // ─────────────────────────────────────────────────────────

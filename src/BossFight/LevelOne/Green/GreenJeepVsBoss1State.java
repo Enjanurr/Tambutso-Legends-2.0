@@ -1,7 +1,6 @@
 package BossFight.LevelOne.Green;
 
 import BossFight.BossWalkerManager;
-import BossFight.LevelOne.Green.*;
 import Ui.BossDefeatOverlay;
 import Ui.BossHealthBar;
 import Ui.HealthBar;
@@ -29,7 +28,7 @@ public class GreenJeepVsBoss1State extends State implements StateMethods {
     // -------------------------------------------------------
     // BOSS FIGHT SETTINGS  ← ADJUST
     // -------------------------------------------------------
-    private static final float SCROLL_SPEED                = BossFight.LevelOne.Green.Boss1.BOSS_SCROLL_SPEED;
+    private static final float SCROLL_SPEED                = Boss1.BOSS_SCROLL_SPEED;
     private static final float LEFT_BORDER_PUSH            = 0.3f;
     private static final float PLAYER_RIGHT_LIMIT_FRACTION = 0.50f;
 
@@ -46,7 +45,7 @@ public class GreenJeepVsBoss1State extends State implements StateMethods {
     private final Player       player;
     private final HealthBar    healthBar;    // jeepney life bar (shared with Playing)
     private       BossHealthBar bossBar;     // boss life bar (new)
-    private BossFight.LevelOne.Green.Boss1 boss;
+    private Boss1              boss;
 
     // ── Walkers during boss fight ─────────────────────────────
     private BossWalkerManager walkerManager;              // NEW from first version
@@ -104,7 +103,7 @@ public class GreenJeepVsBoss1State extends State implements StateMethods {
     private int healAnimTick = 0;
     private int healAnimIndex = 0;
     private boolean isHealing = false;
-    private static final int HEAL_ANI_SPEED = 70;  // ticks per frame
+    private static final int HEAL_ANI_SPEED = 20;  // ticks per frame
 
     public GreenJeepVsBoss1State(Game game, Player player, HealthBar healthBar) {
         super(game);
@@ -210,9 +209,9 @@ public class GreenJeepVsBoss1State extends State implements StateMethods {
     }
 
     private void spawnBoss() {
-        float bx = Game.GAME_WIDTH + BossFight.LevelOne.Green.Boss1.FRAME_W * Game.SCALE;
+        float bx = Game.GAME_WIDTH + Boss1.FRAME_W * Game.SCALE;
         float by = 480;
-        boss = new BossFight.LevelOne.Green.Boss1(bx, by);
+        boss = new Boss1(bx, by);
     }
 
     // ─────────────────────────────────────────────────────────

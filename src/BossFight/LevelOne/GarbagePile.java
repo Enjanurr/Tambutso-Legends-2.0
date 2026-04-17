@@ -5,10 +5,6 @@ import main.Game;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 
-/**
- * A stationary garbage pile laid by Boss Skill 2.
- * Moves left with the world scroll. Damages the jeepney on contact.
- */
 public class GarbagePile {
 
     // -------------------------------------------------------
@@ -18,8 +14,6 @@ public class GarbagePile {
     public static final int PILE_H = 40;
 
     // Fix 3 — pile hitbox insets ← ADJUST
-
-
     private float x, y;
     private final int width, height;
     private boolean active = true;
@@ -70,11 +64,6 @@ public class GarbagePile {
     public boolean isActive()           { return active; }
     public void    setActive(boolean v) { active = v; }
 
-    /**
-     * Projectile fired by Boss Skill 1.
-     * Travels left, animated using Row 0 columns 0-4 of boss1.png.
-     * Destroyed when it reaches the left border or hits the jeepney.
-     */
     public static class BossProjectile {
 
         // -------------------------------------------------------

@@ -1,6 +1,6 @@
 package BossFight.LevelTwo.Red;
 
-import BossFight.LevelOne.GarbagePile;
+import BossFight.LevelTwo.NukeProjectile;
 import main.Game;
 import utils.LoadSave;
 
@@ -15,13 +15,18 @@ public class Boss2 {
     public static final int SHEET_COLS = 5;
     public static final int FRAME_W    = 110;  // 550 / 5
     public static final int FRAME_H    = 79;   // 316 / 4
-    public static final int ROWS       = 4;
+    public static final int ROWS       = 3;
+
+    public static final int FRAME_W_SKILL1   = 36;  // 550 / 5
+    public static final int FRAME_H_SKILL1    = 34;   // 316 / 4
+    public static final int FRAME_W_SKILL2  = 60;  // 550 / 5
+    public static final int FRAME_H_SKILL2    = 60;   // 316 / 4
 
     // ── Row indices ───────────────────────────────────────────
     public static final int ROW_SKILL1  = 0;   // bullet frames only
     public static final int ROW_RUNNING = 1;
-    public static final int ROW_SKILL2  = 2;
-    public static final int ROW_HIT     = 3;
+    public static final int ROW_SKILL2  = 0;
+    public static final int ROW_HIT     = 2;
 
     // ── Frame counts per row ──────────────────────────────────
     private static final int[] FRAME_COUNTS = { 5, 5, 4, 2 };
@@ -46,11 +51,11 @@ public class Boss2 {
     private static final int SKILL1_TICKS   = 10 * 200; // 4 s window for firing
     private static final int WAIT_TICKS     = 2 * 200; // 2 s wait between phases
     private static final int SKILL2_TICKS   = 6 * 200; // 6 s window for piles
-    private static final int HIT_ANIM_TICKS = 1 * 90;  // hit animation duration
+    private static final int HIT_ANIM_TICKS =  90;  // hit animation duration
 
-    private static final int BULLET_DELAY  = 1 * 200; // 1 s between bullets
+    private static final int BULLET_DELAY  =  200; // 1 s between bullets
     private static final int MAX_BULLETS   = 10;        // bullets per Skill 1 phase
-    private static final int MAX_PILES     = 3;        // always 3 piles per Skill 2
+    private static final int MAX_NUKES    = 3;        // always 3 piles per Skill 2
 
     // ── Per-row animation speeds (ticks per frame) ← ADJUST ──
     // -------------------------------------------------------
@@ -125,8 +130,8 @@ public class Boss2 {
     private static final float ALIGN_THRESHOLD = 4f * Game.SCALE;
 
     // ── Skill 2 pile tracking ─────────────────────────────────
-    private int pilesLaid    = 0;
-    private int pileTick     = 0;
+    private int nukesDeployed    = 0;
+    private int nukeTick   = 0;
     /**
      * Skill 2 phase:
      *   0 = col 0 (tailgate closed, startup)
@@ -137,7 +142,7 @@ public class Boss2 {
     private int skill2Phase  = 0;
     private int s2LoopTick   = 0;
     private int s2LoopIndex  = 1;
-    private int pileSpawnTick = 0;
+    private int nukeSpawnTick = 0;
 
     // ── Hit animation ─────────────────────────────────────────
     private int hitTick = 0;
@@ -148,13 +153,17 @@ public class Boss2 {
     private int   wanderInterval   = 80;
 
     // ── Spawned objects ───────────────────────────────────────
-    private final List<GarbagePile.BossProjectile> bullets = new ArrayList<>();
-    private final List<GarbagePile>    piles   = new ArrayList<>();
+    // ── Spawned objects ───────────────────────────────────────
+    private final List<NukeProjectile.BossProjectile> bullets = new ArrayList<>();
+    private final List<NukeProjectile.Nuke>    nukes   = new ArrayList<>();
     private BufferedImage[]            bulletFrames;
-    private BufferedImage              pileImage;
+    private BufferedImage[]            nukeFrames;
 
     private final Random rng = new Random();
-    // __________________________
+
+    private BufferedImage skillSheet1;  // ← NEW: separate sheet for Skill 1
+    private BufferedImage skillSheet2;  // ← NEW: separate sheet for Skill 2
+   // __________________________
     // Stun Effect
     //_________________
     private boolean stunned = false;
@@ -173,6 +182,16 @@ public class Boss2 {
     //_______________
 
     // ─────────────────────────────────────────────────────────
+    // ── Jeep position for Skill 2 targeting ───────────────
+    private float jeepX = 0f;
+    private float jeepY = 0f;
+    private float jeepWidth = 0f;
+    private float jeepHeight = 0f;
+
+    // ── Skill 2 spawn positioning (relative to jeep) ──────
+    private static final float SKILL2_SPAWN_OFFSET_X = -80f;   // spawn left of jeep
+    private static final float SKILL2_SPAWN_OFFSET_Y = 0f;     // center on jeep Y
+
     public Boss2(float startX, float startY) {
         this.width  = (int)(FRAME_W * Game.SCALE);
         this.height = (int)(FRAME_H * Game.SCALE);
@@ -192,10 +211,9 @@ public class Boss2 {
     }
 
     private void loadFrames() {
-        BufferedImage sheet = LoadSave.getSpriteAtlas(LoadSave.BOSS3_ATLAS);
-        System.out.println("Boss 2 loaded");
+        BufferedImage sheet = LoadSave.getSpriteAtlas(LoadSave.BOSS2_ATLAS);
         if (sheet == null) {
-            System.err.println("[Boss2] Could not load " + LoadSave.BOSS3_ATLAS);
+            System.err.println("[Boss1] Could not load " + LoadSave.BOSS2_ATLAS);
             return;
         }
         for (int row = 0; row < ROWS; row++)
@@ -206,11 +224,30 @@ public class Boss2 {
                             col * FRAME_W, row * FRAME_H, FRAME_W, FRAME_H);
             }
 
-        bulletFrames = new BufferedImage[FRAME_COUNTS[ROW_SKILL1]];
-        for (int i = 0; i < bulletFrames.length; i++)
-            bulletFrames[i] = frames[ROW_SKILL1][i];
+        // ── Load Skill 1 from separate sheet ─────────────────
+        skillSheet1 = LoadSave.getSpriteAtlas(LoadSave.BOSS2_SKILL1);  // ← NEW constant
+        if (skillSheet1 != null) {
+            bulletFrames = new BufferedImage[4];  // 4 frames instead of 5
+            for (int i = 0; i < 4; i++) {
+                bulletFrames[i] = skillSheet1.getSubimage(
+                        i * FRAME_W_SKILL1, 0, FRAME_W_SKILL1, FRAME_H_SKILL1);  // Row 0 only
+            }
+            System.out.println("✓ Loaded Skill 1 frames from separate sheet");
+        } else {
+            System.err.println("❌ Could not load " + LoadSave.BOSS2_SKILL1);
+        }
 
-        pileImage = frames[ROW_SKILL2][4];
+        skillSheet2 = LoadSave.getSpriteAtlas(LoadSave.BOSS2_SKILL2);  // ← NEW constant
+        if (skillSheet2 != null) {
+            nukeFrames = new BufferedImage[18];  // 4 frames instead of 5
+            for (int i = 0; i < 18; i++) {
+                nukeFrames[i] = skillSheet2.getSubimage(
+                        i * FRAME_W_SKILL2, 0, FRAME_W_SKILL2, FRAME_H_SKILL2);  // Row 0 only
+            }
+            System.out.println("✓ Loaded Skill 2 frames from separate sheet");
+        } else {
+            System.err.println("❌ Could not load " + LoadSave.BOSS2_SKILL2);
+        }
     }
 
     private void updateStunState() {
@@ -245,13 +282,17 @@ public class Boss2 {
     // ─────────────────────────────────────────────────────────
     // UPDATE
     // ─────────────────────────────────────────────────────────
-    public void update(float jeepX, float jeepY) {
+    public void update(float jeepX, float jeepY, float jeepWidth, float jeepHeight) {
+        this.jeepX = jeepX;
+        this.jeepY = jeepY;
+        this.jeepWidth = jeepWidth;
+        this.jeepHeight = jeepHeight;
+
         updateBullets();
-        updatePiles();
+        updateNukes();
         updateStateMachine(jeepX, jeepY);
         updateAnimation();
     }
-
 
     // ─────────────────────────────────────────────────────────
     // Jeep skill effect
@@ -275,21 +316,6 @@ public class Boss2 {
         stunTick = 0;
     }
     private void updateStateMachine(float jeepX, float jeepY) {
-        if (stunned) {
-            updateStunState();
-            return;
-        }
-
-        // ── Handle slow effect timer ────────────────────────────
-        if (slowed) {
-            slowTick++;
-            if (slowTick >= SLOW_DURATION) {
-                slowed = false;
-                slowTick = 0;
-                System.out.println("[Boss1] Slow effect expired.");
-            }
-        }
-
         stateTick++;
         x = lockedX;
 
@@ -303,12 +329,12 @@ public class Boss2 {
                 break;
 
             // ── SKILL1: reposition first, then fire ───────────
-            // ── SKILL1: reposition first, then fire ───────────
             case SKILL1:
-                currentRow = ROW_RUNNING;
+                currentRow = ROW_RUNNING;   // running animation throughout
 
                 if (!skill1Firing) {
-                    // ── Sub-phase A: run toward target Y ─────────────
+                    // ── Sub-phase A: run toward target Y ─────────
+                    // jeepY is now the CENTRE of the jeep hitbox (passed from BossFightState)
                     skill1TargetY = jeepY;
                     followJeepY(skill1TargetY);
 
@@ -317,34 +343,24 @@ public class Boss2 {
                     float diff = Math.abs(bossCentreY - skill1TargetY);
                     if (diff <= ALIGN_THRESHOLD) {
                         // Snap boss centre exactly onto target and begin firing
-                        y = clampY(skill1TargetY - height / 2f);
-                        skill1Firing = true;
-
-                        // ── Apply slow multiplier to first bullet delay ──
-                        int effectiveDelay = slowed
-                                ? (int)(BULLET_DELAY * SLOW_FIRE_MULT)
-                                : BULLET_DELAY;
-                        bulletTick = effectiveDelay;
+                        y             = clampY(skill1TargetY - height / 2f);
+                        skill1Firing  = true;
+                        bulletTick    = BULLET_DELAY; // fire first bullet immediately
                     }
                 } else {
                     // ── Sub-phase B: fire bullets at jeep hitbox centre ──
+                    // Keep gently tracking so we stay on target if jeep moves
                     followJeepY(jeepY);
 
                     bulletTick++;
-
-                    // ── Apply slow multiplier to bullet delay ────────────
-                    int effectiveDelay = slowed
-                            ? (int)(BULLET_DELAY * SLOW_FIRE_MULT)
-                            : BULLET_DELAY;
-
-                    if (bulletTick >= effectiveDelay && bulletsFired < MAX_BULLETS) {
+                    if (bulletTick >= BULLET_DELAY && bulletsFired < MAX_BULLETS) {
                         fireBullet();
-                        bulletTick = 0;
+                        bulletTick   = 0;
                         bulletsFired++;
                     }
                 }
 
-                if (stateTick >= SKILL1_TICKS) enterSkill1();
+                if (stateTick >= SKILL1_TICKS) enterWait(BossState.WAIT_AFTER1);
                 break;
 
             // ── WAIT after Skill 1: wander freely (Tweak 1) ──
@@ -355,6 +371,7 @@ public class Boss2 {
                 break;
 
             // ── SKILL2: wander freely while laying (Tweak 1) ─
+            // (Red Jeep deploys stun nukes instead of garbage piles)
             case SKILL2:
                 wanderY();                          // free movement, not targeting
                 updateSkill2Sequence();
@@ -368,8 +385,14 @@ public class Boss2 {
                 if (stateTick >= WAIT_TICKS) enterRandom();
                 break;
 
+            // ── RANDOM: Choose next skill and IMMEDIATELY transition ──
             case RANDOM:
-                if (rng.nextBoolean()) enterSkill1(); else enterSkill2();
+                // ✅ FIX: Don't stay in RANDOM state, pick and transition once
+                if (rng.nextBoolean()) {
+                    enterSkill1();
+                } else {
+                    enterSkill2();
+                }
                 break;
 
             case HIT:
@@ -430,7 +453,7 @@ public class Boss2 {
     // Phase 3: idle in Running until SKILL2_TICKS expires
     // ─────────────────────────────────────────────────────────
     private void updateSkill2Sequence() {
-        pileTick++;
+        nukeTick++;
 
         switch (skill2Phase) {
 
@@ -438,12 +461,12 @@ public class Boss2 {
             case 0:
                 currentRow = ROW_SKILL2;
                 aniIndex   = 0;
-                if (pileTick >= S2_COL0_TICKS) {
-                    pileTick      = 0;
+                if (nukeTick >= S2_COL0_TICKS) {
+                    nukeTick      = 0;
                     s2LoopTick    = 0;
                     s2LoopIndex   = 1;
-                    pileSpawnTick = 0;
-                    pilesLaid     = 0;
+                    nukeSpawnTick = 0;
+                    nukesDeployed     = 0;
                     skill2Phase   = 1;
                 }
                 break;
@@ -458,14 +481,14 @@ public class Boss2 {
                 }
                 aniIndex = s2LoopIndex;
 
-                pileSpawnTick++;
-                if (pileSpawnTick >= S2_PILE_DELAY && pilesLaid < MAX_PILES) {
-                    layGarbagePileVertical(pilesLaid);  // Tweak 2: vertical positioning
-                    pileSpawnTick = 0;
+                nukeSpawnTick++;
+                if (nukeSpawnTick >= S2_PILE_DELAY && nukesDeployed < MAX_NUKES) {
+                    layNukesVertical(nukesDeployed);  // Tweak 2: vertical positioning
+                    nukeSpawnTick = 0;
                 }
 
-                if (pilesLaid >= MAX_PILES) {
-                    pileTick    = 0;
+                if (nukesDeployed >= MAX_NUKES) {
+                    nukeTick    = 0;
                     skill2Phase = 2;
                 }
                 break;
@@ -474,8 +497,8 @@ public class Boss2 {
             case 2:
                 currentRow = ROW_SKILL2;
                 aniIndex   = 3;
-                if (pileTick >= S2_COL3_TICKS) {
-                    pileTick   = 0;
+                if (nukeTick >= S2_COL3_TICKS) {
+                    nukeTick   = 0;
                     currentRow = ROW_RUNNING;
                     aniIndex   = 0;
                     skill2Phase = 3;
@@ -500,13 +523,13 @@ public class Boss2 {
     }
 
     private void enterSkill2() {
-        state         = BossState.SKILL2;
+        state         = BossFight.LevelTwo.Red.Boss2.BossState.SKILL2;
         stateTick     = 0;
-        pilesLaid     = 0;
-        pileTick      = 0;
+        nukesDeployed = 0;
+        nukeTick      = 0;
         s2LoopTick    = 0;
         s2LoopIndex   = 1;
-        pileSpawnTick = 0;
+        nukeSpawnTick = 0;
         skill2Phase   = 0;
         currentRow    = ROW_SKILL2;
     }
@@ -542,18 +565,18 @@ public class Boss2 {
      * The spawn Y is the boss's own centre, lane-clamped so it never exits the road.
      */
     private void fireBullet() {
-        float bx      = x;                              // left edge of boss → travels left
-        float bulletH = GarbagePile.BossProjectile.FRAME_H * Game.SCALE;
-        // Boss centre Y — this is already aligned to jeep hitbox centre during Skill 1
+        float bx = x;
+        float bulletH = NukeProjectile.BossProjectile.FRAME_H * Game.SCALE;
         float byCentre = y + height / 2f - bulletH / 2f;
 
-        // Clamp within road lanes so bullets never fly off-road
+        // ── Allow all 3 lanes (upper, middle, lower) ────────────
         float bulletTopLimit = laneTopY;
-        float bulletBotLimit = LANE_BOTTOM_PRE_SCALE * Game.TILES_SIZE - bulletH;
+        float bulletBotLimit = Game.GAME_HEIGHT - bulletH;  // ← CHANGE: use full screen height
+
         if (byCentre < bulletTopLimit) byCentre = bulletTopLimit;
         if (byCentre > bulletBotLimit) byCentre = bulletBotLimit;
 
-        bullets.add(new GarbagePile.BossProjectile(bx, byCentre, bulletFrames));
+        bullets.add(new NukeProjectile.BossProjectile(bx, byCentre, bulletFrames));
     }
 
     /**
@@ -562,39 +585,87 @@ public class Boss2 {
      * Piles are equally spaced by PILE_VERTICAL_GAP.
      * The column is centred on the current lane mid-point.
      */
-    private void layGarbagePileVertical(int pileIndex) {
-        float pileH   = GarbagePile.PILE_H * Game.SCALE;
-        float gap     = PILE_VERTICAL_GAP * Game.SCALE;
+    /**
+     * Deploys 3 animated nukes in a vertical column CENTERED ON THE JEEP.
+     * pileIndex: 0=top, 1=middle, 2=bottom
+     * Nukes spawn left of jeep and animate in place.
+     */
+    private void layNukesVertical(int pileIndex) {
+        float nukeH = NukeProjectile.Nuke.FRAME_H * Game.SCALE;
+        float gap = PILE_VERTICAL_GAP * Game.SCALE;
 
-        // Centre of the 3-pile column = boss's current vertical centre
-        float colCentreY = y + height / 2f;
-        // Offsets: pile 0 is top, pile 2 is bottom
-        float offsetY = (pileIndex - 1) * (pileH + gap); // -1 → top, 0 → mid, +1 → bot
+        // ── Centre of jeep hitbox ──────────────────────────────
+        float jeepCentreX = jeepX + jeepWidth / 2f;
+        float jeepCentreY = jeepY + jeepHeight / 2f;
 
-        float px = x + width * 0.25f;          // slightly left of boss centre
-        float py = colCentreY + offsetY - pileH / 2f;
+        // ── Vertical column: pile 0=top, 1=mid, 2=bot ──────────
+        // Base offset: anchored to lane-based stacking
+        float baseOffsetY = (pileIndex - 1) * (nukeH + gap);
 
-        // Clamp so piles never land outside the road
-        float pileTop = laneTopY;
-        float pileBot = LANE_BOTTOM_PRE_SCALE * Game.TILES_SIZE - pileH;
-        if (py < pileTop) py = pileTop;
-        if (py > pileBot) py = pileBot;
+        // ── Add controlled randomness to nearby lanes only ─────
+        // Random offset: ±50% of lane gap
+        float randomOffset = (rng.nextFloat() - 0.5f) * gap;
+        float offsetY = baseOffsetY + randomOffset;
 
-        piles.add(new GarbagePile(px, py, pileImage));
-        pilesLaid++;
+        // ── Spawn X: left of jeep ──────────────────────────────
+        float px = jeepCentreX + SKILL2_SPAWN_OFFSET_X;
+
+        // ── Spawn Y: CRITICAL FIX ──────────────────────────────
+        // jeepCentreY is the CENTER of the jeep hitbox.
+        // To align nuke CENTRE with jeep CENTRE, subtract half nuke height.
+        // Then add the lane offset.
+
+        float py = jeepCentreY - nukeH / 2f + offsetY * 0.7f + SKILL2_SPAWN_OFFSET_Y;
+
+        // ── Clamp to lane boundaries (ensure stays in road) ────
+        float nukeTop = laneTopY;
+        float nukeBot = Game.GAME_HEIGHT - nukeH;
+
+        if (py < nukeTop) py = nukeTop;
+        if (py > nukeBot) py = nukeBot;
+
+        System.out.println("[Boss2] Nuke " + (pileIndex + 1)
+                + " | jeepCentre=(" + jeepCentreX + ", " + jeepCentreY + ")"
+                + " | topLeftY=" + py
+                + " | baseOffset=" + baseOffsetY
+                + " | randomOffset=" + randomOffset);
+
+        nukes.add(new NukeProjectile.Nuke(px, py, nukeFrames));
+        nukesDeployed++;
     }
+    /*
+        private void layNukesVertical(int pileIndex) {
+            float nukeH = NukeProjectile.Nuke.FRAME_H * Game.SCALE;
+            float gap = PILE_VERTICAL_GAP * Game.SCALE;
+
+            float colCentreY = y + height / 2f;
+            float offsetY = (pileIndex - 1) * (nukeH + gap);
+
+            float px = x + width * 0.25f;
+            float py = colCentreY + offsetY - nukeH / 2f;
+
+            float nukeTop = laneTopY;
+            float nukeBot = Game.GAME_HEIGHT - nukeH;  // ← CHANGE: use full screen height instead
+
+            if (py < nukeTop) py = nukeTop;
+            if (py > nukeBot) py = nukeBot;
+
+            System.out.println("[Boss2] Spawning nuke " + (pileIndex + 1) + " at (" + px + ", " + py + ")");
+            nukes.add(new NukeProjectile.Nuke(px, py, nukeFrames));
+            nukesDeployed++;
+        }
+
+     */
 
     private void updateBullets() {
         bullets.removeIf(b -> { b.update(); return !b.isActive(); });
     }
 
-    private void updatePiles() {
-        piles.removeIf(p -> { p.update(BOSS_SCROLL_SPEED * Game.SCALE); return !p.isActive(); });
-    }
+    private void updateNukes() {nukes.removeIf(p -> { p.update(BOSS_SCROLL_SPEED * Game.SCALE); return !p.isActive(); });}
 
     // ── Animation ─────────────────────────────────────────────
     private void updateAnimation() {
-        if (state == BossState.SKILL2 && currentRow == ROW_SKILL2) return;
+        if (state == BossFight.LevelTwo.Red.Boss2.BossState.SKILL2 && currentRow == ROW_SKILL2) return;
 
         int speed;
         switch (currentRow) {
@@ -615,19 +686,16 @@ public class Boss2 {
     // RENDER
     // ─────────────────────────────────────────────────────────
     public void render(Graphics g) {
-        for (GarbagePile p : piles) p.render(g);
+        for (NukeProjectile.Nuke n : nukes) n.render(g);
 
         int safeIndex = Math.min(aniIndex, FRAME_COUNTS[currentRow] - 1);
         BufferedImage frame = frames[currentRow][safeIndex];
         if (frame != null)
             g.drawImage(frame, (int) x, (int) y, width, height, null);
 
-        for (GarbagePile.BossProjectile b : bullets) b.render(g);
+        for (NukeProjectile.BossProjectile b : bullets) b.render(g);
     }
 
-    // ─────────────────────────────────────────────────────────
-    // GETTERS
-    // ─────────────────────────────────────────────────────────
     private static final float HB_INSET_PERCENT = 0.6f;
     private static final int X_OFFSET = 0;
     private static final int Y_OFFSET = 20;
@@ -642,8 +710,8 @@ public class Boss2 {
                 height - (insetY * 2));
     }
 
-    public List<GarbagePile.BossProjectile> getBullets()      { return bullets; }
-    public List<GarbagePile>    getGarbagePiles() { return piles;   }
+    public List<NukeProjectile.BossProjectile> getBullets()      { return bullets; }
+    public List<NukeProjectile.Nuke>    getNukes() { return nukes;   }
     public float getX() { return x; }
     public float getY() { return y; }
     public float getLaneTopY()  { return laneTopY; }

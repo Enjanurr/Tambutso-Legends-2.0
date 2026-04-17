@@ -17,7 +17,7 @@ public class Boss1 {
     public static final int FRAME_H    = 79;   // 316 / 4
     public static final int ROWS       = 4;
 
-    // ── Row indices ───────────────────────────────────────────
+    // ── Row indices boss skilss ───────────────────────────────────────────
     public static final int ROW_SKILL1  = 0;   // bullet frames only
     public static final int ROW_RUNNING = 1;
     public static final int ROW_SKILL2  = 2;

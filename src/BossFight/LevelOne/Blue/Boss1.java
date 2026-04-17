@@ -46,9 +46,9 @@ public class Boss1 {
     private static final int SKILL1_TICKS   = 10 * 200; // 4 s window for firing
     private static final int WAIT_TICKS     = 2 * 200; // 2 s wait between phases
     private static final int SKILL2_TICKS   = 6 * 200; // 6 s window for piles
-    private static final int HIT_ANIM_TICKS = 1 * 90;  // hit animation duration
+    private static final int HIT_ANIM_TICKS = 90;  // hit animation duration
 
-    private static final int BULLET_DELAY  = 1 * 200; // 1 s between bullets
+    private static final int BULLET_DELAY  = 200; // 1 s between bullets
     private static final int MAX_BULLETS   = 10;        // bullets per Skill 1 phase
     private static final int MAX_PILES     = 3;        // always 3 piles per Skill 2
 
@@ -175,9 +175,9 @@ public class Boss1 {
     }
 
     private void loadFrames() {
-        BufferedImage sheet = LoadSave.getSpriteAtlas(LoadSave.BOSS1_ATLAS);
+        BufferedImage sheet = LoadSave.getSpriteAtlas(LoadSave.BOSS3_ATLAS);
         if (sheet == null) {
-            System.err.println("[Boss1] Could not load " + LoadSave.BOSS1_ATLAS);
+            System.err.println("[Boss1] Could not load " + LoadSave.BOSS3_ATLAS);
             return;
         }
         for (int row = 0; row < ROWS; row++)

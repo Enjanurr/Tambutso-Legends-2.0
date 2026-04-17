@@ -29,7 +29,7 @@ import static utils.Constants.UI.VolumeButtons.*;
  */
 public class BossPauseOverlay {
 
-    private final BossFight.LevelOne.Red.RedJeepVsBoss1State redJeepVsBoss1State;
+    private final RedJeepVsBoss1State redJeepVsBoss1State;
 
     private BufferedImage backgroundImg;
     private int bgX, bgY, bgW, bgH;
@@ -38,7 +38,7 @@ public class BossPauseOverlay {
     private UrmButton    resumeBtn, restartBtn, menuBtn;
     private VolumeButton volumeButton;
 
-    public BossPauseOverlay(BossFight.LevelOne.Red.RedJeepVsBoss1State blueJeepVsBoss1State) {
+    public BossPauseOverlay(RedJeepVsBoss1State blueJeepVsBoss1State) {
         this.redJeepVsBoss1State = blueJeepVsBoss1State;
         loadBackground();
         createSoundButtons();
