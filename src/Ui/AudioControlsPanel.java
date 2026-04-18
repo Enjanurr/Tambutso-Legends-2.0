@@ -20,8 +20,9 @@ public class AudioControlsPanel {
         this.musicButton = musicButton;
         this.sfxButton = sfxButton;
         this.volumeButton = volumeButton;
-        this.musicButton.setMuted(audioPlayer.isMuted());
-        this.volumeButton.setValue(audioPlayer.getVolume());
+        this.musicButton.setMuted(audioPlayer.isMusicMuted());
+        this.sfxButton.setMuted(audioPlayer.isSfxMuted());
+        this.volumeButton.setValue(audioPlayer.getMusicVolume());
     }
 
     public void update() {
@@ -40,10 +41,10 @@ public class AudioControlsPanel {
         if (!volumeButton.isMousePressed()) return;
 
         volumeButton.changeX(e.getX());
-        audioPlayer.setVolume(volumeButton.getValue());
+        audioPlayer.setMusicVolume(volumeButton.getValue());
         if (musicButton.isMuted()) {
             musicButton.setMuted(false);
-            audioPlayer.setMuted(false);
+            audioPlayer.setMusicMuted(false);
         }
     }
 
@@ -52,7 +53,7 @@ public class AudioControlsPanel {
             musicButton.setMousePressed(true);
             boolean muted = !musicButton.isMuted();
             musicButton.setMuted(muted);
-            audioPlayer.setMuted(muted);
+            audioPlayer.setMusicMuted(muted);
         }
         else if (isIn(e, sfxButton)) sfxButton.setMousePressed(true);
         else if (isIn(e, volumeButton)) volumeButton.setMousePressed(true);
@@ -64,8 +65,11 @@ public class AudioControlsPanel {
         }
 
         if (isIn(e, sfxButton)) {
-            if (sfxButton.isMousePressed())
-                sfxButton.setMuted(!sfxButton.isMuted());
+            if (sfxButton.isMousePressed()) {
+                boolean muted = !sfxButton.isMuted();
+                sfxButton.setMuted(muted);
+                audioPlayer.setSfxMuted(muted);
+            }
             return true;
         }
 

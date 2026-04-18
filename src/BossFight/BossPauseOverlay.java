@@ -62,7 +62,8 @@ public class BossPauseOverlay {
         int sfxY   = (int)(186 * Game.SCALE);
         musicButton = new SoundButton(soundX, musicY, SOUND_SIZE, SOUND_SIZE);
         sfxButton   = new SoundButton(soundX, sfxY,   SOUND_SIZE, SOUND_SIZE);
-        musicButton.setMuted(getAudioPlayer().isMuted());
+        musicButton.setMuted(getAudioPlayer().isMusicMuted());
+        sfxButton.setMuted(getAudioPlayer().isSfxMuted());
     }
 
     private void createUrmButtons() {
@@ -80,7 +81,7 @@ public class BossPauseOverlay {
         int vX = (int)(293 * Game.SCALE);
         int vY = (int)(278 * Game.SCALE);
         volumeButton = new VolumeButton(vX, vY, SLIDER_WIDTH, VOLUME_HEIGHT);
-        volumeButton.setValue(getAudioPlayer().getVolume());
+        volumeButton.setValue(getAudioPlayer().getMusicVolume());
     }
 
     // ── Update / Draw ─────────────────────────────────────────
@@ -107,10 +108,10 @@ public class BossPauseOverlay {
     public void mouseDragged(MouseEvent e) {
         if (volumeButton.isMousePressed()) {
             volumeButton.changeX(e.getX());
-            getAudioPlayer().setVolume(volumeButton.getValue());
+            getAudioPlayer().setMusicVolume(volumeButton.getValue());
             if (musicButton.isMuted()) {
                 musicButton.setMuted(false);
-                getAudioPlayer().setMuted(false);
+                getAudioPlayer().setMusicMuted(false);
             }
         }
     }
@@ -120,7 +121,7 @@ public class BossPauseOverlay {
             musicButton.setMousePressed(true);
             boolean muted = !musicButton.isMuted();
             musicButton.setMuted(muted);
-            getAudioPlayer().setMuted(muted);
+            getAudioPlayer().setMusicMuted(muted);
         }
         else if (isIn(e, sfxButton))    sfxButton.setMousePressed(true);
         else if (isIn(e, resumeBtn))    resumeBtn.setMousePressed(true);
@@ -132,8 +133,11 @@ public class BossPauseOverlay {
     public void mouseReleased(MouseEvent e) {
         if (isIn(e, musicButton)) {
         } else if (isIn(e, sfxButton)) {
-            if (sfxButton.isMousePressed())
-                sfxButton.setMuted(!sfxButton.isMuted());
+            if (sfxButton.isMousePressed()) {
+                boolean muted = !sfxButton.isMuted();
+                sfxButton.setMuted(muted);
+                getAudioPlayer().setSfxMuted(muted);
+            }
 
         } else if (isIn(e, resumeBtn)) {
             if (resumeBtn.isMousePressed())

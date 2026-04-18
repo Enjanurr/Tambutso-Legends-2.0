@@ -33,6 +33,10 @@ public class LoadSave {
     public static final String DEATH_SCREEN     = "ui/overlays/death_screen.png";
     public static final String TUTORIAL_IMG     = "ui/overlays/tutorial.png";
     public static final String MISSION_MAP1_IMG = "ui/overlays/mission_map1.png";
+    public static final String GAME_LOGO_SHEET  = "ui/logo/tambutso_legends_logo_new.png";
+    public static final String INTRO_FIREBALL   = "ui/logo/fireball.png";
+    public static final String INTRO_EXPLOSION  = "ui/logo/explosion.png";
+    public static final String INTRO_PRESS_KEY  = "ui/logo/presskey.png";
     public static final String PROGRESS_BAR     = "ui/hud/progress_bar.png";
 
     // ── Playing state background / environment ───────────────

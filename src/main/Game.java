@@ -18,6 +18,7 @@ public class Game implements Runnable {
     private Playing       playing;
     private Menu          menu;
     private Options       options;
+    private GameIntroState gameIntroState;
     private IntroOverlay  introOverlay;
     private BossFightState bossFightState;
     private final AudioPlayer audioPlayer;
@@ -56,6 +57,7 @@ public class Game implements Runnable {
         menu          = new Menu(this);
         options       = new Options(this);
         playing       = new Playing(this);
+        gameIntroState = new GameIntroState(this);
         charSelectState = new CharSelectState(this);
         introOverlay  = new IntroOverlay();
         // BossFightState shares the Player and HealthBar from Playing
@@ -99,6 +101,9 @@ public class Game implements Runnable {
 
     public void update() {
         switch (GameStates.state) {
+            case GAME_INTRO:
+                gameIntroState.update();
+                break;
             case CHAR_SELECT:
                 charSelectState.update();
                 break;
@@ -161,25 +166,21 @@ public class Game implements Runnable {
     }
 
     private String getDesiredMusicTrack() {
-        switch (GameStates.state) {
-            case CHAR_SELECT:
-                return "menu";
-            case MENU:
-            case INTRO:
-            case OPTIONS:
-                return "menu";
-            case PLAYING:
-                return playing.isPaused() ? "menu" : "main";
-            case BOSS_FIGHT:
-                return bossFightState.isPaused() ? "menu" : "main";
-            case QUIT:
-            default:
-                return "none";
-        }
+        return switch (GameStates.state) {
+            case GAME_INTRO -> gameIntroState.hasLogoRevealStarted() ? "menu" : "none";
+            case CHAR_SELECT -> "menu";
+            case MENU, INTRO, OPTIONS -> "menu";
+            case PLAYING -> playing.isPaused() ? "menu" : "main";
+            case BOSS_FIGHT -> bossFightState.isPaused() ? "menu" : "main";
+            default -> "none";
+        };
     }
 
     public void render(Graphics g) {
         switch (GameStates.state) {
+            case GAME_INTRO:
+                gameIntroState.draw(g);
+                break;
             case CHAR_SELECT:
                 charSelectState.draw(g);
                 break;
@@ -245,6 +246,7 @@ public class Game implements Runnable {
     public Menu            getMenu()           { return menu; }
     public Options         getOptions()        { return options; }
     public Playing         getPlaying()        { return playing; }
+    public GameIntroState  getGameIntroState() { return gameIntroState; }
     public IntroOverlay    getIntroOverlay()   { return introOverlay; }
     public BossFightState  getBossFightState() { return bossFightState; }
     public AudioPlayer     getAudioPlayer()    { return audioPlayer; }
