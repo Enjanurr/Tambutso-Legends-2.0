@@ -49,6 +49,7 @@ public class BossPauseOverlay {
     // ── Asset loading ─────────────────────────────────────────
     private void loadBackground() {
         backgroundImg = LoadSave.getSpriteAtlas(LoadSave.PAUSE_BACKGROUNDS);
+        assert backgroundImg != null;
         bgW = (int)(backgroundImg.getWidth()  * Game.SCALE);
         bgH = (int)(backgroundImg.getHeight() * Game.SCALE);
         bgX = Game.GAME_WIDTH / 2 - bgW / 2;
@@ -115,7 +116,12 @@ public class BossPauseOverlay {
     }
 
     public void mousePressed(MouseEvent e) {
-        if      (isIn(e, musicButton))  musicButton.setMousePressed(true);
+        if      (isIn(e, musicButton))  {
+            musicButton.setMousePressed(true);
+            boolean muted = !musicButton.isMuted();
+            musicButton.setMuted(muted);
+            getAudioPlayer().setMuted(muted);
+        }
         else if (isIn(e, sfxButton))    sfxButton.setMousePressed(true);
         else if (isIn(e, resumeBtn))    resumeBtn.setMousePressed(true);
         else if (isIn(e, restartBtn))   restartBtn.setMousePressed(true);
@@ -125,12 +131,6 @@ public class BossPauseOverlay {
 
     public void mouseReleased(MouseEvent e) {
         if (isIn(e, musicButton)) {
-            if (musicButton.isMousePressed()) {
-                boolean muted = !musicButton.isMuted();
-                musicButton.setMuted(muted);
-                getAudioPlayer().setMuted(muted);
-            }
-
         } else if (isIn(e, sfxButton)) {
             if (sfxButton.isMousePressed())
                 sfxButton.setMuted(!sfxButton.isMuted());

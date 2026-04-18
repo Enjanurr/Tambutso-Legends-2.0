@@ -65,7 +65,7 @@ public class Playing extends State implements StateMethods {
     private WorldObjectManager worldObjectManager;
 
     // ── Current route position ────────────────────────────────
-    private RouteMap currentMap = RouteMap.MAP_1;
+    private RouteMap currentMap = RouteMap.MAP_2;
 
     // ─────────────────────────────────────────────────────────
     public Playing(Game game) {

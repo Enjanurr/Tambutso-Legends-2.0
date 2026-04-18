@@ -92,8 +92,25 @@ public class AudioPlayer {
     }
 
     public void setMuted(boolean muted) {
+        if (this.muted == muted)
+            return;
+
         this.muted = muted;
+
+        if (clip == null)
+            return;
+
+        if (muted) {
+            rememberCurrentTrackPosition();
+            clip.stop();
+            clip.flush();
+            applyPlaybackSettings(clip);
+            return;
+        }
+
+        clip.setFramePosition(getSavedFramePosition(currentTrack, clip));
         applyPlaybackSettings(clip);
+        clip.loop(Clip.LOOP_CONTINUOUSLY);
     }
 
     public boolean isMuted() {

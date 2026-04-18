@@ -48,18 +48,18 @@ public class AudioControlsPanel {
     }
 
     public void mousePressed(MouseEvent e) {
-        if (isIn(e, musicButton)) musicButton.setMousePressed(true);
+        if (isIn(e, musicButton)) {
+            musicButton.setMousePressed(true);
+            boolean muted = !musicButton.isMuted();
+            musicButton.setMuted(muted);
+            audioPlayer.setMuted(muted);
+        }
         else if (isIn(e, sfxButton)) sfxButton.setMousePressed(true);
         else if (isIn(e, volumeButton)) volumeButton.setMousePressed(true);
     }
 
     public boolean mouseReleased(MouseEvent e) {
         if (isIn(e, musicButton)) {
-            if (musicButton.isMousePressed()) {
-                boolean muted = !musicButton.isMuted();
-                musicButton.setMuted(muted);
-                audioPlayer.setMuted(muted);
-            }
             return true;
         }
 

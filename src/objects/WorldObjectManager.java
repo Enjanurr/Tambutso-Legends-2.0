@@ -21,8 +21,7 @@ public class WorldObjectManager {
     // Decorative roadside objects can appear immediately at run start and can
     // also spawn from the right edge when a stop-count milestone is reached.
     private static final float SPAWN_X = Game.GAME_WIDTH;
-    private static final float INITIAL_BUS_STOP_X = 250f;
-    private static final int BUS_STOP_Y = 175;
+    private static final float INITIAL_BUILDING_X = 500f;
     private static final int CLEANUP_INTERVAL_FRAMES = 60;
     private static final int CLEANUP_THRESHOLD = 8;
 
@@ -44,18 +43,29 @@ public class WorldObjectManager {
             stopSpawnDefinitions.put(map, new HashMap<>());
         }
 
-        registerBuilding(RouteMap.MAP_1, 1, true, LoadSave.MAP1_KEPCO, Constants.Landmarks.MAP1_KEPCO);
-        registerBuilding(RouteMap.MAP_1, 3, true, LoadSave.MAP1_MARKETPLACE, Constants.Landmarks.MAP1_MARKETPLACE);
-        registerBuilding(RouteMap.MAP_1, 5, true, LoadSave.MAP1_GAISANO, Constants.Landmarks.MAP1_GAISANO);
+        boolean debug = false;
+        int stopIndex2 = !debug ? 3 : 1,
+            stopIndex3 = !debug ? 6 : 2,
+            stopIndex4 = !debug ? 9 : 3,
+            stopIndex5 = !debug ? 12 : 4;
 
-        registerBuilding(RouteMap.MAP_2, 1, true, LoadSave.MAP2_CITU, Constants.Landmarks.MAP2_CITU);
-        registerBuilding(RouteMap.MAP_2, 2, true, LoadSave.MAP2_USJR, Constants.Landmarks.MAP2_USJR);
-        registerBuilding(RouteMap.MAP_2, 3, true, LoadSave.MAP2_EMALL, Constants.Landmarks.MAP2_EMALL);
-        registerBuilding(RouteMap.MAP_2, 4, true, LoadSave.MAP2_SHOPWISE, Constants.Landmarks.MAP2_SHOPWISE);
-        registerBuilding(RouteMap.MAP_2, 5, true, LoadSave.MAP2_STARMALL, Constants.Landmarks.MAP2_STARMALL);
+        registerBuilding(RouteMap.MAP_1, 0, true, LoadSave.MAP1_KEPCO, Constants.Landmarks.MAP1_KEPCO);
+        registerBuilding(RouteMap.MAP_1, stopIndex2, true, LoadSave.MAP1_GAISANO, Constants.Landmarks.MAP1_GAISANO);
+        registerBuilding(RouteMap.MAP_1, stopIndex3, true, LoadSave.MAP1_MARKETPLACE, Constants.Landmarks.MAP1_MARKETPLACE);
+        registerBuilding(RouteMap.MAP_1, stopIndex4, true, LoadSave.MAP1_UC, Constants.Landmarks.MAP1_UC);
+        registerBuilding(RouteMap.MAP_1, stopIndex5, true, LoadSave.MAP1_WILCON, Constants.Landmarks.MAP1_WILCON);
 
-        registerBuilding(RouteMap.MAP_3, 2, true, LoadSave.MAP3_CATHEDRAL, Constants.Landmarks.MAP3_CATHEDRAL);
-        registerBuilding(RouteMap.MAP_3, 4, true, LoadSave.MAP3_SMCITY, Constants.Landmarks.MAP3_SMCITY);
+        registerBuilding(RouteMap.MAP_2, 0, true, LoadSave.MAP2_STARMALL, Constants.Landmarks.MAP2_STARMALL);
+        registerBuilding(RouteMap.MAP_2, stopIndex2, true, LoadSave.MAP2_USJR, Constants.Landmarks.MAP2_USJR);
+        registerBuilding(RouteMap.MAP_2, stopIndex3, true, LoadSave.MAP2_SHOPWISE, Constants.Landmarks.MAP2_SHOPWISE);
+        registerBuilding(RouteMap.MAP_2, stopIndex4, true, LoadSave.MAP2_CITU, Constants.Landmarks.MAP2_CITU);
+        registerBuilding(RouteMap.MAP_2, stopIndex5, true, LoadSave.MAP2_EMALL, Constants.Landmarks.MAP2_EMALL);
+
+        registerBuilding(RouteMap.MAP_3, 0, true, LoadSave.MAP3_CATHEDRAL, Constants.Landmarks.MAP3_CATHEDRAL);
+        registerBuilding(RouteMap.MAP_3, stopIndex2, true, LoadSave.MAP3_CITYHALL, Constants.Landmarks.MAP3_CITYHALL);
+        registerBuilding(RouteMap.MAP_3, stopIndex3, true, LoadSave.MAP3_SMCITY, Constants.Landmarks.MAP3_SMCITY);
+        registerBuilding(RouteMap.MAP_3, stopIndex4, true, LoadSave.MAP3_AYALA_TERRACES, Constants.Landmarks.MAP3_AYALA_TERRACES);
+        registerBuilding(RouteMap.MAP_3, stopIndex5, true, LoadSave.MAP3_AYALA_CENTRAL, Constants.Landmarks.MAP3_AYALA_CENTRAL);
     }
 
     public void setCurrentMap(RouteMap map) {
@@ -154,19 +164,17 @@ public class WorldObjectManager {
 
     private void spawnInitialObjects() {
         // Startup props are restored on construction and after a run reset.
-        if (busStopImage != null) {
-            spawnBusStop(INITIAL_BUS_STOP_X);
+        StopSpawnDefinition initialDefinition = getDefinition(currentMap, 0);
+        if (initialDefinition == null || !initialDefinition.overrideBusStop()) {
+            spawnBusStop(INITIAL_BUILDING_X);
+        }
+        if (initialDefinition != null) {
+            worldObjects.addAll(initialDefinition.spawnBuildingsAt(INITIAL_BUILDING_X));
         }
     }
 
     private void spawnBusStop(float x) {
-        worldObjects.add(new WorldObject(
-                x,
-                BUS_STOP_Y,
-                Constants.Environment.BUS_STOP_WIDTH,
-                Constants.Environment.BUS_STOP_HEIGHT,
-                busStopImage
-        ));
+        worldObjects.add(buildRoadsideObject(x, busStopImage, LoadSave.BUS_STOP, Constants.Landmarks.BUS_STOP));
     }
 
     private StopSpawnDefinition getDefinition(RouteMap map, int stopIndex) {
@@ -185,10 +193,7 @@ public class WorldObjectManager {
             return;
         }
 
-        int width = Math.max(1, Math.round(image.getWidth() * Game.SCALE * tuning.scale()));
-        int height = Math.max(1, Math.round(image.getHeight() * Game.SCALE * tuning.scale()));
-        BuildingSpawn buildingSpawn = new BuildingSpawn(imagePath, image, tuning.y(), width, height,
-                tuning.scale(), tuning.xOffset());
+        BuildingSpawn buildingSpawn = createBuildingSpawn(imagePath, image, tuning);
 
         Map<Integer, StopSpawnDefinition> byStop = stopSpawnDefinitions.get(map);
         StopSpawnDefinition existing = byStop.get(stopIndex);
@@ -203,6 +208,30 @@ public class WorldObjectManager {
         if (overrideBusStop) {
             existing.setOverrideBusStop(true);
         }
+    }
+
+    private BuildingSpawn createBuildingSpawn(String label, BufferedImage image,
+                                              Constants.Landmarks.LandmarkTuning tuning) {
+        int width = Math.max(1, Math.round(image.getWidth() * Game.SCALE * tuning.scale()));
+        int height = Math.max(1, Math.round(image.getHeight() * Game.SCALE * tuning.scale()));
+        int anchorY = Constants.Environment.BUILDING_BASE_Y + tuning.baseYOffset();
+        return new BuildingSpawn(label, image, anchorY, width, height, tuning.scale(), tuning.xOffset());
+    }
+
+    private WorldObject buildRoadsideObject(float spawnX, BufferedImage image, String label,
+                                            Constants.Landmarks.LandmarkTuning tuning) {
+        int width = Math.max(1, Math.round(image.getWidth() * Game.SCALE * tuning.scale()));
+        int height = Math.max(1, Math.round(image.getHeight() * Game.SCALE * tuning.scale()));
+        int anchorY = Constants.Environment.BUILDING_BASE_Y + tuning.baseYOffset();
+        return new WorldObject(
+                spawnX + tuning.xOffset(),
+                anchorY,
+                width,
+                height,
+                image,
+                new WorldObject.DebugInfo(label, tuning.scale(), anchorY, tuning.xOffset()),
+                true
+        );
     }
 
     private static final class StopSpawnDefinition {
@@ -227,9 +256,13 @@ public class WorldObjectManager {
         }
 
         private List<WorldObject> spawnBuildings() {
+            return spawnBuildingsAt(SPAWN_X);
+        }
+
+        private List<WorldObject> spawnBuildingsAt(float spawnX) {
             List<WorldObject> spawned = new ArrayList<>();
             for (BuildingSpawn building : buildings) {
-                spawned.add(building.spawn());
+                spawned.add(building.spawnAt(spawnX));
             }
             return spawned;
         }
@@ -237,9 +270,9 @@ public class WorldObjectManager {
 
     private record BuildingSpawn(String label, BufferedImage image, int y, int width, int height,
                                  float scale, float xOffset) {
-        private WorldObject spawn() {
+        private WorldObject spawnAt(float spawnX) {
             return new WorldObject(
-                    SPAWN_X + xOffset,
+                    spawnX + xOffset,
                     y,
                     width,
                     height,

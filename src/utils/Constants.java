@@ -11,46 +11,58 @@ public class Constants {
         public static final int SMALL_CLOUD_WIDTH_DEFAULT  = 72;
         public static final int SMALL_CLOUD_HEIGHT_DEFAULT = 24;
 
-        public static final int BUS_STOP_WIDTH_DEFAULT     = 793;
-        public static final int BUS_STOP_HEIGHT_DEFAULT    = 261;
-        public static final float BUS_STOP_SCALE           = 0.4f;
-
         public static final int BIG_CLOUD_WIDTH    = (int)(BIG_CLOUD_WIDTH_DEFAULT   * Game.SCALE);
         public static final int BIG_CLOUD_HEIGHT   = (int)(BIG_CLOUD_HEIGHT_DEFAULT  * Game.SCALE);
         public static final int SMALL_CLOUD_WIDTH  = (int)(SMALL_CLOUD_WIDTH_DEFAULT * Game.SCALE);
         public static final int SMALL_CLOUD_HEIGHT = (int)(SMALL_CLOUD_HEIGHT_DEFAULT * Game.SCALE);
 
-        public static final int BUS_STOP_WIDTH    = (int)(BUS_STOP_WIDTH_DEFAULT  * Game.SCALE * BUS_STOP_SCALE);
-        public static final int BUS_STOP_HEIGHT   = (int)(BUS_STOP_HEIGHT_DEFAULT * Game.SCALE * BUS_STOP_SCALE);
+        // Landmarks are bottom-anchored to the top edge of the road lane instead
+        // of a raw screen-space Y so they stay aligned if tile sizing changes.
+        public static final int ROAD_TOP_ROW = 9;
+        public static final int ROAD_TOP_Y = ROAD_TOP_ROW * Game.TILES_SIZE;
+        public static final int BUILDING_BASE_Y = ROAD_TOP_Y;
     }
 
     public static class Landmarks {
-        public record LandmarkTuning(float scale, int y, float xOffset) {}
+        public record LandmarkTuning(float scale, int baseYOffset, float xOffset) {}
+
+        public static final LandmarkTuning BUS_STOP =
+                new LandmarkTuning(0.40f, 0, 0f); // 801x233
 
         // These values are intentionally centralized so landmark alignment can be
         // tuned without touching spawn logic.
         public static final LandmarkTuning MAP1_KEPCO =
-                new LandmarkTuning(0.70f, 360, -10f); // 1012x598
+                new LandmarkTuning(0.40f, 0, -10f); // 1012x598
         public static final LandmarkTuning MAP1_GAISANO =
-                new LandmarkTuning(0.70f, 132, 0f);   // 1256x417
+                new LandmarkTuning(0.70f, 0, 0f);   // 1256x417
         public static final LandmarkTuning MAP1_MARKETPLACE =
-                new LandmarkTuning(0.50f, 120, -12f); // 1480x552
+                new LandmarkTuning(0.33f, 0, -12f); // 1480x552
+        public static final LandmarkTuning MAP1_UC =
+                new LandmarkTuning(0.60f, 0, -10f); // 1051x759
+        public static final LandmarkTuning MAP1_WILCON =
+                new LandmarkTuning(0.43f, 0, -8f); // 1108x537
 
-        public static final LandmarkTuning MAP2_CITU =
-                new LandmarkTuning(0.25f, 132, 0f);   // 827x431
-        public static final LandmarkTuning MAP2_EMALL =
-                new LandmarkTuning(0.23f, 132, -6f);  // 968x377
-        public static final LandmarkTuning MAP2_SHOPWISE =
-                new LandmarkTuning(0.23f, 134, -6f);  // 915x370
         public static final LandmarkTuning MAP2_STARMALL =
-                new LandmarkTuning(0.18f, 106, -14f); // 1325x641
+                new LandmarkTuning(0.35f, 0, -14f); // 1325x601
         public static final LandmarkTuning MAP2_USJR =
-                new LandmarkTuning(0.22f, 128, -6f);  // 1015x395
+                new LandmarkTuning(0.50f, 0, -6f);  // 1015x395
+        public static final LandmarkTuning MAP2_SHOPWISE =
+                new LandmarkTuning(0.50f, 0, -6f);  // 915x370
+        public static final LandmarkTuning MAP2_CITU =
+                new LandmarkTuning(0.50f, 0, 0f);   // 827x431
+        public static final LandmarkTuning MAP2_EMALL =
+                new LandmarkTuning(0.60f, 0, -6f);  // 968x377
 
         public static final LandmarkTuning MAP3_CATHEDRAL =
-                new LandmarkTuning(0.16f, 82, -18f);  // 1181x837
+                new LandmarkTuning(0.16f, 0, -18f);  // 1181x837
+        public static final LandmarkTuning MAP3_CITYHALL =
+                new LandmarkTuning(0.28f, 0, -10f);  // 1096x399
         public static final LandmarkTuning MAP3_SMCITY =
-                new LandmarkTuning(0.18f, 124, -10f); // 1734x530
+                new LandmarkTuning(0.18f, 0, -10f); // 1734x530
+        public static final LandmarkTuning MAP3_AYALA_TERRACES =
+                new LandmarkTuning(0.20f, 0, -12f); // 1230x645
+        public static final LandmarkTuning MAP3_AYALA_CENTRAL =
+                new LandmarkTuning(0.20f, 0, -12f); // 1241x675
     }
 
     // ── Person sprites ───────────────────────────────────────
