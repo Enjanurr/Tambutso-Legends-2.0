@@ -103,7 +103,9 @@ public class PauseOverlay {
 
         } else if (!handledByAudio && isIn(e, menuB)) {
             // ── HOME ────────────────────────────────────────
+            // Returns to menu WITHOUT resetting hasActiveGame — player can resume later
             if (menuB.isMousePressed()) {
+                playing.getGame().setLastActiveGameState(GameStates.PLAYING);
                 GameStates.state = GameStates.MENU;
                 playing.unPauseGame();
             }

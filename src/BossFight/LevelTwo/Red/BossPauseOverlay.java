@@ -146,6 +146,7 @@ public class BossPauseOverlay {
         } else if (isIn(e, menuBtn)) {
             if (menuBtn.isMousePressed()) {
                 redJeepVsBoss1State.unpause();
+                redJeepVsBoss1State.getGame().setLastActiveGameState(GameStates.RED_JEEP_VS_BOSS2);
                 GameStates.state = GameStates.MENU; // back to main menu
             }
         }

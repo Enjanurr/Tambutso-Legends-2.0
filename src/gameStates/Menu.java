@@ -68,8 +68,7 @@ public class Menu extends State implements StateMethods {
             MenuButton mb = buttons[i];
             if (isIn(e, mb) && mb.isMousePressed()) {
                 if (i == 0)
-                   // game.startPlayingOrIntro(); // PLAY → always show intro first
-                    game.startCharSelect();
+                    game.startOrResumeGame();  // PLAY → resume if active, else new game
                 else
                     mb.applyGameState();        // OPTIONS / QUIT work normally
                 break;

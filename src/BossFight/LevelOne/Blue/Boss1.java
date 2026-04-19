@@ -175,9 +175,9 @@ public class Boss1 {
     }
 
     private void loadFrames() {
-        BufferedImage sheet = LoadSave.getSpriteAtlas(LoadSave.BOSS3_ATLAS);
+        BufferedImage sheet = LoadSave.getSpriteAtlas(LoadSave.BOSS1_ATLAS);
         if (sheet == null) {
-            System.err.println("[Boss1] Could not load " + LoadSave.BOSS3_ATLAS);
+            System.err.println("[Boss1] Could not load " + LoadSave.BOSS1_ATLAS);
             return;
         }
         for (int row = 0; row < ROWS; row++)

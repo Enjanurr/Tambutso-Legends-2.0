@@ -93,6 +93,7 @@ public class Player extends Entity {
     // RENDER
     // ─────────────────────────────────────────────────────────
     public void render(Graphics g) {
+        if (animations == null) return; // Guard: driver not applied yet
         g.drawImage(
                 animations[playerAction][aniIndex],
                 (int)(hitBox.x - xDrawOffset),
@@ -103,6 +104,7 @@ public class Player extends Entity {
     }
 
     public void render(Graphics g, int xLvlOffset) {
+        if (animations == null) return; // Guard: driver not applied yet
         g.drawImage(
                 animations[playerAction][aniIndex],
                 (int)(hitBox.x - xDrawOffset) - xLvlOffset,

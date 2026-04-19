@@ -7,7 +7,8 @@ import java.awt.*;
 import java.awt.image.BufferedImage;
 
 /**
- * Draws the passenger counter in the upper-right corner.
+ * Draws the dropped passenger counter in the upper-right corner.
+ * Shows count of passengers successfully dropped at their stops (not seated).
  *
  * Sprite sheet: passenger_counter.png — arranged in a grid, 4 columns
  *   Frame 0  = 0/16   Frame 1  = 1/16   Frame 2  = 2/16   Frame 3  = 3/16
@@ -21,8 +22,8 @@ public class PassengerCounter {
     private static final int COUNTER_COLS  = 4;
     private static final int FRAME_COUNT   = 17;   // 0–16 inclusive
 
-    // ── Max passengers ────────────────────────────────────────
-    public static final int MAX_PASSENGERS =9;
+    // ── Max passengers (for display frame limiting) ────────────
+    public static final int MAX_DISPLAY = 16;
 
     // ── Position & size settings ← ADJUST ────────────────────
     private static final float COUNTER_SCALE = 0.2f;
@@ -74,11 +75,10 @@ public class PassengerCounter {
     // INCREMENT / RESET
     // ─────────────────────────────────────────────────────────
 
-    /** Call when a passenger is accepted. Returns true if counter is now full. */
-    public boolean increment() {
-        if (currentCount < MAX_PASSENGERS)
+    /** Call when a passenger is successfully dropped. */
+    public void increment() {
+        if (currentCount < MAX_DISPLAY)
             currentCount++;
-        return currentCount >= MAX_PASSENGERS;
     }
 
     public void reset() {
@@ -86,7 +86,6 @@ public class PassengerCounter {
     }
 
     public int  getCount()  { return currentCount; }
-    public boolean isFull() { return currentCount >= MAX_PASSENGERS; }
     public int getDrawY() { return drawY; }
     public int getDrawH() { return drawH; }
 

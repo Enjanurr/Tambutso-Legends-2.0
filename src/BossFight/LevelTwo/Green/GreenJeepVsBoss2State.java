@@ -6,6 +6,7 @@ import BossFight.LevelTwo.NukeProjectile;
 import Ui.BossDefeatOverlay;
 import Ui.BossHealthBar;
 import Ui.HealthBar;
+import Ui.JeepSkillButtons;
 import Ui.UrmButton;
 import entities.Player;
 import gameStates.GameStates;
@@ -92,6 +93,9 @@ public class GreenJeepVsBoss2State extends State implements StateMethods {
     private boolean          bossDefeated   = false;
     private BossDefeatOverlay defeatOverlay;
 
+    // ── Skill buttons ────────────────────────────────────────
+    private JeepSkillButtons skillButtons;
+
     // ─────────────────────────────────────────────────────────
 // ── Heal cooldown ← CHANGE from slow ball to heal ──────
     private static final int HEAL_COOLDOWN = 10000;  // ← CHANGE: 10 seconds in milliseconds
@@ -109,6 +113,7 @@ public class GreenJeepVsBoss2State extends State implements StateMethods {
     public GreenJeepVsBoss2State(Game game, Player player, HealthBar healthBar) {
         super(game);
         this.player    = player;
+        this.player.setBossMode(true);
         this.healthBar = healthBar;
         this.levelPixelWidth =
                 LoadSave.GetLevelData()[0].length * Game.TILES_SIZE;
@@ -123,9 +128,15 @@ public class GreenJeepVsBoss2State extends State implements StateMethods {
         pauseOverlay = new BossPauseOverlay(this);
         buildDeathOverlay();
         buildDefeatOverlay();
-        bossBar = new BossHealthBar();
+        bossBar = new BossHealthBar(BossHealthBar.LifeBarType.BOSS2);
         walkerManager = new BossWalkerManager();
         spawnBoss();
+
+        // Initialize skill buttons based on jeep color
+        String jeepColor = getJeepColor(); // "blue", "red", or "green"
+        skillButtons = new JeepSkillButtons(jeepColor,
+                this::isSkill1Ready, this::onSkill1, this::getSkill1CooldownRemaining,
+                this::isSkill2Ready, this::onSkill2, this::getSkill2CooldownRemaining);
     }
 
     /**
@@ -206,15 +217,66 @@ public class GreenJeepVsBoss2State extends State implements StateMethods {
 
     private void buildDefeatOverlay() {
         defeatOverlay = new BossDefeatOverlay(
+                this::onNextLevel,                            // Next → advance to next level
                 this::fullReset,                              // Restart → full reset
                 () -> GameStates.state = GameStates.MENU     // Menu → back to menu
         );
+    }
+
+    /**
+     * Called when Next button clicked on BossDefeatOverlay.
+     * Advances to next level.
+     */
+    private void onNextLevel() {
+        game.advanceToNextLevel();
+        game.getPlaying().advanceToNextLevel();
+        GameStates.state = GameStates.PLAYING;
     }
 
     private void spawnBoss() {
         float bx = Game.GAME_WIDTH + Boss2.FRAME_W * Game.SCALE;
         float by = 480;
         boss = new Boss2(bx, by);
+    }
+
+    private String getJeepColor() {
+        // Return the color based on the state class
+        return "green";
+    }
+
+    private void onSkill1() {
+        // Trigger the existing Skill 1 (shoot/projectile) logic
+        // Call the same code that's triggered by E key
+        attemptShootGreen();
+    }
+
+    private void onSkill2() {
+        // Trigger the existing Skill 2 logic
+        // Call the same code that's triggered by Q key
+        attemptHeal();
+    }
+
+    private boolean isSkill1Ready() {
+        // Ready when bullets available or can reload (not on cooldown)
+        return bulletsRemaining > 0 || (bulletsRemaining == 0 && shootCooldown == 0);
+    }
+
+    private boolean isSkill2Ready() {
+        // Ready when heal not on cooldown
+        return System.currentTimeMillis() - healLastUsed >= HEAL_COOLDOWN;
+    }
+
+    private int getSkill1CooldownRemaining() {
+        // Return remaining cooldown in seconds for display
+        if (shootCooldown <= 0) return 0;
+        return (shootCooldown + 199) / 200;  // Round up to nearest second
+    }
+
+    private int getSkill2CooldownRemaining() {
+        // Return remaining cooldown in seconds for display
+        long remaining = HEAL_COOLDOWN - (System.currentTimeMillis() - healLastUsed);
+        if (remaining <= 0) return 0;
+        return (int) ((remaining + 999) / 1000);  // Convert ms to seconds, round up
     }
 
     // ─────────────────────────────────────────────────────────
@@ -238,6 +300,8 @@ public class GreenJeepVsBoss2State extends State implements StateMethods {
             pauseOverlay.update();
             return;
         }
+
+        skillButtons.update();
 
         // ── World scroll ──────────────────────────────────────
         worldOffset += SCROLL_SPEED * Game.SCALE;
@@ -503,6 +567,9 @@ public class GreenJeepVsBoss2State extends State implements StateMethods {
         healthBar.render(g);     // jeep life — upper left
         bossBar.render(g);       // boss life — upper right
 
+        // ── Skill buttons ────────────────────────────────────
+        skillButtons.render(g);
+
         // ── Overlays (on top of everything) ───────────────────
         if (bossDefeated) {
             defeatOverlay.render(g);
@@ -579,6 +646,8 @@ public class GreenJeepVsBoss2State extends State implements StateMethods {
                 deathRestartBtn.setMousePressed(true);
         } else if (paused) {
             pauseOverlay.mousePressed(e);
+        } else {
+            skillButtons.mousePressed(e);
         }
     }
 
@@ -593,6 +662,8 @@ public class GreenJeepVsBoss2State extends State implements StateMethods {
             deathRestartBtn.resetBools();
         } else if (paused) {
             pauseOverlay.mouseReleased(e);
+        } else {
+            skillButtons.mouseReleased(e);
         }
     }
 
@@ -604,6 +675,8 @@ public class GreenJeepVsBoss2State extends State implements StateMethods {
                     deathRestartBtn.getBounds().contains(e.getX(), e.getY()));
         } else if (paused) {
             pauseOverlay.mouseMoved(e);
+        } else {
+            skillButtons.mouseMoved(e);
         }
     }
 

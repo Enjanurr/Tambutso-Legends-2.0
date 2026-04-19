@@ -44,6 +44,7 @@ public class CharSelectState extends State implements StateMethods {
 
     public CharSelectState(Game game) {
         super(game);
+        System.out.println("[CharSelectState] Constructor called");
 
         backgroundImgPink =
                 LoadSave.getSpriteAtlas(LoadSave.MENU_BACKGROUND_IMG);
@@ -245,6 +246,7 @@ public class CharSelectState extends State implements StateMethods {
                 System.out.println("Speed: " + selected.maxSpeed);
                 System.out.println("═══════════════════════════════");
 
+                System.out.println("[CharSelectState] Confirm clicked, starting intro");
                 game.startIntroOverlay();
             }
         }

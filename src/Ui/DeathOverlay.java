@@ -116,8 +116,10 @@ public class DeathOverlay {
 
     public void mouseReleased(MouseEvent e) {
         if (!fadeComplete) return;
-        if (replayB.isMousePressed() && replayB.getBounds().contains(e.getX(), e.getY()))
-            playing.restartGame();      // full reset + closes death screen
+        if (replayB.isMousePressed() && replayB.getBounds().contains(e.getX(), e.getY())) {
+            playing.getGame().resetGameState();  // Reset active game flag
+            playing.restartGame();               // full reset + closes death screen
+        }
         replayB.resetBools();
     }
 }

@@ -19,18 +19,33 @@ public class PersonManager {
 
     private final List<Person> persons = new ArrayList<>();
 
-    private static final String[] PERSON_ATLASES = {
-            LoadSave.PERSON1_ATLAS,
-            LoadSave.PERSON2_ATLAS,
+    // ── Person atlas paths with associated type IDs ───────────
+    private static final PersonAtlas[] PERSON_ATLASES = {
+            new PersonAtlas(LoadSave.PERSON1_ATLAS, 1),
+            new PersonAtlas(LoadSave.PERSON2_ATLAS, 2),
+            new PersonAtlas(LoadSave.PERSON3_ATLAS, 3),
+            new PersonAtlas(LoadSave.PERSON4_ATLAS, 4),
+            new PersonAtlas(LoadSave.PERSON5_ATLAS, 5),
+            new PersonAtlas(LoadSave.PERSON6_ATLAS, 6),
     };
+
+    // Helper class to pair atlas path with person type ID
+    private static class PersonAtlas {
+        final String path;
+        final int typeId;
+        PersonAtlas(String path, int typeId) {
+            this.path = path;
+            this.typeId = typeId;
+        }
+    }
 
     // ── Walker lane Y positions ───────────────────────────────
     // All four lanes — top and bottom sidewalk
     private static final float[] WALKER_LANES = {
             LANE_1_Y, // top sidewalk lane 1
             LANE_2_Y, // top sidewalk lane 2
-            LANE_3_Y, // bottom sidewalk lane 3  ← NEW
-            LANE_4_Y, // bottom sidewalk lane 4  ← NEW
+            LANE_3_Y, // bottom sidewalk lane 3
+            LANE_4_Y, // bottom sidewalk lane 4
     };
 
     // -------------------------------------------------------
@@ -44,7 +59,6 @@ public class PersonManager {
     private static final int PASSENGER_INTERVAL_MIN = 150;
     private static final int PASSENGER_INTERVAL_MAX = 500;
 
-    private static final int MAX_WORLD_LOOPS = 15; // stop passengers on final loop
     // -------------------------------------------------------
 
     private int walkerTimer;
@@ -68,18 +82,33 @@ public class PersonManager {
         while (it.hasNext()) {
             Person p = it.next();
             p.update(scrolling, speed);
-            if (!p.isActive()) it.remove();
+            if (!p.isActive()) it.remove(); p.clearCache();
         }
 
-        // ── Walker timer — runs always (scrolling OR stopped) ─
+        // ── NEW: Remove walking passengers when no future stops exist ──
+        // ── Remove walking passengers when no future stops exist ──
+        int maxLoops = playing.getLevelManager().getMaxWorldLoops();
+        int currentLoop = playing.getWorldLoopCount();
+        if (currentLoop >= maxLoops - 1) {
+            // Remove all walking PASSENGERS (not walkers)
+            persons.removeIf(p -> {
+                if (p.getType() == Person.PersonType.PASSENGER) {
+                    p.clearCache();  // ── ADD THIS LINE ──
+                    return true;
+                }
+                return false;
+            });
+        }
+
+        // ── Walker timer — runs always ──
         walkerTimer--;
         if (walkerTimer <= 0) {
             trySpawnWalkers();
             walkerTimer = nextWalkerInterval();
         }
 
-        // ── Passenger timer — only when scrolling ─────────────
-        if (scrolling) {
+        // ── Passenger timer — only when scrolling AND before last loop ──
+        if (scrolling && currentLoop < maxLoops - 1) {
             passengerTimer--;
             if (passengerTimer <= 0) {
                 trySpawnPassenger();
@@ -93,20 +122,26 @@ public class PersonManager {
         float spawnX = Game.GAME_WIDTH + PERSON_WIDTH;
         for (float laneY : WALKER_LANES) {
             if (rng.nextFloat() < WALKER_SPAWN_CHANCE) {
-                persons.add(new Person(spawnX, laneY * Game.SCALE, Person.PersonType.WALKER, randomAtlas()));
+                PersonAtlas atlas = randomPersonAtlas();
+                persons.add(new Person(spawnX, laneY * Game.SCALE,
+                        Person.PersonType.WALKER, atlas.path, atlas.typeId));
             }
         }
     }
 
     // ── Passenger spawn ───────────────────────────────────────
     private void trySpawnPassenger() {
-        if (playing.getWorldLoopCount() >= MAX_WORLD_LOOPS - 1) return;
+        // FIX: Get max loops from LevelManager
+        int maxLoops = playing.getLevelManager().getMaxWorldLoops();
+        if (playing.getWorldLoopCount() >= maxLoops - 1) return;
         if (rng.nextFloat() >= PASSENGER_SPAWN_CHANCE) return;
 
         float spawnX = Game.GAME_WIDTH + PERSON_WIDTH;
         float spawnY = PASSENGER_Y * Game.SCALE;
 
-        persons.add(new Person(spawnX, spawnY, Person.PersonType.PASSENGER, randomAtlas()));
+        PersonAtlas atlas = randomPersonAtlas();
+        persons.add(new Person(spawnX, spawnY,
+                Person.PersonType.PASSENGER, atlas.path, atlas.typeId));
     }
 
     // ── Helpers ──────────────────────────────────────────────
@@ -118,11 +153,14 @@ public class PersonManager {
         return PASSENGER_INTERVAL_MIN + rng.nextInt(PASSENGER_INTERVAL_MAX - PASSENGER_INTERVAL_MIN);
     }
 
-    private String randomAtlas() {
+    private PersonAtlas randomPersonAtlas() {
         return PERSON_ATLASES[rng.nextInt(PERSON_ATLASES.length)];
     }
 
     public void resetAll() {
+        for (Person p : persons) {
+            p.clearCache();  // ── ADD THIS LINE ──
+        }
         persons.clear();
         walkerTimer = nextWalkerInterval();
         passengerTimer = nextPassengerInterval();
