@@ -103,8 +103,8 @@ public class PassengerListOverlay {
 
     private static final int exitButtonWidth  = (int)(BTN_SRC_W * Game.SCALE * 0.8f);
     private static final int exitButtonHeight = (int)(BTN_SRC_H * Game.SCALE * 0.8f);
-    private static final int exitButtonX      = 0;
-    private static final int exitButtonY      = 15;
+    private static final int exitButtonX      = 40;
+    private static final int exitButtonY      = -85;
 
     private static final int openButtonWidth  = (int)(BTN_SRC_W * Game.SCALE * 0.8f);
     private static final int openButtonHeight = (int)(BTN_SRC_H * Game.SCALE * 0.8f);
@@ -146,6 +146,7 @@ public class PassengerListOverlay {
     private final Runnable onDrop;
     private final Runnable onClose;
     private final Runnable onOpen;
+    private final Runnable onOpenPayment;  // Callback to open PaymentOverlay
 
     // =========================================================
     // FARE TOTAL
@@ -153,10 +154,11 @@ public class PassengerListOverlay {
     private int totalFareEarned = 0;
 
     // ─────────────────────────────────────────────────────────
-    public PassengerListOverlay(Runnable onDrop, Runnable onClose, Runnable onOpen) {
+    public PassengerListOverlay(Runnable onDrop, Runnable onClose, Runnable onOpen, Runnable onOpenPayment) {
         this.onDrop  = onDrop;
         this.onClose = onClose;
         this.onOpen  = onOpen;
+        this.onOpenPayment = onOpenPayment;
         loadAssets();
         buildLayout();
     }
@@ -420,8 +422,16 @@ public class PassengerListOverlay {
         }
 
         // Popup open — only Drop and Exit fire actions
-        if (dropPressed && dropBounds.contains(mx, my) && onDrop != null)
-            onDrop.run();
+        if (dropPressed && dropBounds.contains(mx, my)) {
+            System.out.println("[PassengerListOverlay] DROP button released - selectedSlot=" + selectedSlot + ", onOpenPayment=" + (onOpenPayment != null));
+            // Open PaymentOverlay instead of immediate drop
+            if (onOpenPayment != null && selectedSlot >= 0) {
+                System.out.println("[PassengerListOverlay] Calling onOpenPayment.run()");
+                onOpenPayment.run();
+            } else {
+                System.out.println("[PassengerListOverlay] DROP ignored - onOpenPayment=" + (onOpenPayment == null) + ", selectedSlot=" + selectedSlot);
+            }
+        }
 
         if (exitPressed && exitBounds.contains(mx, my)) {
             closePopup();

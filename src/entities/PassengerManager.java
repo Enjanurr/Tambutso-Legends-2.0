@@ -164,6 +164,20 @@ public class PassengerManager {
         return fare;
     }
 
+    /**
+     * Confirms and finalizes a passenger drop after payment.
+     * Called by PaymentOverlay after successful payment.
+     *
+     * @param slot The seat slot to drop
+     * @param currentLoop Current world loop count
+     * @param jeepX Jeep X position for drop animation
+     * @param jeepY Jeep Y position for drop animation
+     * @return The fare earned, or -1 if drop failed
+     */
+    public int confirmDrop(int slot, int currentLoop, float jeepX, float jeepY) {
+        return dropPassenger(slot, currentLoop, jeepX, jeepY);
+    }
+
     // ─────────────────────────────────────────────────────────
     // RENDER
     // ─────────────────────────────────────────────────────────

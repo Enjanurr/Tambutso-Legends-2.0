@@ -57,13 +57,13 @@ public class StatusCheckOverlay {
 
     // ── Text display settings ──────────────────────────────────
     // Passenger count text
-    private static final int PASSENGER_TEXT_X_OFFSET = 10;  // Offset from image center
+    private static final int PASSENGER_TEXT_X_OFFSET = 30;  // Offset from image center
     private static final int PASSENGER_TEXT_Y_OFFSET = 40;
     private static final Color PASSENGER_TEXT_COLOR = Color.WHITE;
     private static final int PASSENGER_FONT_SIZE = 15;
 
     // Fare text
-    private static final int FARE_TEXT_X_OFFSET = 10;
+    private static final int FARE_TEXT_X_OFFSET = 30;
     private static final int FARE_TEXT_Y_OFFSET = 55;
     private static final Color FARE_TEXT_COLOR = new Color(255, 215, 0); // Gold #FFD700
     private static final int FARE_FONT_SIZE = 15;

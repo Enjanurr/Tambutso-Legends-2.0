@@ -112,7 +112,7 @@ public class GreenJeepVsBoss1State extends State implements StateMethods {
     public GreenJeepVsBoss1State(Game game, Player player, HealthBar healthBar) {
         super(game);
         this.player    = player;
-        this.player.setBossMode(true);
+        player.setBossMode(false);
         this.healthBar = healthBar;
         this.levelPixelWidth =
                 LoadSave.GetLevelData()[0].length * Game.TILES_SIZE;
@@ -191,7 +191,7 @@ public class GreenJeepVsBoss1State extends State implements StateMethods {
                         i * 110,  // ← Use GreenJeepProjectile.FRAME_W (110)
                         0,
                         110,      // ← Use GreenJeepProjectile.FRAME_W (110)
-                       40);     // ← Use GreenJeepProjectile.FRAME_H (40)
+                        40);     // ← Use GreenJeepProjectile.FRAME_H (40)
 
             System.out.println("✓ [GreenJeepBossFightState] Loaded Skill 2 heal frames: " + healAnimationFrames.length);
         } else {
@@ -216,7 +216,7 @@ public class GreenJeepVsBoss1State extends State implements StateMethods {
         defeatOverlay = new BossDefeatOverlay(
                 this::onNextLevel,                            // Next → advance to next level
                 this::fullReset,                              // Restart → full reset
-                () -> GameStates.state = GameStates.MENU     // Menu → back to menu
+                this::onMenuToExit                           // Menu → back to menu
         );
     }
 
@@ -225,9 +225,17 @@ public class GreenJeepVsBoss1State extends State implements StateMethods {
      * Advances to next level.
      */
     private void onNextLevel() {
-        game.advanceToNextLevel();
+        // In boss state's onNextLevel():
+        game.getPlaying().setBossFightActive(false);
+        player.setBossMode(false);  // ← MUST be FIRST
+        game.advanceToNextLevel();   // Then change state
         game.getPlaying().advanceToNextLevel();
         GameStates.state = GameStates.PLAYING;
+    }
+
+    private void onMenuToExit() {
+        player.setBossMode(false);  // Reset boss mode before returning to menu
+        GameStates.state = GameStates.MENU;
     }
 
     private void spawnBoss() {
@@ -387,11 +395,11 @@ public class GreenJeepVsBoss1State extends State implements StateMethods {
     // ─────────────────────────────────────────────────────────
     private void handleJeepHit() {
 
-            player.triggerCarStruck();
-            boolean dead = healthBar.takeDamage();  // ← healthBar handles HP
-            if (dead) {
-                playerDead = true;
-                resetDeathOverlay();
+        player.triggerCarStruck();
+        boolean dead = healthBar.takeDamage();  // ← healthBar handles HP
+        if (dead) {
+            playerDead = true;
+            resetDeathOverlay();
 
         }
     }
@@ -690,7 +698,7 @@ public class GreenJeepVsBoss1State extends State implements StateMethods {
         player.getHitBox().x = spawnX;
         player.getHitBox().y = 520;
         player.resetDirBooleans();
-
+        player.setBossMode(false);
         paused           = false;
         playerDead       = false;
         bossDefeated     = false;
@@ -712,6 +720,7 @@ public class GreenJeepVsBoss1State extends State implements StateMethods {
         walkerManager.resetAll();   // NEW from first version
         resetDeathOverlay();
         spawnBoss();
+        player.setBossMode(true);  // Restore boss mode — was cleared above for hitbox reset
     }
 
     public void resetAll() {
@@ -721,4 +730,6 @@ public class GreenJeepVsBoss1State extends State implements StateMethods {
             applyDriverAssets(game.getSelectedDriver());
         }}
     public boolean isPaused() { return paused; }
+
+    public Player getPlayer() { return player; }
 }

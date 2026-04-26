@@ -95,6 +95,10 @@ public class LoadSave {
     public static final String PASSENGER_BUTTON = "ui/buttons/passenger_button.png";
     /** 168 × 336 — 6 rows × 3 cols (Jeep skill buttons for boss fights) */
     public static final String JEEP_SKILL_BUTTONS = "ui/buttons/jeeps_skill_button.png";
+    /** 235 × 225 — Payment overlay background */
+    public static final String PAYMENT_OVERLAY = "ui/overlays/popupfare.png";
+    /** 426 × 56 — Change button sprite sheet */
+    public static final String CHANGE_BUTTON = "ui/buttons/change_button.png";
 
     // ─────────────────────────────────────────────────────────
 

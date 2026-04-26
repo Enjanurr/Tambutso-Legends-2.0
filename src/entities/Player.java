@@ -178,12 +178,14 @@ public class Player extends Entity {
         if (struckActive) {
             playerAction = CAR_STRUCK;
         } else if (bossMode) {
-            // Fix 2: always RUNNING in boss mode regardless of movement
             playerAction = RUNNING;
+
         } else if (moving || currentXSpeed > 0) {
             playerAction = RUNNING;
+
         } else {
             playerAction = IDLE;
+
         }
 
         if (prev != playerAction) resetAnimationTick();

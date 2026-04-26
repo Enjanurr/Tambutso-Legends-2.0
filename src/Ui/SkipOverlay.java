@@ -19,7 +19,7 @@ public class SkipOverlay {
     // SETTINGS
     // -------------------------------------------------------
     private static final int OVERLAY_W = 300;
-    private static final int OVERLAY_H = 250;
+    private static final int OVERLAY_H = 330;
     private static final int BUTTON_H = 40;
     private static final int BUTTON_GAP = 10;
     private static final Color BG_COLOR = new Color(0, 0, 0, 200);

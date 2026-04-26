@@ -83,6 +83,7 @@ public class Playing extends State implements StateMethods {
     private StatusCheckOverlay statusCheckOverlay;
     private GameClock            gameClock;         // Level timer
     private SkipOverlay          skipOverlay;       // Debug skip menu
+    private PaymentOverlay       paymentOverlay;    // Payment overlay for passenger drop
     // ── Overlay-state flags ───────────────────────────────────
     private boolean paused            = false;
     private boolean playerDead        = false;
@@ -90,6 +91,7 @@ public class Playing extends State implements StateMethods {
     private boolean listPopupPaused   = false;   // PassengerListOverlay popup is open
     private boolean introPaused       = false;
     private boolean statusCheckPaused = false;   // StatusCheckOverlay is active
+    private boolean paymentPaused     = false;   // PaymentOverlay is open
 
     // ── World ─────────────────────────────────────────────────
     private float worldOffset    = 0;
@@ -142,9 +144,14 @@ public class Playing extends State implements StateMethods {
     //public boolean isPaused() { return paused; }
 
     public void resumeFromInteraction() {
-        interactionPaused = false;
+        System.out.println("[Playing] resumeFromInteraction() - clearing interactionPaused");
+        // CLOSE FIRST, then clear flag
         acceptPassengerOverlay.close();
+        interactionPaused = false;
+        System.out.println("[Playing] interactionPaused = " + interactionPaused + ", activeOverlay = " + activeOverlay());
     }
+
+    public boolean isInteractionPaused() { return interactionPaused; }
 
     private void initClasses() {
         System.out.println("[Playing] initClasses() started");
@@ -176,10 +183,16 @@ public class Playing extends State implements StateMethods {
         acceptPassengerOverlay = new AcceptPassengerOverlay(this, passengerCounter);
         acceptPassengerOverlay.setPassengerManager(passengerManager);
 
+        paymentOverlay = new PaymentOverlay(
+                this::confirmPassengerDrop,  // Called when DROP finalized in PaymentOverlay
+                this::handlePaymentClose      // Called when PaymentOverlay closes
+        );
+
         passengerListOverlay = new PassengerListOverlay(
                 this::handlePassengerDrop,
                 this::handlePopupClose,
-                this::handlePopupOpen
+                this::handlePopupOpen,
+                this::handleOpenPayment       // Called when DROP clicked in PassengerListOverlay
         );
 
         // Playing owns the single IntroOverlay instance.
@@ -209,9 +222,10 @@ public class Playing extends State implements StateMethods {
      * Returns a token identifying the single topmost active overlay,
      * or NONE if no overlay is active.  All mouse routing is driven by this.
      */
-    private enum ActiveOverlay { STATUS_CHECK, INTRO, DEATH, ACCEPT, LIST_POPUP, PAUSE, NONE }
+    private enum ActiveOverlay { PAYMENT, STATUS_CHECK, INTRO, DEATH, ACCEPT, LIST_POPUP, PAUSE, NONE }
 
     private ActiveOverlay activeOverlay() {
+        if (paymentPaused)     return ActiveOverlay.PAYMENT;
         if (statusCheckPaused) return ActiveOverlay.STATUS_CHECK;
         if (introPaused)       return ActiveOverlay.INTRO;
         if (playerDead)        return ActiveOverlay.DEATH;
@@ -259,6 +273,66 @@ public class Playing extends State implements StateMethods {
             // Check if status check should trigger (e.g., last passenger dropped at Stop 15)
             tryTriggerStatusCheck();
         }
+    }
+
+    /**
+     * Opens the PaymentOverlay for the selected passenger.
+     * Called from PassengerListOverlay when DROP button is clicked.
+     */
+    private void handleOpenPayment() {
+        int slot = passengerListOverlay.getSelectedSlot();
+        System.out.println("[Playing] handleOpenPayment() STARTED - selectedSlot=" + slot);
+        if (slot < 0) {
+            System.out.println("[Playing] handleOpenPayment() - slot < 0, returning");
+            return;
+        }
+
+        RidingPassenger rp = passengerManager.getSeat(slot);
+        if (rp == null) {
+            System.out.println("[Playing] handleOpenPayment() - rp is null (empty seat), returning");
+            return;
+        }
+
+        int expectedFare = rp.calculateFare(worldLoopCount);
+        System.out.println("[Playing] handleOpenPayment() - calling paymentOverlay.open(" + expectedFare + ")");
+        paymentOverlay.open(expectedFare);
+        paymentPaused = true;
+        System.out.println("[Playing] handleOpenPayment() - paymentPaused=" + paymentPaused + ", activeOverlay=" + activeOverlay());
+    }
+
+    /**
+     * Confirms and finalizes passenger drop after successful payment.
+     * Called from PaymentOverlay when DROP button is clicked.
+     */
+    private void confirmPassengerDrop() {
+        int slot = passengerListOverlay.getSelectedSlot();
+        if (slot < 0) return;
+
+        RidingPassenger rp = passengerManager.getSeat(slot);
+        if (rp == null) return;
+
+        int fare = passengerManager.confirmDrop(
+                slot, worldLoopCount, player.getHitBox().x, player.getHitBox().y);
+
+        if (fare >= 0) {
+            passengerListOverlay.addFare(fare);
+            passengerListOverlay.clearSelection();
+            passengersDroppedCount++;
+            passengerCounter.increment();
+            System.out.println("[Playing] Dropped passenger — fare ₱" + fare
+                    + "  total ₱" + passengerListOverlay.getTotalFareEarned()
+                    + "  dropped " + passengersDroppedCount + "/12");
+
+            // Check if status check should trigger
+            tryTriggerStatusCheck();
+        }
+    }
+
+    /**
+     * Called when PaymentOverlay closes.
+     */
+    private void handlePaymentClose() {
+        paymentPaused = false;
     }
 
     /**
@@ -343,6 +417,8 @@ public class Playing extends State implements StateMethods {
         interactionPaused = false;
         introPaused      = false;
         statusCheckPaused = false;
+        paymentPaused    = false;
+        paymentOverlay.close();
 
         bigCloudOffset   = 0f;
         smallCloudOffset = 0f;
@@ -355,8 +431,15 @@ public class Playing extends State implements StateMethods {
         player.getHitBox().y = 520;
         player.resetDirBooleans();
         player.setWorldLoopDone(false);
-
+        player.setBossMode(false);
         worldObjectManager.reset();
+
+        player.setRight(false);
+        player.setLeft(false);
+        player.setUp(false);
+        player.setDown(false);
+        player.setWorldScrolling(false);
+
 
         personManager.resetAll();
         passengerManager.resetAll();
@@ -399,6 +482,17 @@ public class Playing extends State implements StateMethods {
                 && !statusCheckPaused;
     }
 
+    // In Playing.java
+    private boolean bossFightActive = false;
+
+    public void setBossFightActive(boolean active) {
+        this.bossFightActive = active;
+        if (!active) {
+            player.setBossMode(false);  // Force reset when boss fight ends
+        }
+    }
+
+    public boolean isBossFightActive() { return bossFightActive; }
     public float getScrollSpeed() { return player.getCurrentXSpeed(); }
 
     private boolean isJeepCentered() {
@@ -413,6 +507,7 @@ public class Playing extends State implements StateMethods {
     @Override
     public void update() {
         if (playerDead)  { deathOverlay.update(); return; }
+        if (paymentPaused) { paymentOverlay.update(); return; }
         if (statusCheckPaused) { statusCheckOverlay.update(); return; }
         if (introPaused) { introOverlay.update(); return; }   // ← single owner
 
@@ -424,7 +519,10 @@ public class Playing extends State implements StateMethods {
         acceptPassengerOverlay.update();
 
         if (interactionPaused) {
-            if (!acceptPassengerOverlay.isOpen()) interactionPaused = false;
+            if (!acceptPassengerOverlay.isOpen()) {
+                System.out.println("[Playing] Force resetting interactionPaused - overlay closed but flag still true");
+                interactionPaused = false;
+            }
             return;
         }
 
@@ -521,6 +619,7 @@ public class Playing extends State implements StateMethods {
         passengerListOverlay.render(g, seats, worldLoopCount);
 
         // Overlays — rendered on top in priority order
+        if (paymentPaused)     { paymentOverlay.render(g);       return; }
         if (statusCheckPaused) { statusCheckOverlay.render(g);   return; }
         if (introPaused)       { introOverlay.render(g);         return; }  // ← single owner
         acceptPassengerOverlay.render(g);
@@ -563,6 +662,7 @@ public class Playing extends State implements StateMethods {
      */
     @Override
     public void mouseClicked(MouseEvent e) {
+
         if (activeOverlay() != ActiveOverlay.NONE) return;
 
         if (e.getButton() == MouseEvent.BUTTON1) {
@@ -580,7 +680,11 @@ public class Playing extends State implements StateMethods {
                         return;
                     }
                     interactionPaused = true;
-                    acceptPassengerOverlay.open(p);
+                    boolean opened = acceptPassengerOverlay.open(p);
+                    if (!opened) {
+                        System.out.println("[Playing] open() returned false - clearing interactionPaused");
+                        interactionPaused = false;
+                    }
                     return;
                 }
             }
@@ -592,6 +696,7 @@ public class Playing extends State implements StateMethods {
      * Strict overlay routing — the topmost active overlay gets the event,
      * all other layers are silently blocked.
      */
+
     @Override
     public void mousePressed(MouseEvent e) {
         // SkipOverlay gets priority when visible
@@ -601,6 +706,7 @@ public class Playing extends State implements StateMethods {
         }
 
         switch (activeOverlay()) {
+            case PAYMENT:    paymentOverlay.mousePressed(e);                          return;
             case STATUS_CHECK: statusCheckOverlay.mousePressed(e);                    return;
             case INTRO:      introOverlay.mousePressed(e);                            return;
             case DEATH:      deathOverlay.mousePressed(e);                            return;
@@ -622,6 +728,7 @@ public class Playing extends State implements StateMethods {
         }
 
         switch (activeOverlay()) {
+            case PAYMENT:    paymentOverlay.mouseReleased(e);            return;
             case STATUS_CHECK: statusCheckOverlay.mouseReleased(e);             return;
             case INTRO:      introOverlay.mouseReleased(e);                  return;
             case DEATH:      deathOverlay.mouseReleased(e);                  return;
@@ -637,6 +744,7 @@ public class Playing extends State implements StateMethods {
     @Override
     public void mouseMoved(MouseEvent e) {
         switch (activeOverlay()) {
+            case PAYMENT:    paymentOverlay.mouseMoved(e);             return;
             case STATUS_CHECK: statusCheckOverlay.mouseMoved(e);           return;
             case INTRO:      introOverlay.mouseMoved(e);              return;
             case DEATH:      deathOverlay.mouseMoved(e);              return;
@@ -683,6 +791,11 @@ public class Playing extends State implements StateMethods {
 
         if (e.getKeyCode() == KeyEvent.VK_ESCAPE) {
             switch (activeOverlay()) {
+                case PAYMENT:
+                    // ESC closes PaymentOverlay without dropping
+                    paymentOverlay.close();
+                    handlePaymentClose();
+                    break;
                 case STATUS_CHECK:
                 case INTRO:
                 case DEATH:
@@ -700,6 +813,18 @@ public class Playing extends State implements StateMethods {
                 case NONE:
                     paused = true;
                     break;
+            }
+            return;
+        }
+
+        // PaymentOverlay digit input (0-9 and backspace)
+        if (paymentPaused) {
+            if (e.getKeyCode() >= KeyEvent.VK_0 && e.getKeyCode() <= KeyEvent.VK_9) {
+                paymentOverlay.inputDigit(e.getKeyCode() - KeyEvent.VK_0);
+                return;
+            } else if (e.getKeyCode() == KeyEvent.VK_BACK_SPACE) {
+                paymentOverlay.backspace();
+                return;
             }
             return;
         }
@@ -753,6 +878,7 @@ public class Playing extends State implements StateMethods {
      * Proceeds to boss fight based on current level.
      */
     public void startBossFight() {
+        setBossFightActive(true);
         int currentLevel = levelManager.getCurrentLevelId();
         //int currentLevel = 2;
         if (currentLevel == 1) {
@@ -789,6 +915,9 @@ public class Playing extends State implements StateMethods {
         gameClock.setCurrentLevel(levelManager.getCurrentLevelId());
 
         restartGame();
+
+        // ADD THIS LINE - Ensure bossMode is false for normal gameplay
+        player.setBossMode(false);
 
         // Start clock for new level (gameplay resumes immediately)
         gameClock.start();

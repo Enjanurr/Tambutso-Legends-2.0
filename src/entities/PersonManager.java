@@ -131,9 +131,9 @@ public class PersonManager {
 
     // ── Passenger spawn ───────────────────────────────────────
     private void trySpawnPassenger() {
-        // FIX: Get max loops from LevelManager
+        // Spawn allowed up to AND INCLUDING maxLoops (last loop)
         int maxLoops = playing.getLevelManager().getMaxWorldLoops();
-        if (playing.getWorldLoopCount() >= maxLoops - 1) return;
+        if (playing.getWorldLoopCount() > maxLoops) return;
         if (rng.nextFloat() >= PASSENGER_SPAWN_CHANCE) return;
 
         float spawnX = Game.GAME_WIDTH + PERSON_WIDTH;

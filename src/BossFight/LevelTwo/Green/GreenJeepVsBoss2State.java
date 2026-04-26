@@ -219,7 +219,7 @@ public class GreenJeepVsBoss2State extends State implements StateMethods {
         defeatOverlay = new BossDefeatOverlay(
                 this::onNextLevel,                            // Next → advance to next level
                 this::fullReset,                              // Restart → full reset
-                () -> GameStates.state = GameStates.MENU     // Menu → back to menu
+                this::onMenuToExit                           // Menu → back to menu
         );
     }
 
@@ -228,9 +228,17 @@ public class GreenJeepVsBoss2State extends State implements StateMethods {
      * Advances to next level.
      */
     private void onNextLevel() {
-        game.advanceToNextLevel();
+        game.getPlaying().setBossFightActive(false);
+        // In boss state's onNextLevel():
+        player.setBossMode(false);  // ← MUST be FIRST
+        game.advanceToNextLevel();   // Then change state
         game.getPlaying().advanceToNextLevel();
         GameStates.state = GameStates.PLAYING;
+    }
+
+    private void onMenuToExit() {
+        player.setBossMode(false);  // Reset boss mode before returning to menu
+        GameStates.state = GameStates.MENU;
     }
 
     private void spawnBoss() {
@@ -699,7 +707,7 @@ public class GreenJeepVsBoss2State extends State implements StateMethods {
         player.getHitBox().x = spawnX;
         player.getHitBox().y = 520;
         player.resetDirBooleans();
-
+        player.setBossMode(false);
         paused           = false;
         playerDead       = false;
         bossDefeated     = false;
@@ -721,6 +729,7 @@ public class GreenJeepVsBoss2State extends State implements StateMethods {
         walkerManager.resetAll();   // NEW from first version
         resetDeathOverlay();
         spawnBoss();
+        player.setBossMode(true);  // Restore boss mode — was cleared above for hitbox reset
     }
 
     public void resetAll() {
@@ -730,4 +739,6 @@ public class GreenJeepVsBoss2State extends State implements StateMethods {
             applyDriverAssets(game.getSelectedDriver());
         }}
     public boolean isPaused() { return paused; }
+
+    public Player getPlayer() { return player; }
 }

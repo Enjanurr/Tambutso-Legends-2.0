@@ -74,7 +74,7 @@ public class AcceptPassengerOverlay {
     // =========================================================
     // YES BUTTON  ← ADJUST
     // =========================================================
-    private static final int yesButtonX      = 20;
+    private static final int yesButtonX      = -50;
     private static final int yesButtonY      = 230;
     private static final int yesButtonWidth  = 280;
     private static final int yesButtonHeight = 100;
@@ -82,7 +82,7 @@ public class AcceptPassengerOverlay {
     // =========================================================
     // NO BUTTON  ← ADJUST
     // =========================================================
-    private static final int noButtonX      = 140;
+    private static final int noButtonX      = 70;
     private static final int noButtonY      = 230;
     private static final int noButtonWidth  = 280;
     private static final int noButtonHeight = 100;
@@ -140,11 +140,11 @@ public class AcceptPassengerOverlay {
     private void createButtons() {
         int ybX = acceptOverlayX + (int)(yesButtonX * Game.SCALE);
         int ybY = acceptOverlayY + (int)(yesButtonY * Game.SCALE);
-        yesButton = new AcceptPassengerButtons(ybX + yesButtonWidth / 2, ybY, 0);
+        yesButton = new AcceptPassengerButtons(ybX + (int)(yesButtonWidth * Game.SCALE) / 2, ybY, 0);
 
         int nbX = acceptOverlayX + (int)(noButtonX * Game.SCALE);
         int nbY = acceptOverlayY + (int)(noButtonY * Game.SCALE);
-        noButton = new AcceptPassengerButtons(nbX + noButtonWidth / 2, nbY, 1);
+        noButton = new AcceptPassengerButtons(nbX + (int)(noButtonWidth * Game.SCALE) / 2, nbY, 1);
     }
 
     // ─────────────────────────────────────────────────────────
@@ -155,17 +155,21 @@ public class AcceptPassengerOverlay {
      * Opens the overlay for the given person.
      * Generates the real random stop and its exact fare HERE — once — so
      * what is displayed is identical to what will be stored on YES.
+     * @return true if overlay opened successfully, false otherwise
      */
-    public void open(Person person) {
-        if (passengerManager == null) return;
+    public boolean open(Person person) {
+        if (passengerManager == null) {
+            System.out.println("[AcceptOverlay] open() failed - passengerManager is null");
+            return false;
+        }
 
         int currentLoop = playing.getWorldLoopCount();
         int maxLoop = playing.getLevelManager().getMaxWorldLoops();
 
         // Check if any future stops exist
         if (currentLoop >= maxLoop) {
-            System.out.println("[AcceptOverlay] No future stops available");
-            return;
+            System.out.println("[AcceptOverlay] open() failed - no future stops available");
+            return false;
         }
 
         // ── NEW: Check for cached data ──────────────────────────────
@@ -178,8 +182,8 @@ public class AcceptPassengerOverlay {
             // Generate new random stop and fare
             int stop = passengerManager.drawRandomStop(currentLoop, maxLoop);
             if (stop < 0) {
-                System.out.println("[AcceptOverlay] drawRandomStop returned -1");
-                return;
+                System.out.println("[AcceptOverlay] open() failed - drawRandomStop returned -1");
+                return false;
             }
             int fare = PassengerManager.computeFare(currentLoop, stop);
 
@@ -199,6 +203,8 @@ public class AcceptPassengerOverlay {
         wrapStopName();
 
         resetBools();
+        System.out.println("[AcceptOverlay] open() SUCCESS - overlay opened");
+        return true;
     }
 
     /**
@@ -272,12 +278,14 @@ public class AcceptPassengerOverlay {
      * Also called by ESC in Playing.keyPressed().
      */
     public void close() {
+        System.out.println("[AcceptOverlay] close() called - open was " + open);
         open          = false;
         activePerson  = null;
         generatedStop = -1;
         generatedFare =  0;
         wrappedStopNameLines.clear();
         resetBools();
+        System.out.println("[AcceptOverlay] close() completed - open=" + open);
     }
 
     public boolean isOpen()          { return open; }
@@ -384,12 +392,23 @@ public class AcceptPassengerOverlay {
     // INPUT — only YES and NO are wired; all other clicks are silently swallowed
     // ─────────────────────────────────────────────────────────
     public void mousePressed(MouseEvent e) {
-        // incase
+        if (!open) {
+            System.out.println("[AcceptOverlay] mousePressed - overlay not open, ignoring");
+            return;
+        }
+        System.out.println("[AcceptOverlay] mousePressed at (" + e.getX() + ", " + e.getY() + ")");
+        System.out.println("[AcceptOverlay] yesButton bounds: " + yesButton.getBounds());
+        System.out.println("[AcceptOverlay] noButton bounds: " + noButton.getBounds());
 
-        if (!open) return;
-        if      (isIn(e, yesButton)) yesButton.setMousePressed(true);
-        else if (isIn(e, noButton))  noButton.setMousePressed(true);
-        // clicks anywhere else are intentionally ignored
+        if (isIn(e, yesButton)) {
+            System.out.println("[AcceptOverlay] YES button pressed");
+            yesButton.setMousePressed(true);
+        } else if (isIn(e, noButton)) {
+            System.out.println("[AcceptOverlay] NO button pressed");
+            noButton.setMousePressed(true);
+        } else {
+            System.out.println("[AcceptOverlay] Click outside buttons - ignored");
+        }
     }
 
     public void mouseReleased(MouseEvent e) {
@@ -413,11 +432,13 @@ public class AcceptPassengerOverlay {
     }
 
     private void handleYes() {
-        if (activePerson == null || passengerManager == null) { close(); playing.resumeFromInteraction(); return; }
+        System.out.println("[AcceptOverlay] handleYes() STARTED - open=" + open);
+        if (activePerson == null || passengerManager == null) {
+            System.out.println("[AcceptOverlay] handleYes() - null person/manager");
+            return;
+        }
         if (passengerManager.isFull()) {
             System.out.println("[AcceptOverlay] Jeepney full");
-            close();
-            playing.resumeFromInteraction();
             return;
         }
 
@@ -439,18 +460,22 @@ public class AcceptPassengerOverlay {
             // Get stop name for console output
             String stopName = getStopNameFromConfig(generatedStop);
             System.out.println("[AcceptOverlay] Accepted → " + stopName + " (Stop " + generatedStop
-                    + ")  fare \u20B1" + generatedFare);
+                    + ")  fare ₱" + generatedFare);
         } else {
             System.out.println("[AcceptOverlay] Accept failed (no slot?)");
         }
 
+        System.out.println("[AcceptOverlay] handleYes() - closing overlay");
         close();
         playing.resumeFromInteraction();
+        System.out.println("[AcceptOverlay] handleYes() COMPLETED - open=" + open);
     }
 
     private void handleNo() {
+        System.out.println("[AcceptOverlay] handleNo() called - closing");
         close();
         playing.resumeFromInteraction();
+        System.out.println("[AcceptOverlay] handleNo() COMPLETED - open=" + open);
     }
 
     public void mouseMoved(MouseEvent e) {

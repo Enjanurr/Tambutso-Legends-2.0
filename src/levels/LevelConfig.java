@@ -113,7 +113,7 @@ public class LevelConfig {
 
     // Pre-defined level configurations
     public static final LevelConfig LEVEL_1 = new LevelConfig(
-        1, 0, 0, 0, 15, "LevelOne", LEVEL_1_STOPS
+        1, 15, 6, 500, 15, "LevelOne", LEVEL_1_STOPS
     );
 
     public static final LevelConfig LEVEL_2 = new LevelConfig(
