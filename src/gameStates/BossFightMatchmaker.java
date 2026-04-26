@@ -3,6 +3,8 @@ package gameStates;
 import BossFight.LevelOne.Blue.BlueJeepVsBoss1State;
 //import BossFight.LevelOne.Red.RedJeepVsBoss1State;
 import BossFight.LevelOne.Green.GreenJeepVsBoss1State;
+import BossFight.LevelThree.Blue.BlueJeepVsBoss3State;
+import BossFight.LevelThree.Red.RedJeepVsBoss3State;
 import BossFight.LevelTwo.Blue.BlueJeepVsBoss2State;
 
 import BossFight.LevelTwo.Green.GreenJeepVsBoss2State;
@@ -71,13 +73,13 @@ public class BossFightMatchmaker {
 
         switch (driver.id) {
             case "driver_1": // Manong Ricky (Red Jeep)
-                return createRedJeepVsBoss2();
+                return createRedJeepVsBoss3();
 
             case "driver_2": // Ate Gloria (Green Jeep)
                 return createGreenJeepVsBoss2();
 
             case "driver_3": // Kuya Ben (Blue Jeep)
-                return createBlueJeepVsBoss2(); // also changed this one
+                return createBlueJeepVsBoss3(); // also changed this one
 
             default:
                 System.err.println("❌ [Matchmaker] Unknown driver ID: " + driver.id);
@@ -109,22 +111,14 @@ public class BossFightMatchmaker {
 
 
     // this one also for testing
-    private BlueJeepVsBoss2State createBlueJeepVsBoss2() {
-        BlueJeepVsBoss2State state = new BlueJeepVsBoss2State(game, player, healthBar);
+    private BlueJeepVsBoss3State createBlueJeepVsBoss3() {
+        BlueJeepVsBoss3State state = new BlueJeepVsBoss3State(game, player, healthBar);
         state.applyDriverAssets(game.getSelectedDriver());
-        System.out.println("✓ Created: BlueJeepVsBoss1State");
+        System.out.println("✓ Created: BlueJeepVsBoss3State");
         return state;
     }
 
-    /*
-    private RedJeepVsBoss1State createRedJeepVsBoss1() {
-        RedJeepVsBoss1State state = new RedJeepVsBoss1State(game, player, healthBar);
-        state.applyDriverAssets(game.getSelectedDriver());
-        System.out.println("✓ Created: RedJeepVsBoss1State");
-        return state;
-    }
 
-     */
 
     private GreenJeepVsBoss2State createGreenJeepVsBoss2() {
         GreenJeepVsBoss2State state = new GreenJeepVsBoss2State(game, player, healthBar);
@@ -133,8 +127,8 @@ public class BossFightMatchmaker {
         return state;
     }
 
-    private RedJeepVsBoss2State createRedJeepVsBoss2() {
-        RedJeepVsBoss2State state = new RedJeepVsBoss2State(game, player, healthBar);
+    private RedJeepVsBoss3State createRedJeepVsBoss3() {
+        RedJeepVsBoss3State state = new RedJeepVsBoss3State(game, player, healthBar);
         state.applyDriverAssets(game.getSelectedDriver());
         System.out.println("✓ Created: RedJeepVsBoss1State");
         return state;

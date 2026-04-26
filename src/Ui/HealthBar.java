@@ -128,4 +128,6 @@ public class HealthBar {
 
         g.drawImage(frames[row][col], drawX, drawY, drawW, drawH, null);
     }
+
+
 }

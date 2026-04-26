@@ -15,8 +15,9 @@ public class LoadSave {
     public static final String GREEN_JEEP_SKILL1 = "characters/player/greenjeep_skill1.png";
     public static final String GREEN_JEEP_SKILL2 = "characters/player/greenjeep_skill2.png";
     public static final String PLAYER_ATLAS_3 = "characters/player/blue_jeep.png";
-    //public static final String CHAR_SELECT_BG = "backgrounds/menu/background_menu.png";
-    //public static final String CHAR_BG = "backgrounds/menu/menu_background.png";
+    public static final String BOSS3_SKILL2_GSM = "boss/gsm-obstacle.png";
+    public static final String BOSS3_SKILL2_EJEEP = "boss/modernjeep.png";
+    
     public static final String LEVEL_ATLAS  = "level/road_tiles.png";
     public static final String ROAD_DATA    = "level/road_data_new.png";
 

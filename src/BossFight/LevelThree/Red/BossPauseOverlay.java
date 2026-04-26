@@ -1,6 +1,5 @@
-package BossFight.LevelTwo.Blue;
+package BossFight.LevelThree.Red;
 
-import BossFight.LevelTwo.Blue.BlueJeepVsBoss2State;
 import Ui.PauseButton;
 import Ui.SoundButton;
 import Ui.UrmButton;
@@ -30,7 +29,7 @@ import static utils.Constants.UI.VolumeButtons.*;
  */
 public class BossPauseOverlay {
 
-    private final BlueJeepVsBoss2State blueJeepVsBoss2State;
+    private final RedJeepVsBoss3State redJeepVsBoss3State;
 
     private BufferedImage backgroundImg;
     private int bgX, bgY, bgW, bgH;
@@ -39,8 +38,8 @@ public class BossPauseOverlay {
     private UrmButton    resumeBtn, restartBtn, menuBtn;
     private VolumeButton volumeButton;
 
-    public BossPauseOverlay(BlueJeepVsBoss2State blueJeepVsBoss2State) {
-        this.blueJeepVsBoss2State = blueJeepVsBoss2State;
+    public BossPauseOverlay(RedJeepVsBoss3State redJeepVsBoss3State) {
+        this.redJeepVsBoss3State = redJeepVsBoss3State;
         loadBackground();
         createSoundButtons();
         createUrmButtons();
@@ -138,15 +137,15 @@ public class BossPauseOverlay {
 
         } else if (isIn(e, resumeBtn)) {
             if (resumeBtn.isMousePressed())
-                blueJeepVsBoss2State.unpause();          // resume
+                redJeepVsBoss3State.unpause();          // resume
 
         } else if (isIn(e, restartBtn)) {
             if (restartBtn.isMousePressed())
-                blueJeepVsBoss2State.fullReset();        // full boss fight restart
+                redJeepVsBoss3State.fullReset();        // full boss fight restart
 
         } else if (isIn(e, menuBtn)) {
             if (menuBtn.isMousePressed()) {
-                blueJeepVsBoss2State.unpause();
+                redJeepVsBoss3State.unpause();
                 GameStates.state = GameStates.MENU; // back to main menu
             }
         }
@@ -180,6 +179,6 @@ public class BossPauseOverlay {
     }
 
     private AudioPlayer getAudioPlayer() {
-        return blueJeepVsBoss2State.getGame().getAudioPlayer();
+        return redJeepVsBoss3State.getGame().getAudioPlayer();
     }
 }

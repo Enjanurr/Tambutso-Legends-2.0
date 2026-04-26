@@ -2,21 +2,17 @@ package main;
 
 import java.awt.Graphics;
 
-import BossFight.LevelTwo.Blue.BlueJeepVsBoss2State;
+import BossFight.LevelThree.Blue.BlueJeepVsBoss3State;
+import BossFight.LevelThree.Green.GreenJeepVsBoss3State;
+import BossFight.LevelThree.Red.RedJeepVsBoss3State;
 import BossFight.LevelTwo.Green.GreenJeepVsBoss2State;
 import entities.DriverProfile;
 import gameStates.*;
 import Ui.IntroOverlay;
 
-import BossFight.LevelOne.Blue.BlueJeepVsBoss1State;
-import BossFight.LevelOne.Red.RedJeepVsBoss1State;
-import BossFight.LevelOne.Green.GreenJeepVsBoss1State;
-
-import BossFight.LevelTwo.Red.RedJeepVsBoss2State;
 import utils.AudioPlayer;
 import gameStates.BossFightMatchmaker;
 
-import static gameStates.GameStates.RED_JEEP_VS_BOSS2;
 
 public class Game implements Runnable {
     private GameWindow    gameWindow;
@@ -35,13 +31,13 @@ public class Game implements Runnable {
 
     private String activeMusicTrack;
 
-    private BlueJeepVsBoss1State blueJeepVsBoss1State;
-    private RedJeepVsBoss1State redJeepVsBoss1State;
-    private GreenJeepVsBoss1State greenJeepVsBoss1State;
 
-    private BlueJeepVsBoss2State blueJeepVsBoss2State;
-    private RedJeepVsBoss2State redJeepVsBoss2State;
-    private GreenJeepVsBoss2State greenJeepVsBoss2State;
+
+
+
+    private RedJeepVsBoss3State redJeepVsBoss3State;
+    private GreenJeepVsBoss3State greenJeepVsBoss3State;
+    private BlueJeepVsBoss3State blueJeepVsBoss3State;
 
     public final static int   TILES_DEFAULT_SIZE = 20;
     public final static float SCALE              = 2f;
@@ -84,16 +80,16 @@ public class Game implements Runnable {
         introOverlay  = new IntroOverlay();
 
         // BossFightStates share the Player and HealthBar from Playing
-        blueJeepVsBoss2State = new BlueJeepVsBoss2State(this,
+        blueJeepVsBoss3State = new BlueJeepVsBoss3State(this,
                 playing.getPlayer(),
                 playing.getHealthBar());
 
         // ── Initialize Red and Green boss fight states ← ADD ─────
-        redJeepVsBoss2State = new RedJeepVsBoss2State(this,
+        redJeepVsBoss3State = new RedJeepVsBoss3State(this,
                 playing.getPlayer(),
                 playing.getHealthBar());
 
-        greenJeepVsBoss2State = new GreenJeepVsBoss2State(this,
+        greenJeepVsBoss3State = new GreenJeepVsBoss3State(this,
                 playing.getPlayer(),
                 playing.getHealthBar());
 
@@ -153,21 +149,21 @@ public class Game implements Runnable {
         // Route to correct state based on driver
         switch (selectedDriver.id) {
             case "driver_3": // Kuya Ben (Blue Jeep)
-                blueJeepVsBoss2State.resetAll();
-                blueJeepVsBoss2State.applyDriverAssets(selectedDriver);
-                GameStates.state = GameStates.BLUE_JEEP_VS_BOSS2;
+                blueJeepVsBoss3State.resetAll();
+                blueJeepVsBoss3State.applyDriverAssets(selectedDriver);
+                GameStates.state = GameStates.BLUE_JEEP_VS_BOSS3;
                 break;
 
             case "driver_1": // Manong Ricky (Red Jeep)
-                redJeepVsBoss2State.resetAll();
-                redJeepVsBoss2State.applyDriverAssets(selectedDriver);
-                GameStates.state = GameStates.RED_JEEP_VS_BOSS2;
+                redJeepVsBoss3State.resetAll();
+                redJeepVsBoss3State.applyDriverAssets(selectedDriver);
+                GameStates.state = GameStates.RED_JEEP_VS_BOSS3;
                 break;
 
             case "driver_2": // Ate Gloria (Green Jeep)
-                greenJeepVsBoss2State.resetAll();
-                greenJeepVsBoss2State.applyDriverAssets(selectedDriver);
-                GameStates.state = GameStates.GREEN_JEEP_VS_BOSS2;
+                greenJeepVsBoss3State.resetAll();
+                greenJeepVsBoss3State.applyDriverAssets(selectedDriver);
+                GameStates.state = GameStates.GREEN_JEEP_VS_BOSS3;
                 break;
 
             default:
@@ -216,17 +212,17 @@ public class Game implements Runnable {
                 break;
 
             // ── Boss Fight States ← CHANGE/ADD ──────────────────
-            case BLUE_JEEP_VS_BOSS2:
+            case BLUE_JEEP_VS_BOSS3:
                 System.out.println("[Game.update()] Updating BLUE_JEEP_VS_BOSS2");
-                blueJeepVsBoss2State.update();
+                blueJeepVsBoss3State.update();
                 break;
 
-            case RED_JEEP_VS_BOSS2:
-                redJeepVsBoss2State.update();
+            case RED_JEEP_VS_BOSS3:
+                redJeepVsBoss3State.update();
                 break;
 
-            case GREEN_JEEP_VS_BOSS2:
-                greenJeepVsBoss2State.update();
+            case GREEN_JEEP_VS_BOSS3:
+                greenJeepVsBoss3State.update();
                 break;
 
 
@@ -272,14 +268,14 @@ public class Game implements Runnable {
                 return "menu";
             case PLAYING:
                 return playing.isPaused() ? "menu" : "main";
-            case BLUE_JEEP_VS_BOSS2:
-                return blueJeepVsBoss2State.isPaused() ? "menu" : "main";
+            case BLUE_JEEP_VS_BOSS3:
+                return blueJeepVsBoss3State.isPaused() ? "menu" : "main";
 
-            case RED_JEEP_VS_BOSS2:
-                return redJeepVsBoss2State.isPaused() ? "menu" : "main";
+            case RED_JEEP_VS_BOSS3:
+                return redJeepVsBoss3State.isPaused() ? "menu" : "main";
 
-            case GREEN_JEEP_VS_BOSS2:
-                return greenJeepVsBoss2State.isPaused() ? "menu" : "main";
+            case GREEN_JEEP_VS_BOSS3:
+                return greenJeepVsBoss3State.isPaused() ? "menu" : "main";
 
             case QUIT:
             default:
@@ -305,17 +301,17 @@ public class Game implements Runnable {
 
             // ── Boss Fight States ← CHANGE/ADD ──────────────────
             // for testing I change Boss1 to Boss 2
-            case BLUE_JEEP_VS_BOSS2:
+            case BLUE_JEEP_VS_BOSS3:
                 System.out.println("[Game.render()] Drawing BLUE_JEEP_VS_BOSS2");
-                blueJeepVsBoss2State.draw(g);
+                blueJeepVsBoss3State.draw(g);
                 break;
 
-            case RED_JEEP_VS_BOSS2:
-                redJeepVsBoss2State.draw(g);
+            case RED_JEEP_VS_BOSS3:
+                getRedJeepVsBoss3State().draw(g);
                 break;
 
-            case GREEN_JEEP_VS_BOSS2:
-                greenJeepVsBoss2State.draw(g);
+            case GREEN_JEEP_VS_BOSS3:
+                greenJeepVsBoss3State.draw(g);
                 break;
 
 
@@ -369,7 +365,7 @@ public class Game implements Runnable {
     public Options         getOptions()        { return options; }
     public Playing         getPlaying()        { return playing; }
     public IntroOverlay    getIntroOverlay()   { return introOverlay; }
-    public BlueJeepVsBoss2State getBossFightState() { return blueJeepVsBoss2State; }
+    public BlueJeepVsBoss3State getBossFightState() { return blueJeepVsBoss3State; }
     public AudioPlayer     getAudioPlayer()    { return audioPlayer; }
     public CharSelectState getCharSelectState() { return charSelectState; }
 
@@ -381,29 +377,21 @@ public class Game implements Runnable {
         return currentBossLevel;
     }
 
-    /*
-    public RedJeepVsBoss1State getRedJeepVsBoss1State() {
-        return redJeepVsBoss1State;
+
+    public RedJeepVsBoss3State getRedJeepVsBoss3State() {
+        return redJeepVsBoss3State;
     }
 
 
-     */
-    public RedJeepVsBoss2State getRedJeepVsBoss2State() {
-        return redJeepVsBoss2State;
-    }
-
-    public GreenJeepVsBoss1State getGreenJeepVsBoss1State() {
-        return greenJeepVsBoss1State;
-    }
-    public GreenJeepVsBoss2State getGreenJeepVsBoss2State() {
-        return greenJeepVsBoss2State;
+    public GreenJeepVsBoss3State getGreenJeepVsBoss3State() {
+        return greenJeepVsBoss3State;
     }
 
     // RENAME THIS GETTER for consistency:
 // OLD: public BlueJeepVsBoss1State getBossFightState()
 // NEW:
-    public BlueJeepVsBoss2State getBlueJeepVsBoss2State() {
-        return blueJeepVsBoss2State;
+    public BlueJeepVsBoss3State getBlueJeepVsBoss3State() {
+        return blueJeepVsBoss3State;
     }
 
     public void setCurrentGameLevel(int level) {

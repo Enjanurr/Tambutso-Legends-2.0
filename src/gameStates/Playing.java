@@ -24,23 +24,7 @@ import java.util.Random;
 import static utils.Constants.Environment.*;
 
 public class Playing extends State implements StateMethods {
-    // Playing orchestrates the active run and delegates specialized behavior
-    // to managers for enemies, powerups, interactive stop signs, and
-    // decorative roadside objects.
 
-    // =======================================================
-    // ── DEBUG TOGGLES — comment / uncomment as needed ──────
-    // =======================================================
-
-    // Uncomment the line below to skip all 15 loops and jump straight to boss fight.
-    // SKIP_TO_BOSS takes priority over DISABLE_BOSS_FIGHT.
-    // private static final boolean SKIP_TO_BOSS      = true;
-
-    // Uncomment the line below to disable the boss fight entirely.
-    // After loop 15 the game will loop indefinitely instead of transitioning.
-    // private static final boolean DISABLE_BOSS_FIGHT = true;
-
-    // =======================================================
 
     private PowerupManager  powerupManager;
     private Player          player;

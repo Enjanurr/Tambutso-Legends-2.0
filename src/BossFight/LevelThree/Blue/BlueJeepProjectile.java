@@ -1,15 +1,10 @@
-package BossFight.LevelTwo.Blue;
+package BossFight.LevelThree.Blue;
 
 import main.Game;
 
 import java.awt.*;
 import java.awt.image.BufferedImage;
 
-/**
- * Projectile fired by the jeepney's Shoot skill (E key).
- * Travels right, animated using Row 4, columns 0-3 of the jeepney sprite sheet.
- * Destroyed when it reaches the right border or hits the boss.
- */
 public class BlueJeepProjectile {
 
     public static final float TRAVEL_SPEED   = 2f;   // pixels per tick (pre-scale)

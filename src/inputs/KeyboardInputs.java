@@ -33,16 +33,16 @@ public class KeyboardInputs implements KeyListener {
                 break;
 
             // ── Boss Fight States ← CHANGE ──────────────────────
-            case BLUE_JEEP_VS_BOSS2:
-                gamePanel.getGame().getBlueJeepVsBoss2State().keyReleased(e);
+            case BLUE_JEEP_VS_BOSS3:
+                gamePanel.getGame().getBlueJeepVsBoss3State().keyReleased(e);
                 break;
 
-            case RED_JEEP_VS_BOSS2:
-                gamePanel.getGame().getRedJeepVsBoss2State().keyReleased(e);
+            case RED_JEEP_VS_BOSS3:
+                gamePanel.getGame().getRedJeepVsBoss3State().keyReleased(e);
                 break;
 
-            case GREEN_JEEP_VS_BOSS2:
-                gamePanel.getGame().getGreenJeepVsBoss2State().keyReleased(e);
+            case GREEN_JEEP_VS_BOSS3:
+                gamePanel.getGame().getGreenJeepVsBoss3State().keyReleased(e);
                 break;
 
 
@@ -68,16 +68,16 @@ public class KeyboardInputs implements KeyListener {
                 break;
 
             // ── Boss Fight States ← CHANGE ──────────────────────
-            case BLUE_JEEP_VS_BOSS2:
-                gamePanel.getGame().getBlueJeepVsBoss2State().keyPressed(e);
+            case BLUE_JEEP_VS_BOSS3:
+                gamePanel.getGame().getBlueJeepVsBoss3State().keyPressed(e);
                 break;
 
-            case RED_JEEP_VS_BOSS2:
-                gamePanel.getGame().getRedJeepVsBoss2State().keyPressed(e);
+            case RED_JEEP_VS_BOSS3:
+                gamePanel.getGame().getRedJeepVsBoss3State().keyPressed(e);
                 break;
 
-            case GREEN_JEEP_VS_BOSS2:
-                gamePanel.getGame().getGreenJeepVsBoss2State().keyPressed(e);
+            case GREEN_JEEP_VS_BOSS3:
+                gamePanel.getGame().getGreenJeepVsBoss3State().keyPressed(e);
                 break;
 
             default:
