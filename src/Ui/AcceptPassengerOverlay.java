@@ -59,7 +59,7 @@ public class AcceptPassengerOverlay {
     // STOP NUMBER TEXT  ← ADJUST
     // =========================================================
     private static final int   stopNumberX      = 100;
-    private static final int   stopNumberY      = 160;
+    private static final int   stopNumberY      = 140;
     private static final Color stopNumberColor  = new Color(255, 220, 50);
     private static final int   stopNumberFontSize = 18;
 
@@ -67,22 +67,22 @@ public class AcceptPassengerOverlay {
     // FARE TEXT  ← ADJUST
     // =========================================================
     private static final int   fareTextX        = 100;
-    private static final int   fareTextY        = 200;
+    private static final int   fareTextY        = 160;
     private static final Color fareTextColor    = new Color(100, 220, 100);
     private static final int   fareFontSize     = 20;
 
     // =========================================================
     // YES BUTTON  ← ADJUST
     // =========================================================
-    private static final int yesButtonX      = -50;
-    private static final int yesButtonY      = 230;
+    private static final int yesButtonX      = 20;
+    private static final int yesButtonY      = 180;
     private static final int yesButtonWidth  = 280;
     private static final int yesButtonHeight = 100;
 
     // =========================================================
     // NO BUTTON  ← ADJUST
     // =========================================================
-    private static final int noButtonX      = 70;
+    private static final int noButtonX      = 20;
     private static final int noButtonY      = 230;
     private static final int noButtonWidth  = 280;
     private static final int noButtonHeight = 100;
@@ -200,8 +200,8 @@ public class AcceptPassengerOverlay {
 
         activePerson = person;
         open = true;
-        ignoreInputTimer = 10;  // Ignore mouse for ~10 frames (50ms at 200 UPS)
-        openingTimestamp = 10;  // Mark as recently opened (same duration as ignoreInputTimer)
+        ignoreInputTimer = 30;  // Ignore mouse for ~30 frames (150ms at 200 UPS)
+        openingTimestamp = 30;  // Mark as recently opened (same duration as ignoreInputTimer)
 
         // Pre-wrap the stop name for rendering
         wrapStopName();

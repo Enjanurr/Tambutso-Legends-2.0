@@ -466,17 +466,11 @@ public class Playing extends State implements StateMethods {
         acceptPassengerOverlay.update();
 
         if (interactionPaused) {
-            // Only force reset if ALL conditions are true:
-            // 1. Overlay is confirmed closed
-            // 2. Overlay was NOT recently opened (past 30 frames)
-            // 3. Open timestamp is old enough to confirm it's not a race
+            // Only force reset if overlay is closed AND not recently opened
+            // isRecentlyOpened() prevents race condition during first 30 frames
             if (!acceptPassengerOverlay.isOpen() &&
-                !acceptPassengerOverlay.isRecentlyOpened() &&
-                acceptPassengerOverlay.getFramesSinceOpen() > 30) {
+                !acceptPassengerOverlay.isRecentlyOpened()) {
                 System.out.println("[Playing] Force resetting interactionPaused - overlay closed but flag still true");
-                System.out.println("[DEBUG] Force reset - open=" + acceptPassengerOverlay.isOpen() +
-                                   ", recentlyOpened=" + acceptPassengerOverlay.isRecentlyOpened() +
-                                   ", framesSinceOpen=" + acceptPassengerOverlay.getFramesSinceOpen());
                 interactionPaused = false;
             }
             return;
