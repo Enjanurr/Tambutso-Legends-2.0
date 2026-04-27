@@ -4,9 +4,11 @@ import BossFight.LevelOne.Blue.BlueJeepVsBoss1State;
 import BossFight.LevelOne.Red.RedJeepVsBoss1State;
 import BossFight.LevelOne.Green.GreenJeepVsBoss1State;
 import BossFight.LevelTwo.Blue.BlueJeepVsBoss2State;
-
-import BossFight.LevelTwo.Green.GreenJeepVsBoss2State;
 import BossFight.LevelTwo.Red.RedJeepVsBoss2State;
+import BossFight.LevelTwo.Green.GreenJeepVsBoss2State;
+import BossFight.LevelThree.Blue.BlueJeepVsBoss3State;
+import BossFight.LevelThree.Red.RedJeepVsBoss3State;
+import BossFight.LevelThree.Green.GreenJeepVsBoss3State;
 import entities.DriverProfile;
 import entities.Player;
 import main.Game;
@@ -14,16 +16,6 @@ import Ui.HealthBar;
 
 /**
  * Routes the selected driver + level combination to the correct boss fight state.
- *
- * NO ECS — just a simple factory that maps driver IDs to boss fight classes.
- *
- * To add a new driver:
- *   1. Add case in getLevel1State()
- *   2. Create corresponding XxxJeepVsBoss1State class
- *
- * To add a new level (Boss2, Boss3):
- *   1. Add getLevel2State(), getLevel3State() methods
- *   2. Create corresponding XxxVsBoss2State classes
  */
 public class BossFightMatchmaker {
 
@@ -41,7 +33,7 @@ public class BossFightMatchmaker {
      * Returns the appropriate boss fight state for the given driver and level.
      *
      * @param driver The selected driver profile
-     * @param levelIndex Level number (1 = Boss1, 2 = Boss2, etc.)
+     * @param levelIndex Level number (1 = Boss1, 2 = Boss2, 3 = Boss3)
      * @return The boss fight state, or null if invalid combination
      */
     public State getBossFightState(DriverProfile driver, int levelIndex) {
@@ -72,13 +64,10 @@ public class BossFightMatchmaker {
         switch (driver.id) {
             case "driver_1": // Manong Ricky (Red Jeep)
                 return createRedJeepVsBoss1();
-
             case "driver_2": // Ate Gloria (Green Jeep)
                 return createGreenJeepVsBoss1();
-
             case "driver_3": // Kuya Ben (Blue Jeep)
                 return createBlueJeepVsBoss1();
-
             default:
                 System.err.println("❌ [Matchmaker] Unknown driver ID: " + driver.id);
                 return null;
@@ -94,13 +83,10 @@ public class BossFightMatchmaker {
         switch (driver.id) {
             case "driver_1": // Manong Ricky (Red Jeep)
                 return createRedJeepVsBoss2();
-
             case "driver_2": // Ate Gloria (Green Jeep)
                 return createGreenJeepVsBoss2();
-
             case "driver_3": // Kuya Ben (Blue Jeep)
                 return createBlueJeepVsBoss2();
-
             default:
                 System.err.println("❌ [Matchmaker] Unknown driver ID: " + driver.id);
                 return null;
@@ -108,12 +94,22 @@ public class BossFightMatchmaker {
     }
 
     // ─────────────────────────────────────────────────────────
-    // LEVEL 3 (Boss3) ROUTING - TODO: Implement when Boss3 exists
+    // LEVEL 3 (Boss3) ROUTING
     // ─────────────────────────────────────────────────────────
     private State getLevel3State(DriverProfile driver) {
-        System.err.println("⚠️ [Matchmaker] Level 3 not implemented yet!");
-        // TODO: Add Boss3 state routing here
-        return null;
+        System.out.println("🎮 [Matchmaker] Level 3 - Driver: " + driver.displayName);
+
+        switch (driver.id) {
+            case "driver_1": // Manong Ricky (Red Jeep)
+                return createRedJeepVsBoss3();
+            case "driver_2": // Ate Gloria (Green Jeep)
+                return createGreenJeepVsBoss3();
+            case "driver_3": // Kuya Ben (Blue Jeep)
+                return createBlueJeepVsBoss3();
+            default:
+                System.err.println("❌ [Matchmaker] Unknown driver ID: " + driver.id);
+                return null;
+        }
     }
 
     // ─────────────────────────────────────────────────────────
@@ -167,6 +163,31 @@ public class BossFightMatchmaker {
     }
 
     // ─────────────────────────────────────────────────────────
+    // LEVEL 3 STATE FACTORY METHODS
+    // ─────────────────────────────────────────────────────────
+
+    private BlueJeepVsBoss3State createBlueJeepVsBoss3() {
+        BlueJeepVsBoss3State state = new BlueJeepVsBoss3State(game, player, healthBar);
+        state.applyDriverAssets(game.getSelectedDriver());
+        System.out.println("✓ Created: BlueJeepVsBoss3State");
+        return state;
+    }
+
+    private RedJeepVsBoss3State createRedJeepVsBoss3() {
+        RedJeepVsBoss3State state = new RedJeepVsBoss3State(game, player, healthBar);
+        state.applyDriverAssets(game.getSelectedDriver());
+        System.out.println("✓ Created: RedJeepVsBoss3State");
+        return state;
+    }
+
+    private GreenJeepVsBoss3State createGreenJeepVsBoss3() {
+        GreenJeepVsBoss3State state = new GreenJeepVsBoss3State(game, player, healthBar);
+        state.applyDriverAssets(game.getSelectedDriver());
+        System.out.println("✓ Created: GreenJeepVsBoss3State");
+        return state;
+    }
+
+    // ─────────────────────────────────────────────────────────
     // UTILITY METHODS
     // ─────────────────────────────────────────────────────────
 
@@ -183,13 +204,13 @@ public class BossFightMatchmaker {
     public boolean isImplemented(DriverProfile driver, int levelIndex) {
         if (driver == null) return false;
 
-        // All 3 drivers implemented for Levels 1 and 2
-        if (levelIndex == 1 || levelIndex == 2) {
+        // All 3 drivers implemented for Levels 1, 2, and 3
+        if (levelIndex == 1 || levelIndex == 2 || levelIndex == 3) {
             return driver.id.equals("driver_1")
                     || driver.id.equals("driver_2")
                     || driver.id.equals("driver_3");
         }
 
-        return false; // Level 3 not implemented yet
+        return false;
     }
 }

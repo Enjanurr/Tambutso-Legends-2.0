@@ -607,6 +607,5 @@ public class Boss2 {
     public List<NukeProjectile.Nuke>    getNukes() { return nukes;   }
     public float getX() { return x; }
     public float getY() { return y; }
-    public float getLaneTopY()  { return laneTopY; }
-    public float getLaneBotY()  { return laneBotY; }
+
 }

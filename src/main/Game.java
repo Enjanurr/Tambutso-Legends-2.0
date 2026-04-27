@@ -2,6 +2,9 @@ package main;
 
 import java.awt.Graphics;
 
+import BossFight.LevelThree.Blue.BlueJeepVsBoss3State;
+import BossFight.LevelThree.Green.GreenJeepVsBoss3State;
+import BossFight.LevelThree.Red.RedJeepVsBoss3State;
 import BossFight.LevelTwo.Blue.BlueJeepVsBoss2State;
 import BossFight.LevelTwo.Green.GreenJeepVsBoss2State;
 import entities.DriverProfile;
@@ -17,6 +20,7 @@ import utils.AudioPlayer;
 import gameStates.BossFightMatchmaker;
 
 import static gameStates.GameStates.RED_JEEP_VS_BOSS2;
+import static gameStates.GameStates.GREEN_JEEP_VS_BOSS2;
 
 public class Game implements Runnable {
     private GameWindow    gameWindow;
@@ -29,23 +33,25 @@ public class Game implements Runnable {
     private Menu          menu;
     private Options       options;
 
-    // ── REMOVED: Game no longer owns its own IntroOverlay instance.
-    //    Playing is the single owner; Game delegates to playing.tryShowIntro().
-    //    This eliminates the two-instance bug where Game's overlay was updated
-    //    but Playing's overlay (which handles all mouse routing) was never opened.
-
     private final AudioPlayer audioPlayer;
     private CharSelectState charSelectState;
 
     private String activeMusicTrack;
 
+    // ── Level 1 Boss States ───────────────────────────────────
     private BlueJeepVsBoss1State blueJeepVsBoss1State;
     private RedJeepVsBoss1State redJeepVsBoss1State;
     private GreenJeepVsBoss1State greenJeepVsBoss1State;
 
+    // ── Level 2 Boss States ───────────────────────────────────
     private BlueJeepVsBoss2State blueJeepVsBoss2State;
     private RedJeepVsBoss2State redJeepVsBoss2State;
     private GreenJeepVsBoss2State greenJeepVsBoss2State;
+
+    // ── Level 3 Boss States ───────────────────────────────────
+    private BlueJeepVsBoss3State blueJeepVsBoss3State;
+    private RedJeepVsBoss3State redJeepVsBoss3State;
+    private GreenJeepVsBoss3State greenJeepVsBoss3State;
 
     public final static int   TILES_DEFAULT_SIZE = 20;
     public final static float SCALE              = 2f;
@@ -65,7 +71,6 @@ public class Game implements Runnable {
 
     /** Stores the last active game state (PLAYING or boss fight) for resume after menu. */
     private GameStates lastActiveGameState = null;
-
 
 
     public Game() {
@@ -142,7 +147,6 @@ public class Game implements Runnable {
         options       = new Options(this);
         playing       = new Playing(this);
         charSelectState = new CharSelectState(this);
-        // No IntroOverlay constructed here — Playing owns the single instance.
         System.out.println("[Game] All classes initialized");
 
         // ── Initialize Level 1 BossFightStates ─────────────────
@@ -171,6 +175,19 @@ public class Game implements Runnable {
                 playing.getPlayer(),
                 playing.getHealthBar());
 
+        // ── Initialize Level 3 BossFightStates ─────────────────
+        blueJeepVsBoss3State = new BlueJeepVsBoss3State(this,
+                playing.getPlayer(),
+                playing.getHealthBar());
+
+        redJeepVsBoss3State = new RedJeepVsBoss3State(this,
+                playing.getPlayer(),
+                playing.getHealthBar());
+
+        greenJeepVsBoss3State = new GreenJeepVsBoss3State(this,
+                playing.getPlayer(),
+                playing.getHealthBar());
+
         // ── Initialize matchmaker ──────────────────────────────
         bossFightMatchmaker = new BossFightMatchmaker(this,
                 playing.getPlayer(),
@@ -190,19 +207,11 @@ public class Game implements Runnable {
 
     /**
      * Called by CharSelectState after confirming a driver.
-     *
-     * Delegates entirely to Playing.tryShowIntro(), which is the single owner
-     * of the IntroOverlay. Playing sets introPaused=true, opens the overlay,
-     * and switches state to INTRO itself — so Game just needs to let Playing
-     * do its job. If the overlay was already shown (hasBeenShown), tryShowIntro
-     * will skip it and we fall through directly to PLAYING.
      */
     public void startIntroOverlay() {
         System.out.println("[Game] startIntroOverlay() — delegating to Playing");
-        playing.resetIntroShown();   // allow re-show after char-select
-        playing.tryShowIntro();      // Playing opens overlay + sets INTRO state
-        // If overlay was skipped (shouldn't happen after resetIntroShown),
-        // fall back to PLAYING so the game isn't stuck.
+        playing.resetIntroShown();
+        playing.tryShowIntro();
         if (GameStates.state != GameStates.INTRO) {
             System.out.println("[Game] Intro skipped — going straight to PLAYING");
             onIntroComplete();
@@ -214,8 +223,8 @@ public class Game implements Runnable {
         System.out.println("[Game] Intro complete, moving to PLAYING");
 
         GameStates.state = GameStates.PLAYING;
-        hasActiveGame = true;  // Game is now active and can be resumed
-        lastActiveGameState = GameStates.PLAYING;  // Track for resume
+        hasActiveGame = true;
+        lastActiveGameState = GameStates.PLAYING;
         System.out.println("───────────────────────────────");
         System.out.println("INTRO COMPLETE");
         System.out.println("Selected Driver: " +
@@ -228,10 +237,8 @@ public class Game implements Runnable {
         }
     }
 
-
     /**
      * Legacy method — use startBossFightWithLevel(levelIndex) instead.
-     * Kept for backward compatibility but delegates to level-aware routing.
      */
     public void startBossFight() {
         System.out.println("═══════════════════════════════");
@@ -240,7 +247,6 @@ public class Game implements Runnable {
                 (selectedDriver != null ? selectedDriver.displayName : "NULL"));
         System.out.println("═══════════════════════════════");
 
-        // Route to appropriate level based on currentBossLevel
         startBossFightWithLevel(currentBossLevel);
     }
 
@@ -265,6 +271,8 @@ public class Game implements Runnable {
             startLevel1BossFightInternal();
         } else if (levelIndex == 2) {
             startLevel2BossFightInternal();
+        } else if (levelIndex == 3) {
+            startLevel3BossFightInternal();
         } else {
             System.err.println("❌ [Game] Invalid level: " + levelIndex);
             GameStates.state = GameStates.MENU;
@@ -276,19 +284,19 @@ public class Game implements Runnable {
 
     private void startLevel1BossFightInternal() {
         switch (selectedDriver.id) {
-            case "driver_3": // Kuya Ben (Blue Jeep)
+            case "driver_3":
                 blueJeepVsBoss1State.resetAll();
                 blueJeepVsBoss1State.applyDriverAssets(selectedDriver);
                 GameStates.state = GameStates.BLUE_JEEP_VS_BOSS1;
                 setLastActiveGameState(GameStates.BLUE_JEEP_VS_BOSS1);
                 break;
-            case "driver_1": // Manong Ricky (Red Jeep)
+            case "driver_1":
                 redJeepVsBoss1State.resetAll();
                 redJeepVsBoss1State.applyDriverAssets(selectedDriver);
                 GameStates.state = GameStates.RED_JEEP_VS_BOSS1;
                 setLastActiveGameState(GameStates.RED_JEEP_VS_BOSS1);
                 break;
-            case "driver_2": // Ate Gloria (Green Jeep)
+            case "driver_2":
                 greenJeepVsBoss1State.resetAll();
                 greenJeepVsBoss1State.applyDriverAssets(selectedDriver);
                 GameStates.state = GameStates.GREEN_JEEP_VS_BOSS1;
@@ -326,9 +334,35 @@ public class Game implements Runnable {
         }
     }
 
-    // Keep these public wrappers so existing call-sites compile unchanged.
+    private void startLevel3BossFightInternal() {
+        switch (selectedDriver.id) {
+            case "driver_3":
+                blueJeepVsBoss3State.resetAll();
+                blueJeepVsBoss3State.applyDriverAssets(selectedDriver);
+                GameStates.state = GameStates.BLUE_JEEP_VS_BOSS3;
+                setLastActiveGameState(GameStates.BLUE_JEEP_VS_BOSS3);
+                break;
+            case "driver_1":
+                redJeepVsBoss3State.resetAll();
+                redJeepVsBoss3State.applyDriverAssets(selectedDriver);
+                GameStates.state = GameStates.RED_JEEP_VS_BOSS3;
+                setLastActiveGameState(GameStates.RED_JEEP_VS_BOSS3);
+                break;
+            case "driver_2":
+                greenJeepVsBoss3State.resetAll();
+                greenJeepVsBoss3State.applyDriverAssets(selectedDriver);
+                GameStates.state = GameStates.GREEN_JEEP_VS_BOSS3;
+                setLastActiveGameState(GameStates.GREEN_JEEP_VS_BOSS3);
+                break;
+            default:
+                System.err.println("❌ Unknown driver id: " + selectedDriver.id);
+                GameStates.state = GameStates.MENU;
+        }
+    }
+
     public void startLevel1BossFight() { startBossFightWithLevel(1); }
     public void startLevel2BossFight() { startBossFightWithLevel(2); }
+    public void startLevel3BossFight() { startBossFightWithLevel(3); }
 
     public void update() {
         switch (GameStates.state) {
@@ -339,9 +373,6 @@ public class Game implements Runnable {
                 charSelectState.update();
                 break;
             case INTRO:
-                // Playing is the single owner of IntroOverlay.
-                // Route update through Playing so the same instance that
-                // receives mouse events also advances its fade state.
                 playing.update();
                 break;
             case PLAYING:
@@ -366,6 +397,15 @@ public class Game implements Runnable {
                 break;
             case GREEN_JEEP_VS_BOSS2:
                 greenJeepVsBoss2State.update();
+                break;
+            case BLUE_JEEP_VS_BOSS3:
+                blueJeepVsBoss3State.update();
+                break;
+            case RED_JEEP_VS_BOSS3:
+                redJeepVsBoss3State.update();
+                break;
+            case GREEN_JEEP_VS_BOSS3:
+                greenJeepVsBoss3State.update();
                 break;
             case OPTIONS:
                 options.update();
@@ -420,6 +460,12 @@ public class Game implements Runnable {
                 return redJeepVsBoss2State.isPaused() ? "menu" : "main";
             case GREEN_JEEP_VS_BOSS2:
                 return greenJeepVsBoss2State.isPaused() ? "menu" : "main";
+            case BLUE_JEEP_VS_BOSS3:
+                return blueJeepVsBoss3State.isPaused() ? "menu" : "main";
+            case RED_JEEP_VS_BOSS3:
+                return redJeepVsBoss3State.isPaused() ? "menu" : "main";
+            case GREEN_JEEP_VS_BOSS3:
+                return greenJeepVsBoss3State.isPaused() ? "menu" : "main";
             case QUIT:
             default:
                 return "none";
@@ -435,7 +481,6 @@ public class Game implements Runnable {
                 menu.draw(g);
                 break;
             case INTRO:
-                // Playing.draw() already renders the intro overlay when introPaused==true.
                 playing.draw(g);
                 break;
             case PLAYING:
@@ -459,6 +504,15 @@ public class Game implements Runnable {
                 break;
             case GREEN_JEEP_VS_BOSS2:
                 greenJeepVsBoss2State.draw(g);
+                break;
+            case BLUE_JEEP_VS_BOSS3:
+                blueJeepVsBoss3State.draw(g);
+                break;
+            case RED_JEEP_VS_BOSS3:
+                redJeepVsBoss3State.draw(g);
+                break;
+            case GREEN_JEEP_VS_BOSS3:
+                greenJeepVsBoss3State.draw(g);
                 break;
             case OPTIONS:
                 options.draw(g);
@@ -508,12 +562,7 @@ public class Game implements Runnable {
     public Menu            getMenu()           { return menu; }
     public Options         getOptions()        { return options; }
     public Playing         getPlaying()        { return playing; }
-    /**
-     * Returns the IntroOverlay from the single owner (Playing).
-     * Kept for any external call-sites that used game.getIntroOverlay().
-     */
     public IntroOverlay    getIntroOverlay()   { return playing.getIntroOverlay(); }
-    public BlueJeepVsBoss2State getBossFightState() { return blueJeepVsBoss2State; }
     public AudioPlayer     getAudioPlayer()    { return audioPlayer; }
     public CharSelectState getCharSelectState() { return charSelectState; }
 
@@ -551,11 +600,23 @@ public class Game implements Runnable {
         return greenJeepVsBoss2State;
     }
 
+    // ── Level 3 Boss State Getters ────────────────────────────
+    public BlueJeepVsBoss3State getBlueJeepVsBoss3State() {
+        return blueJeepVsBoss3State;
+    }
+
+    public RedJeepVsBoss3State getRedJeepVsBoss3State() {
+        return redJeepVsBoss3State;
+    }
+
+    public GreenJeepVsBoss3State getGreenJeepVsBoss3State() {
+        return greenJeepVsBoss3State;
+    }
+
     public void setCurrentGameLevel(int level) {
         currentBossLevel = level;
     }
 
-    // Level progression
     public void advanceToNextLevel() {
         if (currentBossLevel < 3) {
             currentBossLevel++;

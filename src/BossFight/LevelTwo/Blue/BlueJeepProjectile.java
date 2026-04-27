@@ -12,9 +12,6 @@ import java.awt.image.BufferedImage;
  */
 public class BlueJeepProjectile {
 
-    // -------------------------------------------------------
-    // PROJECTILE SETTINGS  ← ADJUST
-    // -------------------------------------------------------
     public static final float TRAVEL_SPEED   = 2f;   // pixels per tick (pre-scale)
     public static final int   ANI_SPEED      = 22;    // ticks per frame
     public static final int   FRAME_W        = 110;  // matches jeepney sprite sheet cell

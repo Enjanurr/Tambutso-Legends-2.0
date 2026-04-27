@@ -81,8 +81,15 @@ public class PersonManager {
         Iterator<Person> it = persons.iterator();
         while (it.hasNext()) {
             Person p = it.next();
+            if (p == null) {
+                it.remove();
+                continue;
+            }
             p.update(scrolling, speed);
-            if (!p.isActive()) it.remove(); p.clearCache();
+            if (!p.isActive()) {
+                p.clearCache();
+                it.remove();
+            }
         }
 
         // ── NEW: Remove walking passengers when no future stops exist ──
@@ -92,8 +99,9 @@ public class PersonManager {
         if (currentLoop >= maxLoops - 1) {
             // Remove all walking PASSENGERS (not walkers)
             persons.removeIf(p -> {
+                if (p == null) return true;
                 if (p.getType() == Person.PersonType.PASSENGER) {
-                    p.clearCache();  // ── ADD THIS LINE ──
+                    p.clearCache();
                     return true;
                 }
                 return false;
@@ -123,8 +131,13 @@ public class PersonManager {
         for (float laneY : WALKER_LANES) {
             if (rng.nextFloat() < WALKER_SPAWN_CHANCE) {
                 PersonAtlas atlas = randomPersonAtlas();
-                persons.add(new Person(spawnX, laneY * Game.SCALE,
-                        Person.PersonType.WALKER, atlas.path, atlas.typeId));
+                if (atlas != null) {
+                    Person newPerson = new Person(spawnX, laneY * Game.SCALE,
+                            Person.PersonType.WALKER, atlas.path, atlas.typeId);
+                    if (newPerson != null) {
+                        persons.add(newPerson);
+                    }
+                }
             }
         }
     }
@@ -140,8 +153,13 @@ public class PersonManager {
         float spawnY = PASSENGER_Y * Game.SCALE;
 
         PersonAtlas atlas = randomPersonAtlas();
-        persons.add(new Person(spawnX, spawnY,
-                Person.PersonType.PASSENGER, atlas.path, atlas.typeId));
+        if (atlas != null) {
+            Person newPerson = new Person(spawnX, spawnY,
+                    Person.PersonType.PASSENGER, atlas.path, atlas.typeId);
+            if (newPerson != null) {
+                persons.add(newPerson);
+            }
+        }
     }
 
     // ── Helpers ──────────────────────────────────────────────
@@ -159,7 +177,7 @@ public class PersonManager {
 
     public void resetAll() {
         for (Person p : persons) {
-            p.clearCache();  // ── ADD THIS LINE ──
+            if (p != null) p.clearCache();
         }
         persons.clear();
         walkerTimer = nextWalkerInterval();
@@ -168,37 +186,50 @@ public class PersonManager {
 
     // ── Render — layered draw order ──────────────────────────
     public void render(Graphics g) {
-        List<Person> snapshot = new ArrayList<>(persons);
+        List<Person> snapshot = new ArrayList<>();
+        for (Person p : persons) {
+            if (p != null) snapshot.add(p);
+        }
 
         // Layer 1 — top Lane 1 walkers (furthest back)
-        for (Person p : snapshot)
+        for (Person p : snapshot) {
+            if (p == null) continue;
             if (p.getType() == Person.PersonType.WALKER
                     && p.getY() < LANE_2_Y * Game.SCALE)
                 p.render(g);
+        }
 
         // Layer 2 — top Lane 2 walkers
-        for (Person p : snapshot)
+        for (Person p : snapshot) {
+            if (p == null) continue;
             if (p.getType() == Person.PersonType.WALKER
                     && p.getY() >= LANE_2_Y * Game.SCALE
                     && p.getY() <  LANE_3_Y * Game.SCALE)
                 p.render(g);
+        }
 
         // Layer 3 — passengers
-        for (Person p : snapshot)
+        for (Person p : snapshot) {
+            if (p == null) continue;
             if (p.getType() == Person.PersonType.PASSENGER)
                 p.render(g);
+        }
 
         // Layer 4 — bottom Lane 3 walkers
-        for (Person p : snapshot)
+        for (Person p : snapshot) {
+            if (p == null) continue;
             if (p.getType() == Person.PersonType.WALKER
                     && p.getY() >= LANE_3_Y * Game.SCALE
                     && p.getY() <  LANE_4_Y * Game.SCALE)
                 p.render(g);
+        }
 
         // Layer 5 — bottom Lane 4 walkers (front)
-        for (Person p : snapshot)
+        for (Person p : snapshot) {
+            if (p == null) continue;
             if (p.getType() == Person.PersonType.WALKER
                     && p.getY() >= LANE_4_Y * Game.SCALE)
                 p.render(g);
+        }
     }
 }

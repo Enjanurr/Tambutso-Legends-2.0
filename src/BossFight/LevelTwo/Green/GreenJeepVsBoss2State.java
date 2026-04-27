@@ -187,12 +187,14 @@ public class GreenJeepVsBoss2State extends State implements StateMethods {
         java.awt.image.BufferedImage skill2Sheet = LoadSave.getSpriteAtlas(LoadSave.GREEN_JEEP_SKILL2);
         if (skill2Sheet != null) {
             healAnimationFrames = new BufferedImage[12];
+            int frameWidth = skill2Sheet.getWidth() / 12;
+            int frameHeight = skill2Sheet.getHeight();
             for (int i = 0; i < 12; i++)
                 healAnimationFrames[i] = skill2Sheet.getSubimage(
-                        i * 110,  // ← Use GreenJeepProjectile.FRAME_W (110)
+                        i * frameWidth,
                         0,
-                        110,      // ← Use GreenJeepProjectile.FRAME_W (110)
-                        40);     // ← Use GreenJeepProjectile.FRAME_H (40)
+                        frameWidth,
+                        frameHeight);
 
             System.out.println("✓ [GreenJeepBossFightState] Loaded Skill 2 heal frames: " + healAnimationFrames.length);
         } else {
@@ -555,8 +557,8 @@ public class GreenJeepVsBoss2State extends State implements StateMethods {
 
                 float healScale = 2.5f;
 
-                int healW = (int)(BossFight.LevelOne.Green.GreenJeepProjectile.FRAME_W * Game.SCALE * healScale);
-                int healH = (int)(BossFight.LevelOne.Green.GreenJeepProjectile.FRAME_H * Game.SCALE * healScale);
+                int healW = (int)(healAnimationFrames[0].getWidth() * Game.SCALE * healScale);
+                int healH = (int)(healAnimationFrames[0].getHeight() * Game.SCALE * healScale);
 
                 // Center of player hitbox
                 float centerX = player.getHitBox().x + player.getHitBox().width / 2f;

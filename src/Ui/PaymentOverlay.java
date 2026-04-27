@@ -256,13 +256,13 @@ public class PaymentOverlay {
                 canDrop = false;
                 showError = true;
                 errorTimer = ERROR_DURATION;
-                errorMessage = "Lack!";
+                errorMessage = "Kulang!";
             } else if (changeInputAmount > surplusAmount) {
                 // Too much change given
                 canDrop = false;
                 showError = true;
                 errorTimer = ERROR_DURATION;
-                errorMessage = "Too much!";
+                errorMessage = "Sobra!";
             } else {
                 // Correct change amount
                 canDrop = true;
