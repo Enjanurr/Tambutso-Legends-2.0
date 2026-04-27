@@ -465,16 +465,6 @@ public class Playing extends State implements StateMethods {
 
         acceptPassengerOverlay.update();
 
-        // Auto-close timeout: if overlay open >1000 frames (~5s) without button press
-        if (interactionPaused && acceptPassengerOverlay.isOpen()) {
-            if (acceptPassengerOverlay.getFramesSinceOpen() > 600 ) {
-                System.out.println("[Playing] Auto-closing stuck AcceptOverlay (timeout >300 frames)");
-                acceptPassengerOverlay.close();
-                interactionPaused = false;
-            }
-            return;
-        }
-
         if (interactionPaused) {
             // Only force reset if ALL conditions are true:
             // 1. Overlay is confirmed closed
