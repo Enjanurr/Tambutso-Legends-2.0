@@ -62,6 +62,12 @@ public class RidingPassenger {
     private final String atlasPath;
     private final int    personTypeId;
 
+    /**
+     * Surplus amount passenger paid (random 1-30 pesos above fare).
+     * Cached to remain consistent if PaymentOverlay closed/reopened.
+     */
+    private Integer cachedSurplus = null;
+
     private boolean gettingOut = false;
     private boolean selected   = false;
 
@@ -190,4 +196,10 @@ public class RidingPassenger {
     public String getAtlasPath()     { return atlasPath; }
     public int    getPersonTypeId()  { return personTypeId; }
     public int    getAcceptedAtLoop(){ return acceptedAtLoop; }
+
+    // ─────────────────────────────────────────────────────────
+    // CACHED SURPLUS (for PaymentOverlay consistency)
+    // ─────────────────────────────────────────────────────────
+    public Integer getCachedSurplus() { return cachedSurplus; }
+    public void    setCachedSurplus(int surplus) { this.cachedSurplus = surplus; }
 }

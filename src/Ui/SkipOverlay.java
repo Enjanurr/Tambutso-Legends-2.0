@@ -192,6 +192,7 @@ public class SkipOverlay {
         System.out.println("[SkipOverlay] Skipping to next level");
         game.getPlaying().getLevelManager().advanceToNextLevel();
         game.resetGameState();
+        game.getPlaying().getGameClock().start();  // Start clock after skip
         GameStates.state = GameStates.PLAYING;
         hide();
     }

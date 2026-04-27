@@ -123,6 +123,10 @@ public class Player extends Entity {
         updateAnimationTick();
         setAnimation();
     }
+    public void setCurrentXSpeed(float speed) {
+        this.currentXSpeed = speed;
+    }
+
 
     // ── Car-Struck ────────────────────────────────────────────
     /**

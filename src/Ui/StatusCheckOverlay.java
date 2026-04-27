@@ -319,6 +319,7 @@ public class StatusCheckOverlay {
                 // Restart the game
                 close();
                 playing.restartGame();
+                playing.getGameClock().start();  // Restart clock after reset
             }
             restartButton.resetBools();
         }

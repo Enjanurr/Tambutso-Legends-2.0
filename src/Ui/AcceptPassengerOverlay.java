@@ -102,6 +102,8 @@ public class AcceptPassengerOverlay {
 
     private boolean open         = false;
     private Person  activePerson = null;
+    private int     ignoreInputTimer = 0;
+    private int     openingTimestamp = 0;  // Frame counter when opened
 
     /**
      * The real stop and fare generated at open() time.
@@ -198,6 +200,8 @@ public class AcceptPassengerOverlay {
 
         activePerson = person;
         open = true;
+        ignoreInputTimer = 10;  // Ignore mouse for ~10 frames (50ms at 200 UPS)
+        openingTimestamp = 10;  // Mark as recently opened (same duration as ignoreInputTimer)
 
         // Pre-wrap the stop name for rendering
         wrapStopName();
@@ -303,8 +307,26 @@ public class AcceptPassengerOverlay {
     // ─────────────────────────────────────────────────────────
     public void update() {
         if (!open) return;
+        if (ignoreInputTimer > 0) ignoreInputTimer--;
+        if (openingTimestamp > 0) openingTimestamp--;
         yesButton.update();
         noButton.update();
+    }
+
+    /**
+     * Returns true if overlay was opened within the last 30 frames.
+     * Used by Playing to prevent premature force-reset of interactionPaused.
+     */
+    public boolean isRecentlyOpened() {
+        return openingTimestamp > 0;
+    }
+
+    /**
+     * Returns number of frames since overlay was opened.
+     * 0 = just opened, 30+ = safe to force reset if closed.
+     */
+    public int getFramesSinceOpen() {
+        return openingTimestamp > 0 ? (30 - openingTimestamp) : 999;
     }
 
     // ─────────────────────────────────────────────────────────
@@ -392,8 +414,8 @@ public class AcceptPassengerOverlay {
     // INPUT — only YES and NO are wired; all other clicks are silently swallowed
     // ─────────────────────────────────────────────────────────
     public void mousePressed(MouseEvent e) {
-        if (!open) {
-            System.out.println("[AcceptOverlay] mousePressed - overlay not open, ignoring");
+        if (!open || ignoreInputTimer > 0) {
+            if (ignoreInputTimer > 0) System.out.println("[AcceptOverlay] mousePressed - ignoring during input lock");
             return;
         }
         System.out.println("[AcceptOverlay] mousePressed at (" + e.getX() + ", " + e.getY() + ")");
@@ -412,9 +434,7 @@ public class AcceptPassengerOverlay {
     }
 
     public void mouseReleased(MouseEvent e) {
-        if (!open) return;
-
-
+        if (!open || ignoreInputTimer > 0) return;
 
         if (isIn(e, yesButton) && yesButton.isMousePressed()) {
             handleYes();

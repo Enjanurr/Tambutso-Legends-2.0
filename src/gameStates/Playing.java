@@ -144,9 +144,9 @@ public class Playing extends State implements StateMethods {
     }
 
     public void resumeFromInteraction() {
-        System.out.println("[Playing] resumeFromInteraction() - clearing interactionPaused");
-        acceptPassengerOverlay.close();
-        interactionPaused = false;
+        System.out.println("[Playing] resumeFromInteraction() - closing overlay first, then clearing flag");
+        acceptPassengerOverlay.close();  // Close overlay FIRST
+        interactionPaused = false;  // Then clear flag
         System.out.println("[Playing] interactionPaused = " + interactionPaused + ", activeOverlay = " + activeOverlay());
     }
 
@@ -274,8 +274,8 @@ public class Playing extends State implements StateMethods {
         }
 
         int expectedFare = rp.calculateFare(worldLoopCount);
-        System.out.println("[Playing] handleOpenPayment() - calling paymentOverlay.open(" + expectedFare + ")");
-        paymentOverlay.open(expectedFare);
+        System.out.println("[Playing] handleOpenPayment() - calling paymentOverlay.open(" + expectedFare + ", rp)");
+        paymentOverlay.open(expectedFare, rp);
         paymentPaused = true;
         System.out.println("[Playing] handleOpenPayment() - paymentPaused=" + paymentPaused + ", activeOverlay=" + activeOverlay());
     }
@@ -349,6 +349,8 @@ public class Playing extends State implements StateMethods {
 
     public void onIntroDone() {
         introPaused = false;
+        setBossFightActive(false);  // ← ADD THIS
+        player.setBossMode(false);
         gameClock.setCurrentLevel(levelManager.getCurrentLevelId());
         gameClock.start();
         System.out.println("[Playing] onIntroDone() — introPaused=false, clock started, notifying Game");
@@ -393,9 +395,11 @@ public class Playing extends State implements StateMethods {
         player.setWorldScrolling(false);
 
         personManager.resetAll();
+        passengerManager.resetAll();  // Clear seated passengers
         enemyManager.resetAll();
         stopSignManager.resetAll();
         powerupManager.resetAll();
+
         healthBar.reset();
         passengerCounter.reset();
         progressBar.reset();
@@ -410,8 +414,8 @@ public class Playing extends State implements StateMethods {
         passengersDroppedCount = 0;
         paused = false;
 
-        gameClock.reset();
         gameClock.setCurrentLevel(levelManager.getCurrentLevelId());
+        // Clock keeps running - no reset on restart, only on level advance
     }
 
     // ── Health callbacks ─────────────────────────────────────
@@ -457,8 +461,17 @@ public class Playing extends State implements StateMethods {
         acceptPassengerOverlay.update();
 
         if (interactionPaused) {
-            if (!acceptPassengerOverlay.isOpen()) {
+            // Only force reset if ALL conditions are true:
+            // 1. Overlay is confirmed closed
+            // 2. Overlay was NOT recently opened (past 30 frames)
+            // 3. Open timestamp is old enough to confirm it's not a race
+            if (!acceptPassengerOverlay.isOpen() &&
+                !acceptPassengerOverlay.isRecentlyOpened() &&
+                acceptPassengerOverlay.getFramesSinceOpen() > 30) {
                 System.out.println("[Playing] Force resetting interactionPaused - overlay closed but flag still true");
+                System.out.println("[DEBUG] Force reset - open=" + acceptPassengerOverlay.isOpen() +
+                                   ", recentlyOpened=" + acceptPassengerOverlay.isRecentlyOpened() +
+                                   ", framesSinceOpen=" + acceptPassengerOverlay.getFramesSinceOpen());
                 interactionPaused = false;
             }
             return;
@@ -471,6 +484,7 @@ public class Playing extends State implements StateMethods {
 
             if (scrolling) {
                 float spd = getScrollSpeed();
+
                 if (spd > 0) {
                     worldOffset += spd;
                     if (worldOffset >= levelPixelWidth) {
@@ -478,10 +492,16 @@ public class Playing extends State implements StateMethods {
                         worldLoopCount++;
                         progressBar.onLoopCompleted();
                         System.out.println("World loops: " + worldLoopCount);
-                        if (worldLoopCount >= levelManager.getMaxWorldLoops()) {
-                            worldLoopDone = true;
-                            worldOffset   = 0;
 
+                        // Check if we've reached the final loop
+                        int maxLoops = levelManager.getMaxWorldLoops();
+                        if (worldLoopCount >= maxLoops) {
+                            worldLoopDone = true;
+                            worldOffset = 0;
+                            player.setCurrentXSpeed(0);
+                            dKeyHeld = false;
+                            player.setRight(false);
+                            System.out.println("[Playing] Final loop reached - auto stopped");
                             tryTriggerStatusCheck();
                         }
                     }
@@ -783,6 +803,7 @@ public class Playing extends State implements StateMethods {
         } else {
             game.startBossFightWithLevel(currentLevel);
         }
+        gameClock.start();  // Keep clock running during boss fight
     }
 
     public boolean advanceToNextLevel() {
@@ -833,4 +854,5 @@ public class Playing extends State implements StateMethods {
     public boolean          isPaused()            { return paused; }
     public PassengerManager getPassengerManager() { return passengerManager; }
     public IntroOverlay     getIntroOverlay()     { return introOverlay; }
+    public GameClock        getGameClock()        { return gameClock; }
 }

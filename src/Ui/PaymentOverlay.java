@@ -188,13 +188,42 @@ public class PaymentOverlay {
     /**
      * Opens the payment overlay with the expected fare.
      * Generates a random surplus amount (1-30) that passenger paid above expected fare.
+     * If surplus already cached in RidingPassenger, reuse it for consistency.
      * @param expectedFare The fare amount expected from passenger
+     * @param rp The RidingPassenger object (for cached surplus)
      */
-    public void open(int expectedFare) {
+    public void open(int expectedFare, RidingPassenger rp) {
         System.out.println("[PaymentOverlay] open() STARTED - expectedFare=" + expectedFare + ", isOpen was " + isOpen);
         this.expectedFare = expectedFare;
-        // Generate random surplus between 1 and 30 pesos
-        this.surplusAmount = 1 + new java.util.Random().nextInt(30);
+
+        // Zero fare special case - auto-enable drop
+        if (expectedFare <= 0) {
+            this.expectedFare = 0;
+            this.surplusAmount = 0;
+            this.passengerPaid = 0;
+            this.changeInput = "0";
+            this.changeInputAmount = 0;
+            this.canDrop = true;
+            this.showError = false;
+            this.errorTimer = 0;
+            this.errorMessage = "";
+            this.isOpen = true;
+            System.out.println("[PaymentOverlay] Zero fare - auto-enabled drop");
+            return;
+        }
+
+        // Check for cached surplus in RidingPassenger
+        Integer cachedSurplus = rp.getCachedSurplus();
+        if (cachedSurplus != null) {
+            this.surplusAmount = cachedSurplus;
+            System.out.println("[PaymentOverlay] Using cached surplus: " + surplusAmount);
+        } else {
+            // Generate new random surplus between 1 and 30 pesos
+            this.surplusAmount = 1 + new java.util.Random().nextInt(30);
+            rp.setCachedSurplus(surplusAmount);
+            System.out.println("[PaymentOverlay] Generated new surplus: " + surplusAmount);
+        }
+
         this.passengerPaid = expectedFare + surplusAmount;
         this.changeInputAmount = 0;
         this.changeInput = "";
@@ -248,6 +277,14 @@ public class PaymentOverlay {
 
 
     private void updatePaymentState() {
+        // Zero fare - always can drop
+        if (expectedFare <= 0) {
+            canDrop = true;
+            showError = false;
+            errorMessage = "";
+            return;
+        }
+
         try {
             changeInputAmount = changeInput.isEmpty() ? 0 : Integer.parseInt(changeInput);
 
