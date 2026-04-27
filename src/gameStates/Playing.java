@@ -215,6 +215,11 @@ public class Playing extends State implements StateMethods {
     private enum ActiveOverlay { PAYMENT, STATUS_CHECK, INTRO, DEATH, ACCEPT, LIST_POPUP, PAUSE, NONE }
 
     private ActiveOverlay activeOverlay() {
+        // Auto-correct: if interactionPaused but overlay not open, reset flag
+        if (interactionPaused && !acceptPassengerOverlay.isOpen()) {
+            System.out.println("[Playing] Detected interactionPaused without open overlay - auto-resetting");
+            interactionPaused = false;
+        }
         if (paymentPaused)     return ActiveOverlay.PAYMENT;
         if (statusCheckPaused) return ActiveOverlay.STATUS_CHECK;
         if (introPaused)       return ActiveOverlay.INTRO;
@@ -460,6 +465,16 @@ public class Playing extends State implements StateMethods {
 
         acceptPassengerOverlay.update();
 
+        // Auto-close timeout: if overlay open >1000 frames (~5s) without button press
+        if (interactionPaused && acceptPassengerOverlay.isOpen()) {
+            if (acceptPassengerOverlay.getFramesSinceOpen() > 1000 ) {
+                System.out.println("[Playing] Auto-closing stuck AcceptOverlay (timeout >300 frames)");
+                acceptPassengerOverlay.close();
+                interactionPaused = false;
+            }
+            return;
+        }
+
         if (interactionPaused) {
             // Only force reset if ALL conditions are true:
             // 1. Overlay is confirmed closed
@@ -612,6 +627,11 @@ public class Playing extends State implements StateMethods {
         if (activeOverlay() != ActiveOverlay.NONE) return;
 
         if (e.getButton() == MouseEvent.BUTTON1) {
+            // Require jeep idle before accepting passenger
+            if (player.getCurrentXSpeed() > 0 || dKeyHeld) {
+                System.out.println("[Playing] Cannot accept passenger while jeep is moving");
+                return;
+            }
             for (Person p : personManager.getPersons()) {
                 if (!p.isInteractable()) continue;
                 Rectangle2D.Float pHB = p.getHitBox();
@@ -716,6 +736,13 @@ public class Playing extends State implements StateMethods {
         }
 
         if (e.getKeyCode() == KeyEvent.VK_ESCAPE) {
+            // Force close AcceptPassengerOverlay if it's visually stuck
+            if (acceptPassengerOverlay.isOpen()) {
+                acceptPassengerOverlay.close();
+                interactionPaused = false;
+                System.out.println("[Playing] ESC forced closed stuck AcceptOverlay");
+                return;
+            }
             switch (activeOverlay()) {
                 case PAYMENT:
                     paymentOverlay.close();
