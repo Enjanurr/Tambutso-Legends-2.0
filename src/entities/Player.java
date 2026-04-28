@@ -93,14 +93,18 @@ public class Player extends Entity {
     // RENDER
     // ─────────────────────────────────────────────────────────
     public void render(Graphics g) {
-        if (animations == null) return; // Guard: driver not applied yet
-        g.drawImage(
-                animations[playerAction][aniIndex],
+        if (animations == null) return;
+
+        // Safety: clamp aniIndex to valid range
+        int maxFrame = getSpriteAmount(playerAction);
+        if (aniIndex >= maxFrame) {
+            aniIndex = 0;
+        }
+
+        g.drawImage(animations[playerAction][aniIndex],
                 (int)(hitBox.x - xDrawOffset),
                 (int)(hitBox.y - yDrawOffset),
-                width, height, null
-        );
-        //drawHitBox(g);
+                width, height, null);
     }
 
     public void render(Graphics g, int xLvlOffset) {

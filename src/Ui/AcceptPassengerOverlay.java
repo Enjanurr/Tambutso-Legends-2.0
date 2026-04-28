@@ -283,10 +283,12 @@ public class AcceptPassengerOverlay {
      */
     public void close() {
         System.out.println("[AcceptOverlay] close() called - open was " + open);
-        open          = false;
-        activePerson  = null;
-        generatedStop = -1;
-        generatedFare =  0;
+        open             = false;
+        activePerson     = null;
+        generatedStop    = -1;
+        generatedFare    =  0;
+        ignoreInputTimer = 0;   // Clear input lock so next open() starts clean
+        openingTimestamp = 0;   // Clear "recently opened" flag immediately on close
         wrappedStopNameLines.clear();
         resetBools();
         System.out.println("[AcceptOverlay] close() completed - open=" + open);
@@ -306,9 +308,10 @@ public class AcceptPassengerOverlay {
     // UPDATE
     // ─────────────────────────────────────────────────────────
     public void update() {
-        if (!open) return;
+        // Always tick timers — even when closed — so they never freeze mid-countdown.
         if (ignoreInputTimer > 0) ignoreInputTimer--;
         if (openingTimestamp > 0) openingTimestamp--;
+        if (!open) return;
         yesButton.update();
         noButton.update();
     }

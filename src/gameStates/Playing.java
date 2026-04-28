@@ -84,6 +84,11 @@ public class Playing extends State implements StateMethods {
     private boolean statusCheckPaused = false;
     private boolean paymentPaused     = false;
 
+    // ── Interaction safety timeout ────────────────────────────
+    // Counts frames while interactionPaused == true.
+    // Auto-recovers if the flag is stuck for more than 2 seconds (400 frames @ 200 UPS).
+    private int interactionStuckTimer = 0;
+
     // ── World ─────────────────────────────────────────────────
     private float worldOffset    = 0;
     private final int levelPixelWidth =
@@ -144,10 +149,13 @@ public class Playing extends State implements StateMethods {
     }
 
     public void resumeFromInteraction() {
-        System.out.println("[Playing] resumeFromInteraction() - closing overlay first, then clearing flag");
-        acceptPassengerOverlay.close();  // Close overlay FIRST
-        interactionPaused = false;  // Then clear flag
-        System.out.println("[Playing] interactionPaused = " + interactionPaused + ", activeOverlay = " + activeOverlay());
+        if (!interactionPaused) return;  // Already resumed — nothing to do
+        System.out.println("[Playing] resumeFromInteraction() - clearing interactionPaused");
+        // Overlay is already closed by handleYes/handleNo before this is called;
+        // call close() defensively in case we got here via a direct ESC path.
+        acceptPassengerOverlay.close();
+        interactionPaused = false;
+        System.out.println("[Playing] interactionPaused=" + interactionPaused + ", activeOverlay=" + activeOverlay());
     }
 
     public boolean isInteractionPaused() { return interactionPaused; }
@@ -466,14 +474,26 @@ public class Playing extends State implements StateMethods {
         acceptPassengerOverlay.update();
 
         if (interactionPaused) {
-            // Only force reset if overlay is closed AND not recently opened
-            // isRecentlyOpened() prevents race condition during first 30 frames
-            if (!acceptPassengerOverlay.isOpen() &&
-                !acceptPassengerOverlay.isRecentlyOpened()) {
+            interactionStuckTimer++;
+
+            // Safety timeout — 2 seconds at 200 UPS = 400 frames
+            if (interactionStuckTimer > 400) {
+                System.out.println("[Playing] SAFETY TIMEOUT – forcing interactionPaused reset after 2 seconds");
+                acceptPassengerOverlay.close();
+                interactionPaused = false;
+                interactionStuckTimer = 0;
+                return;
+            }
+
+            // Force reset only if overlay is confirmed closed and not recently opened
+            if (!acceptPassengerOverlay.isOpen() && !acceptPassengerOverlay.isRecentlyOpened()) {
                 System.out.println("[Playing] Force resetting interactionPaused - overlay closed but flag still true");
                 interactionPaused = false;
+                interactionStuckTimer = 0;
             }
             return;
+        } else {
+            interactionStuckTimer = 0;
         }
 
         if (!paused) {
@@ -720,13 +740,28 @@ public class Playing extends State implements StateMethods {
         }
 
         if (e.getKeyCode() == KeyEvent.VK_ESCAPE) {
-            // Force close AcceptPassengerOverlay if it's visually stuck
+            // FORCE CLOSE — emergency exit for any stuck overlay, checked before activeOverlay()
             if (acceptPassengerOverlay.isOpen()) {
+                System.out.println("[Playing] ESC force closed AcceptPassengerOverlay");
                 acceptPassengerOverlay.close();
                 interactionPaused = false;
-                System.out.println("[Playing] ESC forced closed stuck AcceptOverlay");
+                interactionStuckTimer = 0;
                 return;
             }
+            if (paymentPaused) {
+                System.out.println("[Playing] ESC force closed PaymentOverlay");
+                paymentOverlay.close();
+                handlePaymentClose();
+                return;
+            }
+            if (listPopupPaused) {
+                System.out.println("[Playing] ESC force closed PassengerListOverlay");
+                passengerListOverlay.closePopup();
+                listPopupPaused = false;
+                return;
+            }
+
+            // Normal ESC routing for overlays that don't need force-close
             switch (activeOverlay()) {
                 case PAYMENT:
                     paymentOverlay.close();
@@ -737,7 +772,7 @@ public class Playing extends State implements StateMethods {
                 case DEATH:
                     break;
                 case ACCEPT:
-                    acceptPassengerOverlay.handleEsc();
+                    acceptPassengerOverlay.handleEsc();  // calls handleNo → close + resumeFromInteraction
                     break;
                 case LIST_POPUP:
                     passengerListOverlay.handleEsc();

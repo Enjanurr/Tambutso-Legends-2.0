@@ -15,6 +15,34 @@ import static utils.Constants.UI.VolumeButtons.*;
 
 public class PauseOverlay {
 
+    // =========================================================
+    // OVERLAY SCALE & POSITION  ← ADJUST
+    // =========================================================
+    private static final float OVERLAY_SCALE = 0.95f;      // 0.5 = half, 1.5 = larger
+    private static final int   OVERLAY_Y_OFFSET = 25;      // Pixels from top (× Game.SCALE)
+
+    // =========================================================
+    // BUTTON POSITIONS (relative to background)  ← ADJUST
+    // =========================================================
+    // URM Buttons (Resume, Restart, Home)
+    private static final int   BTN_MENU_X = 295;           // Home button X (original)
+    private static final int   BTN_REPLAY_X = 374;         // Restart button X
+    private static final int   BTN_UNPAUSE_X = 451;        // Resume button X
+    private static final int   BTN_Y = 318;                // All buttons Y
+
+    // =========================================================
+    // AUDIO CONTROLS POSITIONS  ← ADJUST
+    // =========================================================
+    // Sound buttons (Music, SFX)
+    private static final int   SOUND_X = 450;              // Sound buttons X
+    private static final int   MUSIC_Y = 136;              // Music button Y
+    private static final int   SFX_Y = 180;                // SFX button Y
+
+    // Volume slider
+    private static final int   VOLUME_X = 293;             // Volume slider X
+    private static final int   VOLUME_Y = 263;             // Volume slider Y
+    // =========================================================
+
     private Playing playing;
     private BufferedImage backgroundImg;
     private int bgX, bgY, bgW, bgH;
@@ -33,36 +61,35 @@ public class PauseOverlay {
 
     private void loadBackground() {
         backgroundImg = LoadSave.getSpriteAtlas(LoadSave.PAUSE_BACKGROUNDS);
-        bgW = (int)(backgroundImg.getWidth()  * Game.SCALE);
-        bgH = (int)(backgroundImg.getHeight() * Game.SCALE);
+        bgW = (int)(backgroundImg.getWidth() * Game.SCALE * OVERLAY_SCALE);
+        bgH = (int)(backgroundImg.getHeight() * Game.SCALE * OVERLAY_SCALE);
         bgX = Game.GAME_WIDTH / 2 - bgW / 2;
-        bgY = (int)(25 * Game.SCALE);
+        bgY = (int)(OVERLAY_Y_OFFSET * Game.SCALE);
     }
 
     private void createAudioControls() {
-        int soundX = (int)(450 * Game.SCALE);
-        int musicY = (int)(140 * Game.SCALE);
-        int sfxY   = (int)(186 * Game.SCALE);
+        int soundX = (int)(SOUND_X * Game.SCALE);
+        int musicY = (int)(MUSIC_Y * Game.SCALE);
+        int sfxY   = (int)(SFX_Y * Game.SCALE);
         SoundButton musicButton = new SoundButton(soundX, musicY, SOUND_SIZE, SOUND_SIZE);
         SoundButton sfxButton   = new SoundButton(soundX, sfxY,   SOUND_SIZE, SOUND_SIZE);
 
-        int vX = (int)(293 * Game.SCALE);
-        int vY = (int)(278 * Game.SCALE);
+        int vX = (int)(VOLUME_X * Game.SCALE);
+        int vY = (int)(VOLUME_Y * Game.SCALE);
         VolumeButton volumeButton = new VolumeButton(vX, vY, SLIDER_WIDTH, VOLUME_HEIGHT);
         audioControls = new AudioControlsPanel(getAudioPlayer(), musicButton, sfxButton, volumeButton);
     }
 
     private void createUrmButtons() {
-        int menuX = (int)(295 * Game.SCALE);
-        int replayX  = (int)(374 * Game.SCALE);
-        int unPauseX    = (int)(451 * Game.SCALE);
-        int bY       = (int)(325 * Game.SCALE);
+        int menuX = (int)(BTN_MENU_X * Game.SCALE);
+        int replayX  = (int)(BTN_REPLAY_X * Game.SCALE);
+        int unPauseX = (int)(BTN_UNPAUSE_X * Game.SCALE);
+        int bY       = (int)(BTN_Y * Game.SCALE);
 
         unPausedB = new UrmButton(unPauseX, bY, URM_SIZE, URM_SIZE, 0);
         replayB   = new UrmButton(replayX,  bY, URM_SIZE, URM_SIZE, 1);
         menuB     = new UrmButton(menuX,    bY, URM_SIZE, URM_SIZE, 2);
     }
-
     public void update() {
         audioControls.update();
         unPausedB.update();
