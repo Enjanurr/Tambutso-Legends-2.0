@@ -24,7 +24,8 @@ public class BossHealthBar {
 
     public enum LifeBarType {
         BOSS1(9, 9, 16, LoadSave.BOSS1_LIFE),      // Row0:9cols, Row1:9cols(8used), 16hits
-        BOSS2(11, 10, 20, LoadSave.BOSS2_LIFE);    // Row0:11cols, Row1:10cols, 20hits
+        BOSS2(11, 10, 20, LoadSave.BOSS2_LIFE),    // Row0:11cols, Row1:10cols, 20hits
+        BOSS3(13, 12, 24, LoadSave.BOSS3_LIFE);    // Row0:13cols, Row1:12cols, 24hits
 
         final int row0Cols;
         final int row1Cols;

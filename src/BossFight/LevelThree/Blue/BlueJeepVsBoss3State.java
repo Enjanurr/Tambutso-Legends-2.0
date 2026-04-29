@@ -119,7 +119,7 @@ public class BlueJeepVsBoss3State extends State implements StateMethods {
         pauseOverlay = new BossPauseOverlay(this);
         buildDeathOverlay();
         buildDefeatOverlay();
-        bossBar = new BossHealthBar();
+        bossBar = new BossHealthBar(BossHealthBar.LifeBarType.BOSS3);
         walkerManager = new BossWalkerManager();
         spawnBoss();
 

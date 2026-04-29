@@ -75,16 +75,16 @@ public class PassengerListOverlay {
     // =========================================================
     // TOTAL FARE DISPLAY  ← ADJUST
     // =========================================================
-    private static final int   fareDisplayX  = 380;
-    private static final int   fareDisplayY  = -50;
+    private static final int   fareDisplayX  = 410  ;
+    private static final int   fareDisplayY  = -44;
     private static final Color fareTextColor = new Color(100, 220, 100);
-    private static final int   fareFontSize  = 15;
+    private static final int   fareFontSize  = 20;
 
     // =========================================================
     // SELECTED PASSENGER FARE STATUS LINE  ← ADJUST
     // =========================================================
-    private static final int   selectedFareX    = 120;
-    private static final int   selectedFareY    = -25;
+    private static final int   selectedFareX    = 180;
+    private static final int   selectedFareY    = -27;
     private static final Color selectedFareOk   = new Color(100, 220, 100);
     private static final Color selectedFareLate = new Color(255, 160,  50);
     private static final Color selectedFareWait = new Color(180, 180, 180);
@@ -318,18 +318,16 @@ public class PassengerListOverlay {
         if (currentLoop < rp.getAssignedStop()) {
             g2.setColor(selectedFareWait);
             int stopsLeft = rp.getAssignedStop() - currentLoop;
-            g2.drawString("Fare: \u20B1" + rp.getAssignedFare()
-                            + "  (" + stopsLeft + " stop" + (stopsLeft == 1 ? "" : "s") + " away)",
+            g2.drawString( "  (" + stopsLeft + " stop" + (stopsLeft == 1 ? "" : "s") + " away)",
                     tx, ty);
         } else if (currentLoop == rp.getAssignedStop()) {
             g2.setColor(selectedFareOk);
-            g2.drawString("Fare: \u20B1" + rp.calculateFare(currentLoop) + "  (Drop now!)", tx, ty);
+            g2.drawString( "(Drop now!)", tx, ty);
         } else {
             int missed = currentLoop - rp.getAssignedStop();
             int fare   = rp.calculateFare(currentLoop);
             g2.setColor(selectedFareLate);
-            g2.drawString("Fare: \u20B1" + fare
-                            + "  (-\u20B1" + (missed * RidingPassenger.MISSED_STOP_PENALTY) + " late penalty)",
+            g2.drawString(  "  (-\u20B1" + (missed * RidingPassenger.MISSED_STOP_PENALTY) + " late penalty)",
                     tx, ty);
         }
     }
@@ -368,7 +366,7 @@ public class PassengerListOverlay {
         g2.setColor(fareTextColor);
         int tx = bgX + (int)(fareDisplayX * Game.SCALE);
         int ty = bgY + bgH + (int)(fareDisplayY * Game.SCALE);
-        g2.drawString("FARE: \u20B1" + totalFareEarned, tx, ty);
+        g2.drawString("" + totalFareEarned, tx, ty);
     }
 
     private void drawBtn(Graphics g, int row, Rectangle bounds, boolean over, boolean pressed) {

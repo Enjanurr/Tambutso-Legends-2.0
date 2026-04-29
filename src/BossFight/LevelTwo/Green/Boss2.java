@@ -581,14 +581,17 @@ public class Boss2 {
     // RENDER
     // ─────────────────────────────────────────────────────────
     public void render(Graphics g) {
-        for (NukeProjectile.Nuke n : nukes) n.render(g);
+        // Use copies to avoid ConcurrentModificationException
+        List<NukeProjectile.Nuke> nukesCopy = new ArrayList<>(nukes);
+        for (NukeProjectile.Nuke n : nukesCopy) n.render(g);
 
         int safeIndex = Math.min(aniIndex, FRAME_COUNTS[currentRow] - 1);
         BufferedImage frame = frames[currentRow][safeIndex];
         if (frame != null)
             g.drawImage(frame, (int) x, (int) y, width, height, null);
 
-        for (NukeProjectile.BossProjectile b : bullets) b.render(g);
+        List<NukeProjectile.BossProjectile> bulletsCopy = new ArrayList<>(bullets);
+        for (NukeProjectile.BossProjectile b : bulletsCopy) b.render(g);
     }
 
     private static final float HB_INSET_PERCENT = 0.6f;

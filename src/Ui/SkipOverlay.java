@@ -175,8 +175,9 @@ public class SkipOverlay {
     // ─────────────────────────────────────────────────────────
     private void completeCurrentLevel() {
         System.out.println("[SkipOverlay] Completing current level");
-        // Simulate level completion by triggering the status check
-        // This advances to next level if requirements met
+        // Force progress bar to max column for current level
+        int maxLoops = playing.getLevelManager().getMaxWorldLoops();
+        playing.getProgressBar().setProgress(maxLoops);
         playing.completeLevelForDebug();
         hide();
     }
@@ -190,9 +191,25 @@ public class SkipOverlay {
 
     private void skipToNextLevel() {
         System.out.println("[SkipOverlay] Skipping to next level");
+
+        // Advance to next level
         game.getPlaying().getLevelManager().advanceToNextLevel();
+
+        // Get the new level ID after advancement
+        int newLevelId = game.getPlaying().getLevelManager().getCurrentLevelId();
+
+        // CRITICAL FIX: Create new ProgressBar instance for the new level
+        ProgressBar newProgressBar = new ProgressBar(newLevelId);
+        newProgressBar.setProgress(0);  // Start at 0 for new level
+
+        // Replace the old progress bar with the new one
+        game.getPlaying().setProgressBar(newProgressBar);
+
+        System.out.println("[SkipOverlay] Created new progress bar for Level " + newLevelId);
+
+        // Reset game state
         game.resetGameState();
-        game.getPlaying().getGameClock().start();  // Start clock after skip
+        game.getPlaying().getGameClock().start();
         GameStates.state = GameStates.PLAYING;
         hide();
     }

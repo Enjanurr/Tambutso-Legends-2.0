@@ -53,7 +53,7 @@ public class PaymentOverlay {
     // POSITION SETTINGS ← ADJUST (pixels relative to overlay)
     // =========================================================
     // Section 1: To Be Earned (value only)
-    private static final int EARNED_VALUE_X = 120;
+    private static final int EARNED_VALUE_X = 135;
     private static final int EARNED_VALUE_Y = 100;
 
     // Section 2: Computation
@@ -61,17 +61,17 @@ public class PaymentOverlay {
     private static final int COMP_VALUE_Y = 165;
 
     // Section 3: Passenger Paid
-    private static final int PAID_VALUE_X = 120;
+    private static final int PAID_VALUE_X = 115;
     private static final int PAID_VALUE_Y = 190;
 
     // Section 4: Change to Give input
-    private static final int CHANGE_INPUT_X = 85;
+    private static final int CHANGE_INPUT_X = 95;
     private static final int CHANGE_INPUT_Y = 200;
     private static final int CHANGE_INPUT_W = 50;
     private static final int CHANGE_INPUT_H = 17;
 
     // Error message
-    private static final int ERROR_X = 140;
+    private static final int ERROR_X = 155;
     private static final int ERROR_Y = 215;
 
     // DROP button (centered horizontally)
@@ -348,7 +348,7 @@ public class PaymentOverlay {
         // Section 1: To Be Earned
         g2.setFont(VALUE_FONT);
         g2.setColor(VALUE_COLOR);
-        g2.drawString("₱" + expectedFare,
+        g2.drawString("" + expectedFare,
                 overlayBounds.x + (int)(EARNED_VALUE_X * scaleX),
                 overlayBounds.y + (int)(EARNED_VALUE_Y * scaleY));
 
@@ -363,7 +363,7 @@ public class PaymentOverlay {
         // Section 3: Passenger Paid
         g2.setFont(PAID_VALUE_FONT);
         g2.setColor(PAID_VALUE_COLOR);
-        g2.drawString("₱" + passengerPaid,
+        g2.drawString("" + passengerPaid,
                 overlayBounds.x + (int)(PAID_VALUE_X * scaleX),
                 overlayBounds.y + (int)(PAID_VALUE_Y * scaleY));
 

@@ -662,11 +662,11 @@ public class Boss3 {
     // RENDER
     // ─────────────────────────────────────────────────────────
     public void render(Graphics g) {
-        // Render gravy sauces
-        for (GravySauce gravy : gravySauces) gravy.render(g);
+        List<GravySauce> gravyCopy = new ArrayList<>(gravySauces);
+        for (GravySauce gravy : gravyCopy) gravy.render(g);
 
-        // Render bullets
-        for (GravySauce.BossProjectile bullet : bullets) bullet.render(g);
+        List<GravySauce.BossProjectile> bulletsCopy = new ArrayList<>(bullets);
+        for (GravySauce.BossProjectile bullet : bulletsCopy) bullet.render(g);
 
         // ── Draw shield (including combo shield) ─────────────────
         if ((state == BossState.SHIELD_FORMING || isComboShieldForming) && shieldFormFrames != null) {

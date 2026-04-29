@@ -39,7 +39,7 @@ public class AcceptPassengerOverlay {
     // OVERLAY SIZE & POSITION  ← ADJUST
     // =========================================================
     private static final int acceptOverlayWidth  = 300;
-    private static final int acceptOverlayHeight = 300;
+    private static final int acceptOverlayHeight = 320;
 
     // =========================================================
     // STOP NAMES - Retrieved dynamically from LevelConfig
@@ -50,7 +50,7 @@ public class AcceptPassengerOverlay {
     // STOP NAME TEXT  ← ADJUST
     // =========================================================
     private static final int   stopNameX        = 90;
-    private static final int   stopNameY        = 120;
+    private static final int   stopNameY        = 135;
     private static final Color stopNameColor    = new Color(255, 255, 255);
     private static final int   stopNameFontSize = 14;
     private static final int   stopNameMaxWidth = 240;  // Max width before wrapping
@@ -58,31 +58,31 @@ public class AcceptPassengerOverlay {
     // =========================================================
     // STOP NUMBER TEXT  ← ADJUST
     // =========================================================
-    private static final int   stopNumberX      = 100;
-    private static final int   stopNumberY      = 140;
+    private static final int   stopNumberX      = 125;
+    private static final int   stopNumberY      = 170;
     private static final Color stopNumberColor  = new Color(255, 220, 50);
     private static final int   stopNumberFontSize = 18;
 
     // =========================================================
     // FARE TEXT  ← ADJUST
     // =========================================================
-    private static final int   fareTextX        = 100;
-    private static final int   fareTextY        = 160;
+    private static final int   fareTextX        = 175;
+    private static final int   fareTextY        = 198;
     private static final Color fareTextColor    = new Color(100, 220, 100);
     private static final int   fareFontSize     = 20;
 
     // =========================================================
     // YES BUTTON  ← ADJUST
     // =========================================================
-    private static final int yesButtonX      = 20;
-    private static final int yesButtonY      = 180;
+    private static final int yesButtonX      = -50;
+    private static final int yesButtonY      = 230;
     private static final int yesButtonWidth  = 280;
     private static final int yesButtonHeight = 100;
 
     // =========================================================
     // NO BUTTON  ← ADJUST
     // =========================================================
-    private static final int noButtonX      = 20;
+    private static final int noButtonX      = 70;
     private static final int noButtonY      = 230;
     private static final int noButtonWidth  = 280;
     private static final int noButtonHeight = 100;
@@ -288,7 +288,11 @@ public class AcceptPassengerOverlay {
         generatedStop    = -1;
         generatedFare    =  0;
         ignoreInputTimer = 0;   // Clear input lock so next open() starts clean
-        openingTimestamp = 0;   // Clear "recently opened" flag immediately on close
+        // NOTE: openingTimestamp is intentionally NOT zeroed here.
+        // It ticks down naturally in update(), keeping isRecentlyOpened() == true
+        // for the remainder of the 30-frame grace period even after close() is called.
+        // This prevents the force-reset in Playing.update() from firing before the
+        // AWT event queue has fully drained, which would cause the ghost-overlay bug.
         wrappedStopNameLines.clear();
         resetBools();
         System.out.println("[AcceptOverlay] close() completed - open=" + open);
@@ -355,26 +359,25 @@ public class AcceptPassengerOverlay {
     private void drawContent(Graphics2D g2) {
         if (activePerson == null) return;
 
-        // ── Stop Name (wrapped, displayed first) ─────────────────────
+        // ── Stop Name (wrapped, centered, displayed first) ─────────
         if (generatedStop >= 1) {
             Font nameFont = new Font("SansSerif", Font.BOLD, (int)(stopNameFontSize * Game.SCALE));
             g2.setFont(nameFont);
             g2.setColor(stopNameColor);
-
-            // Enable anti-aliasing for better text rendering
             g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
 
-            // Draw each wrapped line
             int lineHeight = (int)((stopNameFontSize + 4) * Game.SCALE);
             int startY = acceptOverlayY + (int)(stopNameY * Game.SCALE);
+            int overlayCenterX = acceptOverlayX + (bgW / 2);
 
             for (int i = 0; i < wrappedStopNameLines.size(); i++) {
                 int yPos = startY + (i * lineHeight);
-                g2.drawString(wrappedStopNameLines.get(i),
-                        acceptOverlayX + (int)(stopNameX * Game.SCALE),
-                        yPos);
+                FontMetrics fm = g2.getFontMetrics();
+                int textWidth = fm.stringWidth(wrappedStopNameLines.get(i));
+                int centeredX = overlayCenterX - (textWidth / 2);
+                g2.drawString(wrappedStopNameLines.get(i), centeredX, yPos);
             }
-        } else {
+        }else {
             // Fallback for invalid stop number
             Font nameFont = new Font("SansSerif", Font.BOLD, (int)(stopNameFontSize * Game.SCALE));
             g2.setFont(nameFont);
@@ -395,8 +398,8 @@ public class AcceptPassengerOverlay {
         int stopNumberActualY = acceptOverlayY + (int)(stopNumberY * Game.SCALE);
 
         String stopStr = (generatedStop > 0)
-                ? "Stop " + generatedStop
-                : "Stop: --";
+                ? "" + generatedStop
+                : "";
         g2.drawString(stopStr,
                 acceptOverlayX + (int)(stopNumberX * Game.SCALE),
                 stopNumberActualY);
@@ -406,8 +409,8 @@ public class AcceptPassengerOverlay {
         g2.setFont(fareFont);
         g2.setColor(fareTextColor);
         String fareStr = (generatedFare > 0)
-                ? "Earn: \u20B1" + generatedFare
-                : "Earn: --";
+                ? "" + generatedFare
+                : "";
         g2.drawString(fareStr,
                 acceptOverlayX + (int)(fareTextX * Game.SCALE),
                 acceptOverlayY + (int)(fareTextY * Game.SCALE));

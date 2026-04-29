@@ -182,7 +182,7 @@ public class Playing extends State implements StateMethods {
         healthBar        = new HealthBar();
         passengerCounter = new PassengerCounter();
         deathOverlay     = new DeathOverlay(this);
-        progressBar      = new ProgressBar();
+        progressBar      = new ProgressBar(levelManager.getCurrentLevelId());
         stopHereIndicator = new StopHereIndicator();
         acceptPassengerOverlay = new AcceptPassengerOverlay(this, passengerCounter);
         acceptPassengerOverlay.setPassengerManager(passengerManager);
@@ -223,11 +223,8 @@ public class Playing extends State implements StateMethods {
     private enum ActiveOverlay { PAYMENT, STATUS_CHECK, INTRO, DEATH, ACCEPT, LIST_POPUP, PAUSE, NONE }
 
     private ActiveOverlay activeOverlay() {
-        // Auto-correct: if interactionPaused but overlay not open, reset flag
-        if (interactionPaused && !acceptPassengerOverlay.isOpen()) {
-            System.out.println("[Playing] Detected interactionPaused without open overlay - auto-resetting");
-            interactionPaused = false;
-        }
+        // Pure query — no side effects. Cleanup of stale interactionPaused
+        // is handled exclusively in update() via the force-reset / stuck-timer block.
         if (paymentPaused)     return ActiveOverlay.PAYMENT;
         if (statusCheckPaused) return ActiveOverlay.STATUS_CHECK;
         if (introPaused)       return ActiveOverlay.INTRO;
@@ -476,9 +473,9 @@ public class Playing extends State implements StateMethods {
         if (interactionPaused) {
             interactionStuckTimer++;
 
-            // Safety timeout — 2 seconds at 200 UPS = 400 frames
-            if (interactionStuckTimer > 400) {
-                System.out.println("[Playing] SAFETY TIMEOUT – forcing interactionPaused reset after 2 seconds");
+            // Safety timeout — 6 seconds at 200 UPS = 1200 frames
+            if (interactionStuckTimer > 1200) {
+                System.out.println("[Playing] SAFETY TIMEOUT – forcing interactionPaused reset after 6 seconds");
                 acceptPassengerOverlay.close();
                 interactionPaused = false;
                 interactionStuckTimer = 0;
@@ -866,6 +863,9 @@ public class Playing extends State implements StateMethods {
 
         levelManager.advanceToNextLevel();
 
+        // Recreate progress bar for new level
+        progressBar = new ProgressBar(levelManager.getCurrentLevelId());
+
         gameClock.reset();
         gameClock.setCurrentLevel(levelManager.getCurrentLevelId());
 
@@ -901,4 +901,8 @@ public class Playing extends State implements StateMethods {
     public PassengerManager getPassengerManager() { return passengerManager; }
     public IntroOverlay     getIntroOverlay()     { return introOverlay; }
     public GameClock        getGameClock()        { return gameClock; }
+    public ProgressBar      getProgressBar()      { return progressBar; }
+
+    // ── Setters ──────────────────────────────────────────────
+    public void setProgressBar(ProgressBar bar) { this.progressBar = bar; }
 }

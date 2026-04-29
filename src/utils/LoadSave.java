@@ -36,6 +36,7 @@ public class LoadSave {
     public static final String BOSS2_SKILL2 = "boss/boss2_skill2.png";       // 550×316, 4 rows × 5 cols
     public static final String BOSS2_LIFE  = "boss/boss2_life.png";  // 3300×224, Row0=11cols, Row1=10cols
     public static final String BOSS3_ATLAS = "boss/boss3.png";       // 550×316, 4 rows × 5 cols
+    public static final String BOSS3_LIFE  = "boss/boss3_life.png";  // 4147×348, Row0=13cols, Row1=12cols
 
     // ── Objects ───────────────────────────────────────────────
     public static final String STOP_SIGN        = "objects/stop_sign.png";
@@ -44,6 +45,10 @@ public class LoadSave {
     public static final String TUTORIAL_IMG     = "ui/overlays/tutorial.png";
     public static final String MISSION_MAP1_IMG = "ui/overlays/mission_map1.png";
     public static final String PROGRESS_BAR     = "ui/hud/progress_bar.png";
+    public static final String PROGRESS_BAR2    = "ui/hud/progress_bar2.png";  // Level 2: 20 stops
+    public static final String PROGRESS_BAR3    = "ui/hud/progress_bar3.png";  // Level 3: 25 stops
+
+
 
     // ── Playing state background / environment ───────────────
     public static final String PLAYING_BACKGROUND_IMG = "backgrounds/playing/playing_bg_img.png";

@@ -614,14 +614,16 @@ public class Boss1 {
     // RENDER
     // ─────────────────────────────────────────────────────────
     public void render(Graphics g) {
-        for (GarbagePile p : piles) p.render(g);
+        List<GarbagePile> pilesCopy = new ArrayList<>(piles);
+        for (GarbagePile p : pilesCopy) p.render(g);
 
         int safeIndex = Math.min(aniIndex, FRAME_COUNTS[currentRow] - 1);
         BufferedImage frame = frames[currentRow][safeIndex];
         if (frame != null)
             g.drawImage(frame, (int) x, (int) y, width, height, null);
 
-        for (GarbagePile.BossProjectile b : bullets) b.render(g);
+        List<GarbagePile.BossProjectile> bulletsCopy = new ArrayList<>(bullets);
+        for (GarbagePile.BossProjectile b : bulletsCopy) b.render(g);
     }
 
     // ─────────────────────────────────────────────────────────

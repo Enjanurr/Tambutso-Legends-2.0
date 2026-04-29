@@ -38,55 +38,54 @@ public class LevelConfig {
 
     // Level 2: Extended route (20 stops)
     private static final List<String> LEVEL_2_STOPS = Arrays.asList(
-        "Lawaan",
-        "Tabunok Public Market",
-        "Bulacao",
-        "Pardo Church",
-        "USJR",
-        "Shopwise",
-        "Kinasang-an",
-        "Mambaling",
-        "CIT-University",
-        "E-Mall",
-        "Fuente Osmeña Circle",
-        "Robinsons Fuente",
-        "Cebu Doctor's University Hospital",
-        "Mango Avenue",
-        "Ayala Center Cebu",
-        "IT Park",
-        "SM City Cebu",
-        "North Bus Terminal",
-        "Colon Street",
-        "Carbon Market"
+            "Lawaan",                                // Stop 1
+            "Tabunok Public Market",                 // Stop 2
+            "Bulacao",                               // Stop 3
+            "Pardo Church",                          // Stop 4
+            "Mambaling",                             // Stop 5
+            "Kinasang-an",                           // Stop 6
+            "Shopwise",                              // Stop 7
+            "CIT-University",                        // Stop 8
+            "USJR",                                  // Stop 9
+            "E-Mall (Elizabeth Mall)",               // Stop 10
+            "Mango Avenue",                          // Stop 11
+            "Fuente Osmeña Circle",                  // Stop 12
+            "Robinsons Fuente",                      // Stop 13
+            "Cebu Doctor’s University",              // Stop 14
+            "Ayala Center Cebu",                     // Stop 15
+            "SM City Cebu",                          // Stop 16
+            "North Bus Terminal",                    // Stop 17
+            "Colon Street",                          // Stop 18
+            "Carbon Market",                         // Stop 19
+            "San Nicolas Church"                     // Stop 20
     );
 
-    // Level 3: Full city tour (25 stops)
     private static final List<String> LEVEL_3_STOPS = Arrays.asList(
-        "Colon Street",
-        "Cebu Metropolitan Cathedral",
-        "Basilica Minore del Santo Niño",
-        "Magellan's Cross",
-        "Cebu City Hall",
-        "Pier 1",
-        "Pier 3",
-        "SM City Cebu",
-        "Mabolo Church",
-        "Archbishop Reyes Avenue",
-        "Ayala Center Cebu",
-        "Cebu Business Park",
-        "Gorordo Avenue",
-        "JY Square Mall",
-        "IT Park",
-        "Fuente Osmeña Circle",
-        "Robinsons Fuente",
-        "Cebu Doctor's University Hospital",
-        "Osmeña Boulevard",
-        "Carbon Market",
-        "University of San Carlos",
-        "University of the Visayas",
-        "Santo Rosario Parish Church",
-        "Plaza Independencia",
-        "Fort San Pedro"
+            "Plaza Independencia",                   // Stop 1 (replaces Carbon Market)
+            "Fort San Pedro",                        // Stop 2
+            "Lapu-Lapu Monument",                    // Stop 3
+            "Magellan’s Cross",                      // Stop 4
+            "Basilica Minore del Santo Niño",        // Stop 5
+            "Cebu Metropolitan Cathedral",           // Stop 6
+            "Santo Rosario Parish Church",           // Stop 7
+            "University of San Carlos",              // Stop 8
+            "University of the Visayas",             // Stop 9
+            "Cebu City Hall",                        // Stop 10
+            "Pier 1",                                // Stop 11 (replaces Colon Street)
+            "Pier 3",                                // Stop 12
+            "Osmeña Boulevard",                      // Stop 13 (replaces Fuente)
+            "Ramos Street",                          // Stop 14 (replaces Robinsons)
+            "Cebu Provincial Capitol",               // Stop 15 (replaces Cebu Doctor's)
+            "N. Escario Street",                     // Stop 16
+            "Camputhaw",                             // Stop 17
+            "Gorordo Avenue",                        // Stop 18 (replaces Ayala)
+            "Mabolo Church",                         // Stop 19
+            "Archbishop Reyes Avenue",               // Stop 20
+            "Cebu Business Park",                    // Stop 21
+            "JY Square Mall",                        // Stop 22
+            "Waterfront Hotel",                      // Stop 23
+            "Apas",                                  // Stop 24
+            "IT Park"                                // Stop 25
     );
 
     public LevelConfig(int levelId, int maxWorldLoops, int requiredPassengers,
