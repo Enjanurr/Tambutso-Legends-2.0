@@ -38,8 +38,8 @@ public class AcceptPassengerButtons {
         imgs = new BufferedImage[3];                        // 3 states: normal, hover, pressed
         BufferedImage temp = LoadSave.getSpriteAtlas(LoadSave.ACCEPT_PASSENGER_BUTTONS);
 
-       int WIDTH = 94;
-       int HEIGHT = 53;
+        int WIDTH = 94;
+        int HEIGHT = 53;
         for (int i = 0; i < imgs.length; i++) {
             imgs[i] = temp.getSubimage(
                     i * WIDTH,

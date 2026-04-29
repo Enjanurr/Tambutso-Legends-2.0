@@ -1,5 +1,13 @@
 package gameStates;
 
+import Ui.*;
+import entities.EnemyManager;
+import entities.PassengerManager;
+import entities.Person;
+import entities.PersonManager;
+import entities.Player;
+import entities.PowerupManager;
+import entities.RidingPassenger;
 import Ui.DeathOverlay;
 import Ui.HealthBar;
 import Ui.PassengerCounter;
@@ -11,28 +19,68 @@ import objects.WorldObjectManager;
 import levels.LevelManager;
 import main.Game;
 import utils.RouteMap;
+import utils.LoadSave;
 
 import java.awt.*;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
+import java.awt.geom.Rectangle2D;
+import java.awt.image.BufferedImage;
+import java.util.List;
+import java.util.Random;
 
+import static utils.Constants.Environment.*;
+
+/**
+ * Playing game-state.
+ *
+ * Input-blocking contract (Part 2):
+ *   All mouse events are routed through activeOverlay() which returns the
+ *   single topmost overlay that is currently open.  Only that overlay
+ *   receives input; everything else is silently swallowed.
+ *
+ *   Priority order (highest → lowest):
+ *     1. paymentPaused      → PaymentOverlay
+ *     2. statusCheckPaused  → StatusCheckOverlay
+ *     3. introPaused        → IntroOverlay
+ *     4. playerDead         → DeathOverlay
+ *     5. interactionPaused  → AcceptPassengerOverlay
+ *     6. listPopupPaused    → PassengerListOverlay (popup open)
+ *     7. paused             → PauseOverlay
+ *     8. none               → normal game + Open button of PassengerListOverlay
+ *
+ *   ESC behaviour:
+ *     - AcceptPassengerOverlay open  → close it (acts like NO)
+ *     - PassengerListOverlay open    → close it
+ *     - PauseOverlay open            → resume
+ *     - None of the above            → open PauseOverlay
+ *
+ * IntroOverlay ownership:
+ *   Playing is the SINGLE owner of IntroOverlay. Game.java no longer
+ *   constructs its own instance.
+ */
 public class Playing extends State implements StateMethods {
-    // Playing orchestrates the active run and delegates specialized behavior
-    // to managers for enemies, powerups, interactive stop signs, and
-    // decorative roadside objects.
 
-    // =======================================================
-    // ── DEBUG TOGGLES — comment / uncomment as needed ──────
-    // =======================================================
-
-    // Uncomment the line below to skip all 15 loops and jump straight to boss fight.
-    // SKIP_TO_BOSS takes priority over DISABLE_BOSS_FIGHT.
-    // private static final boolean SKIP_TO_BOSS      = true;
-
-    // Uncomment the line below to disable the boss fight entirely.
-    // After loop 15 the game will loop indefinitely instead of transitioning.
-    // private static final boolean DISABLE_BOSS_FIGHT = true;
-
+    // ── Sub-systems ───────────────────────────────────────────
+    private PowerupManager       powerupManager;
+    private Player               player;
+    private PersonManager        personManager;
+    private PassengerManager     passengerManager;
+    private EnemyManager         enemyManager;
+    private StopSignManager      stopSignManager;
+    private LevelManager         levelManager;
+    private PauseOverlay         pauseOverlay;
+    private HealthBar            healthBar;
+    private DeathOverlay         deathOverlay;
+    private ProgressBar          progressBar;
+    private AcceptPassengerOverlay acceptPassengerOverlay;
+    private PassengerListOverlay   passengerListOverlay;
+    private IntroOverlay           introOverlay;
+    private StopHereIndicator      stopHereIndicator;
+    private StatusCheckOverlay     statusCheckOverlay;
+    private GameClock              gameClock;
+    private SkipOverlay            skipOverlay;
+    private PaymentOverlay         paymentOverlay;
     // =======================================================
 
     private PowerupManager  powerupManager;
@@ -51,26 +99,74 @@ public class Playing extends State implements StateMethods {
     private final PlayingDebugOverlay debugOverlay = new PlayingDebugOverlay();
     private PassengerInteractionController passengerInteractionController;
     private final PlayingWorldController worldController = new PlayingWorldController();
+    // ── Overlay-state flags ───────────────────────────────────
+    private boolean paused            = false;
+    private boolean playerDead        = false;
+    private boolean interactionPaused = false;
+    private boolean listPopupPaused   = false;
+    private boolean introPaused       = false;
+    private boolean statusCheckPaused = false;
+    private boolean paymentPaused     = false;
 
-    // -------------------------------------------------------
-    // WORLD SCROLL SETTINGS
-    // -------------------------------------------------------
+    // ── Interaction safety timeout ────────────────────────────
+    // Counts frames while interactionPaused == true.
+    // Auto-recovers if the flag is stuck for more than 2 seconds (400 frames @ 200 UPS).
+    private int interactionStuckTimer = 0;
+
+    // ── World ─────────────────────────────────────────────────
+    private float worldOffset    = 0;
+    private final int levelPixelWidth =
+            LoadSave.GetLevelData()[0].length * Game.TILES_SIZE;
+
     public static final int MAX_WORLD_LOOPS = 15;
     // -------------------------------------------------------
     public int getMaxWorldLoops() { return  MAX_WORLD_LOOPS;}
+    public int getMaxWorldLoops() { return MAX_WORLD_LOOPS; }
 
+    private static final float CENTER_TOLERANCE = 10f * Game.SCALE;
+
+    private int     worldLoopCount = 0;
+    private boolean worldLoopDone  = false;
+    private boolean dKeyHeld       = false;
+    private int     passengersDroppedCount = 0;
+
+    private float bigCloudOffset   = 0f;
+    private float smallCloudOffset = 0f;
+    private static final float BIG_CLOUD_PARALLAX   = 0.3f;
+    private static final float SMALL_CLOUD_PARALLAX = 0.5f;
+
+    // ── UI ────────────────────────────────────────────────────
     private PassengerCounter passengerCounter;
-    // Decorative props such as bus stops and future buildings can exist at run start
-    // and can also be scheduled from stop-count milestones.
+
+    private BufferedImage backgroundImg, bigClouds, smallClouds;
+    private int[] smallCloudsPos;
+    private final Random rnd = new Random();
     private WorldObjectManager worldObjectManager;
 
     // ── Current route position ────────────────────────────────
     private RouteMap currentMap = RouteMap.MAP_2;
+    @SuppressWarnings("unused")
+    private int currentStopIndex = 0;
+
+    // ── Boss fight state ──────────────────────────────────────
+    private boolean bossFightActive = false;
+
+    public void setBossFightActive(boolean active) {
+        this.bossFightActive = active;
+        if (!active) {
+            player.setBossMode(false);
+        }
+    }
+
+    public boolean isBossFightActive() { return bossFightActive; }
 
     // ─────────────────────────────────────────────────────────
     public Playing(Game game) {
         super(game);
+        System.out.println("[Playing] Constructor called");
         initClasses();
+        loadBackgroundAssets();
+        System.out.println("[Playing] Constructor complete");
     }
 
     /** Called by CharSelectState before gameplay begins. */
@@ -80,14 +176,20 @@ public class Playing extends State implements StateMethods {
                 + " | Speed: " + profile.maxSpeed);
     }
 
-    /** Used by Game.getDesiredMusicTrack(). */
-    //public boolean isPaused() { return paused; }
-
     public void resumeFromInteraction() {
-        passengerInteractionController.resumeInteraction();
+        if (!interactionPaused) return;  // Already resumed — nothing to do
+        System.out.println("[Playing] resumeFromInteraction() - clearing interactionPaused");
+        // Overlay is already closed by handleYes/handleNo before this is called;
+        // call close() defensively in case we got here via a direct ESC path.
+        acceptPassengerOverlay.close();
+        interactionPaused = false;
+        System.out.println("[Playing] interactionPaused=" + interactionPaused + ", activeOverlay=" + activeOverlay());
     }
 
+    public boolean isInteractionPaused() { return interactionPaused; }
+
     private void initClasses() {
+        System.out.println("[Playing] initClasses() started");
         levelManager = new LevelManager(game);
 
         int jeepHitboxW = (int)(70 * Game.SCALE);
@@ -98,71 +200,278 @@ public class Playing extends State implements StateMethods {
                 (int)(110 * Game.SCALE), (int)(40 * Game.SCALE), game.getGamePanel());
         player.loadLvlData(levelManager.getCurrentLevel().getLevelData());
 
-        // ✨ NEW: Apply default driver immediately
-        // This ensures animations[] is never null during char select/menu
-        DriverProfile defaultDriver = DriverProfile.ALL[0];  // Kuya Ben
-        player.applyDriver(defaultDriver);
-
-
-        personManager   = new PersonManager(this);
-        enemyManager    = new EnemyManager(this);
+        personManager    = new PersonManager(this);
+        passengerManager = new PassengerManager(this);
+        enemyManager     = new EnemyManager(this);
         worldObjectManager = new WorldObjectManager(currentMap);
-        stopSignManager = new StopSignManager(this, worldObjectManager);
-        pauseOverlay    = new PauseOverlay(this);
-        powerupManager  = new PowerupManager(this);
-        healthBar       = new HealthBar();
+        stopSignManager  = new StopSignManager(this, worldObjectManager);
+        pauseOverlay     = new PauseOverlay(this);
+        powerupManager   = new PowerupManager(this);
+        healthBar        = new HealthBar();
         passengerCounter = new PassengerCounter();
+        deathOverlay     = new DeathOverlay(this);
+        progressBar      = new ProgressBar(levelManager.getCurrentLevelId());
+        stopHereIndicator = new StopHereIndicator();
+        acceptPassengerOverlay = new AcceptPassengerOverlay(this, passengerCounter);
+        acceptPassengerOverlay.setPassengerManager(passengerManager);
+
+        paymentOverlay = new PaymentOverlay(
+                this::confirmPassengerDrop,
+                this::handlePaymentClose
+        );
+
+        passengerListOverlay = new PassengerListOverlay(
+                this::handlePassengerDrop,
+                this::handlePopupClose,
+                this::handlePopupOpen,
+                this::handleOpenPayment
+        );
+
+        introOverlay = new IntroOverlay(this::onIntroDone);
+        statusCheckOverlay = new StatusCheckOverlay(this);
+        gameClock = new GameClock();
+        skipOverlay = new SkipOverlay(game, this);
+        System.out.println("[Playing] initClasses() complete - Level " + levelManager.getCurrentLevelId() + " loaded");
         deathOverlay    = new DeathOverlay(this);
         passengerInteractionController = new PassengerInteractionController(this, passengerCounter);
         progressBar     = new ProgressBar();
     }
 
-    // ── Full game restart ────────────────────────────────────
-    public void restartGame() {
-        playerDead     = false;
-        worldController.reset(player);
+    // ─────────────────────────────────────────────────────────
+    // OVERLAY PRIORITY HELPERS
+    // ─────────────────────────────────────────────────────────
 
+    private enum ActiveOverlay { PAYMENT, STATUS_CHECK, INTRO, DEATH, ACCEPT, LIST_POPUP, PAUSE, NONE }
+
+    private ActiveOverlay activeOverlay() {
+        // Pure query — no side effects. Cleanup of stale interactionPaused
+        // is handled exclusively in update() via the force-reset / stuck-timer block.
+        if (paymentPaused)     return ActiveOverlay.PAYMENT;
+        if (statusCheckPaused) return ActiveOverlay.STATUS_CHECK;
+        if (introPaused)       return ActiveOverlay.INTRO;
+        if (playerDead)        return ActiveOverlay.DEATH;
+        if (interactionPaused) return ActiveOverlay.ACCEPT;
+        if (listPopupPaused)   return ActiveOverlay.LIST_POPUP;
+        if (paused)            return ActiveOverlay.PAUSE;
+        return ActiveOverlay.NONE;
+    }
+
+    // ─────────────────────────────────────────────────────────
+    // PASSENGER LIST CALLBACKS
+    // ─────────────────────────────────────────────────────────
+    private void handlePopupOpen()  { listPopupPaused = true; }
+    private void handlePopupClose() { listPopupPaused = false; }
+
+    private void handlePassengerDrop() {
+        int slot = passengerListOverlay.getSelectedSlot();
+        if (slot < 0) return;
+
+        RidingPassenger rp = passengerManager.getSeat(slot);
+        if (rp == null) return;
+
+        if (!rp.isReadyToDrop(worldLoopCount)) {
+            System.out.println("[Playing] Cannot drop — not at stop yet (stop "
+                    + rp.getAssignedStop() + ", loop " + worldLoopCount + ")");
+            return;
+        }
+
+        int fare = passengerManager.dropPassenger(
+                slot, worldLoopCount, player.getHitBox().x, player.getHitBox().y);
+        if (fare >= 0) {
+            passengerListOverlay.addFare(fare);
+            passengerListOverlay.clearSelection();
+            passengersDroppedCount++;
+            passengerCounter.increment();
+            System.out.println("[Playing] Dropped passenger — fare ₱" + fare
+                    + "  total ₱" + passengerListOverlay.getTotalFareEarned()
+                    + "  dropped " + passengersDroppedCount + "/12");
+
+            tryTriggerStatusCheck();
+        }
+    }
+
+    private void handleOpenPayment() {
+        int slot = passengerListOverlay.getSelectedSlot();
+        System.out.println("[Playing] handleOpenPayment() STARTED - selectedSlot=" + slot);
+        if (slot < 0) {
+            System.out.println("[Playing] handleOpenPayment() - slot < 0, returning");
+            return;
+        }
+
+        RidingPassenger rp = passengerManager.getSeat(slot);
+        if (rp == null) {
+            System.out.println("[Playing] handleOpenPayment() - rp is null (empty seat), returning");
+            return;
+        }
+
+        int expectedFare = rp.calculateFare(worldLoopCount);
+        System.out.println("[Playing] handleOpenPayment() - calling paymentOverlay.open(" + expectedFare + ", rp)");
+        paymentOverlay.open(expectedFare, rp);
+        paymentPaused = true;
+        System.out.println("[Playing] handleOpenPayment() - paymentPaused=" + paymentPaused + ", activeOverlay=" + activeOverlay());
+    }
+
+    private void confirmPassengerDrop() {
+        int slot = passengerListOverlay.getSelectedSlot();
+        if (slot < 0) return;
+
+        RidingPassenger rp = passengerManager.getSeat(slot);
+        if (rp == null) return;
+
+        int fare = passengerManager.confirmDrop(
+                slot, worldLoopCount, player.getHitBox().x, player.getHitBox().y);
+
+        if (fare >= 0) {
+            passengerListOverlay.addFare(fare);
+            passengerListOverlay.clearSelection();
+            passengersDroppedCount++;
+            passengerCounter.increment();
+            System.out.println("[Playing] Dropped passenger — fare ₱" + fare
+                    + "  total ₱" + passengerListOverlay.getTotalFareEarned()
+                    + "  dropped " + passengersDroppedCount + "/12");
+
+            tryTriggerStatusCheck();
+        }
+    }
+
+    private void handlePaymentClose() {
+        paymentPaused = false;
+    }
+
+    private boolean tryTriggerStatusCheck() {
+        if (!worldLoopDone) return false;
+        if (statusCheckPaused) return false;
+
+        int occupied = passengerManager.occupiedCount();
+        if (occupied > 0) {
+            System.out.println("[Playing] Cannot proceed to status check - " + occupied + " passengers still seated");
+            return false;
+        }
+
+        int totalFare = passengerManager.getTotalFareEarned();
+        int requiredPassengers = levelManager.getRequiredPassengers();
+        int requiredFare = levelManager.getRequiredFare();
+
+        if (statusCheckOverlay.open(passengersDroppedCount, totalFare, requiredPassengers, requiredFare)) {
+            statusCheckPaused = true;
+            System.out.println("[Playing] Status check triggered after all passengers dropped");
+            return true;
+        }
+        return false;
+    }
+
+    // ─────────────────────────────────────────────────────────
+    // INTRO OVERLAY
+    // ─────────────────────────────────────────────────────────
+
+    public void tryShowIntro() {
+        if (introOverlay.open()) {
+            introPaused = true;
+            GameStates.state = GameStates.INTRO;
+            System.out.println("[Playing] Intro opened — state=INTRO, introPaused=true");
+        } else {
+            System.out.println("[Playing] Intro already shown, skipping");
+        }
+    }
+
+    public void resetIntroShown() {
+        introOverlay.resetShown();
+    }
+
+    public void onIntroDone() {
+        introPaused = false;
+        setBossFightActive(false);  // ← ADD THIS
+        player.setBossMode(false);
+        gameClock.setCurrentLevel(levelManager.getCurrentLevelId());
+        gameClock.start();
+        System.out.println("[Playing] onIntroDone() — introPaused=false, clock started, notifying Game");
+        game.onIntroComplete();
+    }
+
+    // ─────────────────────────────────────────────────────────
+    // RESTART
+    // ─────────────────────────────────────────────────────────
+    public void restartGame() {
+        worldOffset      = 0;
+        worldLoopCount   = 0;
+        currentStopIndex = 0;
+        worldLoopDone    = false;
+        dKeyHeld         = false;
+        playerDead       = false;
+        listPopupPaused  = false;
+        interactionPaused = false;
+        introPaused      = false;
+        statusCheckPaused = false;
+        paymentPaused    = false;
+        paymentOverlay.close();
+
+        bigCloudOffset   = 0f;
+        smallCloudOffset = 0f;
+
+        for (int i = 0; i < smallCloudsPos.length; i++)
+            smallCloudsPos[i] = (int)(20 * Game.SCALE) + rnd.nextInt((int)(100 * Game.SCALE));
+
+        int jeepHitboxW = (int)(70 * Game.SCALE);
+        player.getHitBox().x = (float)(Game.GAME_WIDTH - jeepHitboxW) / 2;
+        player.getHitBox().y = 520;
+        player.resetDirBooleans();
+        player.setWorldLoopDone(false);
+        player.setBossMode(false);
         worldObjectManager.reset();
 
+        player.setRight(false);
+        player.setLeft(false);
+        player.setUp(false);
+        player.setDown(false);
+        player.setWorldScrolling(false);
+
         personManager.resetAll();
+        passengerManager.resetAll();  // Clear seated passengers
         enemyManager.resetAll();
         stopSignManager.resetAll();
         powerupManager.resetAll();
+
         healthBar.reset();
         passengerCounter.reset();
         progressBar.reset();
 
-        // Reset interaction state
-        passengerInteractionController.reset();
+        passengerListOverlay.closePopup();
+        passengerListOverlay.resetFare();
+
+        acceptPassengerOverlay.close();
+        acceptPassengerOverlay.resetPassengerCount();
+        acceptPassengerOverlay.resetEarnings();
+        statusCheckOverlay.close();
+        passengersDroppedCount = 0;
         paused = false;
+
+        gameClock.setCurrentLevel(levelManager.getCurrentLevelId());
+        // Clock keeps running - no reset on restart, only on level advance
     }
 
     // ── Health callbacks ─────────────────────────────────────
     public void onPlayerHit() {
         boolean dead = healthBar.takeDamage();
-        if (dead) {
-            playerDead = true;
-            deathOverlay.reset();
-        }
+        if (dead) { playerDead = true; deathOverlay.reset(); }
     }
 
-    public void onPlayerHeal() {
-        healthBar.heal();
+    public void onPlayerHeal() { healthBar.heal(); }
+
+    // ── Scrolling condition ──────────────────────────────────
+    public boolean isScrolling() {
+        boolean hasSpeed = player.getCurrentXSpeed() > 0;
+        return (dKeyHeld || hasSpeed) && isJeepCentered() && !paused && !worldLoopDone
+                && !player.isStruckActive() && !playerDead
+                && !introPaused && !listPopupPaused && !interactionPaused
+                && !statusCheckPaused;
     }
 
-    // ── Boss fight transition helper ─────────────────────────
-    /**
-     * Central method that applies all three toggle rules:
-     *   1. SKIP_TO_BOSS uncommented  → go to boss immediately (ignore disable)
-     *   2. DISABLE_BOSS_FIGHT uncommented → loop forever, never go to boss
-     *   3. Both commented (normal)   → go to boss after MAX_WORLD_LOOPS
-     */
-    private void handleLoopComplete() {
-        // ── SKIP_TO_BOSS check ──────────────────────────────
-        // (field won't exist when the constant is commented — compile-time toggle)
-        // This block is always evaluated; the skip only fires when the constant exists.
-        worldController.markLoopDone();
-        game.startBossFight();
+    public float getScrollSpeed() { return player.getCurrentXSpeed(); }
+
+    private boolean isJeepCentered() {
+        float jeepCenterX   = player.getHitBox().x + player.getHitBox().width / 2f;
+        float screenCenterX = Game.GAME_WIDTH / 2f;
+        return Math.abs(jeepCenterX - screenCenterX) <= CENTER_TOLERANCE;
     }
 
     // ─────────────────────────────────────────────────────────
@@ -170,46 +479,106 @@ public class Playing extends State implements StateMethods {
     // ─────────────────────────────────────────────────────────
     @Override
     public void update() {
-        // ── SKIP_TO_BOSS: uncomment the block below to skip loops ──
-        //if (true) { game.startBossFight(); return; }
+        if (playerDead)  { deathOverlay.update(); return; }
+        if (paymentPaused) { paymentOverlay.update(); return; }
+        if (statusCheckPaused) { statusCheckOverlay.update(); return; }
+        if (introPaused) { introOverlay.update(); return; }
 
-        if (playerDead) {
-            deathOverlay.update();
+        if (listPopupPaused) {
+            passengerListOverlay.update();
             return;
         }
 
-        // Keep modal ticking even while interaction is paused
-        passengerInteractionController.updateOverlay();
+        acceptPassengerOverlay.update();
 
-        // ── Modal open — only update the modal, freeze everything else ──
-        if (passengerInteractionController.isInteractionPaused()) {
-            // Close modal if it shut itself (both buttons call close())
-            passengerInteractionController.closeIfOverlayClosed();
+        if (interactionPaused) {
+            interactionStuckTimer++;
+
+            // Safety timeout — 6 seconds at 200 UPS = 1200 frames
+            if (interactionStuckTimer > 1200) {
+                System.out.println("[Playing] SAFETY TIMEOUT – forcing interactionPaused reset after 6 seconds");
+                acceptPassengerOverlay.close();
+                interactionPaused = false;
+                interactionStuckTimer = 0;
+                return;
+            }
+
+            // Force reset only if overlay is confirmed closed and not recently opened
+            if (!acceptPassengerOverlay.isOpen() && !acceptPassengerOverlay.isRecentlyOpened()) {
+                System.out.println("[Playing] Force resetting interactionPaused - overlay closed but flag still true");
+                interactionPaused = false;
+                interactionStuckTimer = 0;
+            }
             return;
+        } else {
+            interactionStuckTimer = 0;
         }
 
         if (!paused) {
-            boolean loopCompleted = worldController.updateScroll(player, false, playerDead);
-            boolean scrolling = worldController.isScrolling(player, paused, playerDead);
+            boolean scrolling = isScrolling();
+            player.setWorldScrolling(scrolling);
+            player.setWorldLoopDone(worldLoopDone);
 
-            if (loopCompleted) {
-                progressBar.onLoopCompleted();
-                if (worldController.getWorldLoopCount() >= MAX_WORLD_LOOPS) {
-                    handleLoopComplete();
+            if (scrolling) {
+                float spd = getScrollSpeed();
+
+                if (spd > 0) {
+                    worldOffset += spd;
+                    if (worldOffset >= levelPixelWidth) {
+                        worldOffset -= levelPixelWidth;
+                        worldLoopCount++;
+                        progressBar.onLoopCompleted();
+                        System.out.println("World loops: " + worldLoopCount);
+
+                        // Check if we've reached the final loop
+                        int maxLoops = levelManager.getMaxWorldLoops();
+                        if (worldLoopCount >= maxLoops) {
+                            worldLoopDone = true;
+                            worldOffset = 0;
+                            player.setCurrentXSpeed(0);
+                            dKeyHeld = false;
+                            player.setRight(false);
+                            System.out.println("[Playing] Final loop reached - auto stopped");
+                            tryTriggerStatusCheck();
+                        }
+                    }
+
+                    bigCloudOffset += spd * BIG_CLOUD_PARALLAX;
+                    if (bigCloudOffset >= BIG_CLOUD_WIDTH)     bigCloudOffset -= BIG_CLOUD_WIDTH;
+                    smallCloudOffset += spd * SMALL_CLOUD_PARALLAX;
+                    if (smallCloudOffset >= SMALL_CLOUD_WIDTH) smallCloudOffset -= SMALL_CLOUD_WIDTH;
                 }
             }
 
             levelManager.update();
             personManager.update();
-            passengerInteractionController.checkPassengerInteractions(player, personManager);
+            passengerManager.update(worldLoopCount, scrolling, getScrollSpeed());
+            checkPassengerInteractions();
             enemyManager.update();
             stopSignManager.update();
             worldObjectManager.update(scrolling, getScrollSpeed());
             powerupManager.update();
+            stopHereIndicator.update(passengerManager, worldLoopCount);
             player.update();
+            gameClock.update();
 
         } else {
             pauseOverlay.update();
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────
+    // PASSENGER INTERACTION SCAN
+    // ─────────────────────────────────────────────────────────
+    private void checkPassengerInteractions() {
+        Rectangle2D.Float jeepHB = player.getHitBox();
+        if (jeepHB == null) return;
+        for (Person p : personManager.getPersons()) {
+            if (p.getType() != Person.PersonType.PASSENGER) continue;
+            if (!p.isActive()) continue;
+            Rectangle2D.Float pHB = p.getHitBox();
+            if (pHB == null) continue;
+            p.setInteractable(jeepHB.intersects(pHB));
         }
     }
 
@@ -218,124 +587,259 @@ public class Playing extends State implements StateMethods {
     // ─────────────────────────────────────────────────────────
     @Override
     public void draw(Graphics g) {
-        // Always draw the frozen game world underneath
-        worldController.drawBackground(g);
-        worldController.drawClouds(g);
-        levelManager.draw(g, (int) worldController.getWorldOffset());
-        // Decorative roadside props should sit behind characters in the scene.
+        if (backgroundImg != null)
+            g.drawImage(backgroundImg, 0, 0, Game.GAME_WIDTH, Game.GAME_HEIGHT, null);
+        drawClouds(g);
+        levelManager.draw(g, (int) worldOffset);
         worldObjectManager.draw(g);
         enemyManager.render(g);
         personManager.render(g);
         stopSignManager.render(g);
         powerupManager.render(g);
-
+        passengerManager.renderDropAnimations(g);
         player.render(g);
-
-        // ── UI layer — always on top ──────────────────────────
+        stopHereIndicator.render(g, player.getHitBox().x, player.getHitBox().y);
         healthBar.render(g);
         passengerCounter.render(g);
-
-        // Modal renders on top of the frozen world
         progressBar.render(g);
+        gameClock.render(g);
 
-        passengerInteractionController.renderOverlay(g);
-        debugOverlay.draw(g, worldObjectManager, currentMap, worldController.getWorldLoopCount());
+        List<RidingPassenger> seats = passengerManager.getSeatList();
+        passengerListOverlay.render(g, seats, worldLoopCount);
 
-        if (playerDead) {
-            deathOverlay.render(g);
-            return;
-        }
-
+        if (paymentPaused)     { paymentOverlay.render(g);       return; }
+        if (statusCheckPaused) { statusCheckOverlay.render(g);   return; }
+        if (introPaused)       { introOverlay.render(g);         return; }
+        acceptPassengerOverlay.render(g);
+        if (playerDead)        { deathOverlay.render(g);         return; }
         if (paused) {
             g.setColor(new Color(0, 0, 0, 150));
             g.fillRect(0, 0, Game.GAME_WIDTH, Game.GAME_HEIGHT);
             pauseOverlay.draw(g);
         }
+
+        skipOverlay.render(g);
+    }
+
+    private void drawClouds(Graphics g) {
+        int bigTilesNeeded = (Game.GAME_WIDTH / BIG_CLOUD_WIDTH) + 2;
+        for (int i = 0; i < bigTilesNeeded; i++) {
+            int drawX = (int)(i * BIG_CLOUD_WIDTH - bigCloudOffset);
+            g.drawImage(bigClouds, drawX, (int)(40 * Game.SCALE), BIG_CLOUD_WIDTH, BIG_CLOUD_HEIGHT, null);
+        }
+        int smallTilesNeeded = (Game.GAME_WIDTH / SMALL_CLOUD_WIDTH) + 2;
+        for (int i = 0; i < smallCloudsPos.length; i++) {
+            int drawX = (int)(i * SMALL_CLOUD_WIDTH - smallCloudOffset);
+            g.drawImage(smallClouds, drawX, smallCloudsPos[i % smallCloudsPos.length],
+                    SMALL_CLOUD_WIDTH, SMALL_CLOUD_HEIGHT, null);
+        }
+        for (int i = 0; i < smallTilesNeeded - smallCloudsPos.length; i++) {
+            int drawX = (int)((smallCloudsPos.length + i) * SMALL_CLOUD_WIDTH - smallCloudOffset);
+            g.drawImage(smallClouds, drawX, smallCloudsPos[i % smallCloudsPos.length],
+                    SMALL_CLOUD_WIDTH, SMALL_CLOUD_HEIGHT, null);
+        }
     }
 
     // ─────────────────────────────────────────────────────────
-    // INPUT
+    // INPUT — strict priority stack
     // ─────────────────────────────────────────────────────────
+
     @Override
     public void mouseClicked(MouseEvent e) {
-        if (playerDead) return;
-        if (e.getButton() == MouseEvent.BUTTON1) player.setAttacking(true);
-        if (playerDead)        return;
-        if (passengerInteractionController.isInteractionPaused()) return;
+        if (activeOverlay() != ActiveOverlay.NONE) return;
 
         if (e.getButton() == MouseEvent.BUTTON1) {
-            if (passengerInteractionController.handleMouseClick(e, personManager)) return;
-            player.setAttacking(true);
+            // Require jeep idle before accepting passenger
+            if (player.getCurrentXSpeed() > 0 || dKeyHeld) {
+                System.out.println("[Playing] Cannot accept passenger while jeep is moving");
+                return;
+            }
+            for (Person p : personManager.getPersons()) {
+                if (!p.isInteractable()) continue;
+                Rectangle2D.Float pHB = p.getHitBox();
+                if (pHB != null && pHB.contains(e.getX(), e.getY())) {
+                    if (passengerManager.isFull()) {
+                        System.out.println("[Playing] Jeepney full");
+                        return;
+                    }
+                    int maxLoops = levelManager.getMaxWorldLoops();
+                    if (worldLoopCount >= maxLoops) {
+                        System.out.println("[Playing] Last loop — no future stops");
+                        return;
+                    }
+                    interactionPaused = true;
+                    boolean opened = acceptPassengerOverlay.open(p);
+                    if (!opened) {
+                        System.out.println("[Playing] open() returned false - clearing interactionPaused");
+                        interactionPaused = false;
+                    }
+                    return;
+                }
+            }
         }
+        player.setAttacking(true);
     }
 
     @Override
     public void mousePressed(MouseEvent e) {
-        if (playerDead)        { deathOverlay.mousePressed(e); return; }
-        if (passengerInteractionController.isInteractionPaused()) {
-            passengerInteractionController.mousePressed(e);
+        if (skipOverlay.isVisible()) {
+            skipOverlay.mousePressed(e);
             return;
         }
-        if (paused)              pauseOverlay.mousePressed(e);
-    }
 
-    public void mouseDragged(MouseEvent e) {
-        if (playerDead)          return;
-        if (passengerInteractionController.isInteractionPaused()) {
-            passengerInteractionController.mouseDragged(e);
-            return;
+        switch (activeOverlay()) {
+            case PAYMENT:    paymentOverlay.mousePressed(e);                          return;
+            case STATUS_CHECK: statusCheckOverlay.mousePressed(e);                    return;
+            case INTRO:      introOverlay.mousePressed(e);                            return;
+            case DEATH:      deathOverlay.mousePressed(e);                            return;
+            case ACCEPT:     acceptPassengerOverlay.mousePressed(e);                  return;
+            case LIST_POPUP: passengerListOverlay.mousePressed(e, passengerManager.getSeatList()); return;
+            case PAUSE:      pauseOverlay.mousePressed(e);                            return;
+            case NONE:
+                passengerListOverlay.mousePressed(e, passengerManager.getSeatList());
+                break;
         }
-        if (paused)              pauseOverlay.mouseDragged(e);
     }
 
     @Override
     public void mouseReleased(MouseEvent e) {
-        if (playerDead)        { deathOverlay.mouseReleased(e); return; }
-        if (passengerInteractionController.isInteractionPaused()) {
-            passengerInteractionController.mouseReleased(e);
+        if (skipOverlay.isVisible()) {
             return;
         }
-        if (paused)              pauseOverlay.mouseReleased(e);
+
+        switch (activeOverlay()) {
+            case PAYMENT:    paymentOverlay.mouseReleased(e);            return;
+            case STATUS_CHECK: statusCheckOverlay.mouseReleased(e);             return;
+            case INTRO:      introOverlay.mouseReleased(e);                  return;
+            case DEATH:      deathOverlay.mouseReleased(e);                  return;
+            case ACCEPT:     acceptPassengerOverlay.mouseReleased(e);        return;
+            case LIST_POPUP: passengerListOverlay.mouseReleased(e);          return;
+            case PAUSE:      pauseOverlay.mouseReleased(e);                  return;
+            case NONE:
+                passengerListOverlay.mouseReleased(e);
+                break;
+        }
     }
 
     @Override
     public void mouseMoved(MouseEvent e) {
-        if (playerDead)        { deathOverlay.mouseMoved(e); return; }
-        passengerInteractionController.mouseMoved(e);
-        if (paused)              pauseOverlay.mouseMoved(e);
+        switch (activeOverlay()) {
+            case PAYMENT:    paymentOverlay.mouseMoved(e);             return;
+            case STATUS_CHECK: statusCheckOverlay.mouseMoved(e);           return;
+            case INTRO:      introOverlay.mouseMoved(e);              return;
+            case DEATH:      deathOverlay.mouseMoved(e);              return;
+            case ACCEPT:     acceptPassengerOverlay.mouseMoved(e);    return;
+            case LIST_POPUP: passengerListOverlay.mouseMoved(e);      return;
+            case PAUSE:      pauseOverlay.mouseMoved(e);              return;
+            case NONE:
+                passengerListOverlay.mouseMoved(e);
+                break;
+        }
     }
 
-    public void unPauseGame() { paused = false; }
+    public void mouseDragged(MouseEvent e) {
+        switch (activeOverlay()) {
+            case ACCEPT: acceptPassengerOverlay.mouseDragged(e); return;
+            case PAUSE:  pauseOverlay.mouseDragged(e);           return;
+            default: break;
+        }
+    }
 
     @Override
     public void keyPressed(KeyEvent e) {
-        if (playerDead)        return;
-        if (e.getKeyCode() == KeyEvent.VK_F3) {
-            debugOverlay.toggleLandmarkDebug();
+        if (e.getKeyCode() == KeyEvent.VK_S && e.isControlDown() && e.isShiftDown()) {
+            skipOverlay.toggleEnabled();
             return;
         }
-        if (e.getKeyCode() == KeyEvent.VK_F4) {
-            debugOverlay.toggleAlignmentGrid();
+
+        if (skipOverlay.isEnabled()) {
+            skipOverlay.keyPressed(e);
+            if (skipOverlay.isVisible()) return;
+        }
+
+        if (e.getKeyCode() == KeyEvent.VK_ESCAPE) {
+            // FORCE CLOSE — emergency exit for any stuck overlay, checked before activeOverlay()
+            if (acceptPassengerOverlay.isOpen()) {
+                System.out.println("[Playing] ESC force closed AcceptPassengerOverlay");
+                acceptPassengerOverlay.close();
+                interactionPaused = false;
+                interactionStuckTimer = 0;
+                return;
+            }
+            if (paymentPaused) {
+                System.out.println("[Playing] ESC force closed PaymentOverlay");
+                paymentOverlay.close();
+                handlePaymentClose();
+                return;
+            }
+            if (listPopupPaused) {
+                System.out.println("[Playing] ESC force closed PassengerListOverlay");
+                passengerListOverlay.closePopup();
+                listPopupPaused = false;
+                return;
+            }
+
+            // Normal ESC routing for overlays that don't need force-close
+            switch (activeOverlay()) {
+                case PAYMENT:
+                    paymentOverlay.close();
+                    handlePaymentClose();
+                    break;
+                case STATUS_CHECK:
+                case INTRO:
+                case DEATH:
+                    break;
+                case ACCEPT:
+                    acceptPassengerOverlay.handleEsc();  // calls handleNo → close + resumeFromInteraction
+                    break;
+                case LIST_POPUP:
+                    passengerListOverlay.handleEsc();
+                    break;
+                case PAUSE:
+                    paused = false;
+                    break;
+                case NONE:
+                    paused = true;
+                    break;
+            }
             return;
         }
-        if (passengerInteractionController.isInteractionPaused()) return;
+
+        if (paymentPaused) {
+            if (e.getKeyCode() >= KeyEvent.VK_0 && e.getKeyCode() <= KeyEvent.VK_9) {
+                paymentOverlay.inputDigit(e.getKeyCode() - KeyEvent.VK_0);
+                return;
+            } else if (e.getKeyCode() == KeyEvent.VK_BACK_SPACE) {
+                paymentOverlay.backspace();
+                return;
+            }
+            return;
+        }
+
+        if (activeOverlay() != ActiveOverlay.NONE) return;
+
         switch (e.getKeyCode()) {
-            case KeyEvent.VK_A:      player.setLeft(true);                   break;
-            case KeyEvent.VK_D:      player.setRight(true); worldController.setDKeyHeld(true); break;
-            case KeyEvent.VK_W:      player.setUp(true);                     break;
-            case KeyEvent.VK_S:      player.setDown(true);                   break;
-            case KeyEvent.VK_ESCAPE: paused = !paused;                       break;
+            case KeyEvent.VK_A: player.setLeft(true);                   break;
+            case KeyEvent.VK_D:
+                if (worldLoopDone) {
+                    System.out.println("[Playing] D key ignored - world loop complete, drop remaining passengers");
+                    break;
+                }
+                player.setRight(true);
+                dKeyHeld = true;
+                break;
+            case KeyEvent.VK_W: player.setUp(true);                     break;
+            case KeyEvent.VK_S: player.setDown(true);                   break;
         }
     }
 
     @Override
     public void keyReleased(KeyEvent e) {
-        if (playerDead) return;
         switch (e.getKeyCode()) {
-            case KeyEvent.VK_A: player.setLeft(false);                       break;
-            case KeyEvent.VK_D: player.setRight(false); worldController.setDKeyHeld(false); break;
-            case KeyEvent.VK_W: player.setUp(false);                         break;
-            case KeyEvent.VK_S: player.setDown(false);                       break;
+            case KeyEvent.VK_A: player.setLeft(false);                    break;
+            case KeyEvent.VK_D: player.setRight(false); dKeyHeld = false; break;
+            case KeyEvent.VK_W: player.setUp(false);                      break;
+            case KeyEvent.VK_S: player.setDown(false);                    break;
         }
     }
 
@@ -354,17 +858,79 @@ public class Playing extends State implements StateMethods {
     }
 
     public void windowFocusLost() {
-        worldController.onWindowFocusLost(player);
+        player.resetDirBooleans();
+        dKeyHeld = false;
+    }
+
+    public void unPauseGame() { paused = false; }
+
+    public void startBossFight() {
+        setBossFightActive(true);
+        int currentLevel = levelManager.getCurrentLevelId();
+        if (currentLevel == 1) {
+            game.startLevel1BossFight();
+        } else if (currentLevel == 2) {
+            game.startLevel2BossFight();
+        } else {
+            game.startBossFightWithLevel(currentLevel);
+        }
+        gameClock.start();  // Keep clock running during boss fight
+    }
+
+    public boolean advanceToNextLevel() {
+        int currentLevel = levelManager.getCurrentLevelId();
+
+        if (currentLevel >= 3) {
+            System.out.println("[Playing] Already at max level!");
+            return false;
+        }
+
+        gameClock.stop();
+        gameClock.saveLevelRecord();
+        System.out.println("[Playing] Level " + currentLevel + " completed in " + gameClock.getFormattedTime());
+
+        levelManager.advanceToNextLevel();
+
+        // Recreate progress bar for new level
+        progressBar = new ProgressBar(levelManager.getCurrentLevelId());
+
+        gameClock.reset();
+        gameClock.setCurrentLevel(levelManager.getCurrentLevelId());
+
+        restartGame();
+        player.setBossMode(false);
+        gameClock.start();
+
+        System.out.println("[Playing] Advanced to Level " + levelManager.getCurrentLevelId());
+        return true;
+    }
+
+    public void restartCurrentLevel() {
+        restartGame();
+    }
+
+    public void completeLevelForDebug() {
+        System.out.println("[Playing] Debug: Completing current level");
+        worldLoopDone = true;
+        statusCheckPaused = true;
+        int totalFare = passengerManager.getTotalFareEarned();
+        int requiredPassengers = levelManager.getRequiredPassengers();
+        int requiredFare = levelManager.getRequiredFare();
+        statusCheckOverlay.open(passengersDroppedCount, totalFare, requiredPassengers, requiredFare);
     }
 
     // ── Getters ───────────────────────────────────────────────
-    public Player       getPlayer()         { return player; }
-    public HealthBar    getHealthBar()      { return healthBar; }
-    public LevelManager getLevelManager()   { return levelManager; }
-    public RouteMap     getCurrentMap()     { return currentMap; }
-    public float        getWorldOffset()    { return worldController.getWorldOffset(); }
-    public int          getWorldLoopCount() { return worldController.getWorldLoopCount(); }
-    public boolean      isPaused()          { return paused; }
-    public boolean      isScrolling()       { return worldController.isScrolling(player, paused, playerDead); }
-    public float        getScrollSpeed()    { return worldController.getScrollSpeed(player); }
+    public Player           getPlayer()           { return player; }
+    public HealthBar        getHealthBar()        { return healthBar; }
+    public LevelManager     getLevelManager()     { return levelManager; }
+    public float            getWorldOffset()      { return worldOffset; }
+    public int              getWorldLoopCount()   { return worldLoopCount; }
+    public boolean          isPaused()            { return paused; }
+    public PassengerManager getPassengerManager() { return passengerManager; }
+    public IntroOverlay     getIntroOverlay()     { return introOverlay; }
+    public GameClock        getGameClock()        { return gameClock; }
+    public ProgressBar      getProgressBar()      { return progressBar; }
+
+    // ── Setters ──────────────────────────────────────────────
+    public void setProgressBar(ProgressBar bar) { this.progressBar = bar; }
 }

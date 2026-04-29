@@ -93,16 +93,22 @@ public class Player extends Entity {
     // RENDER
     // ─────────────────────────────────────────────────────────
     public void render(Graphics g) {
-        g.drawImage(
-                animations[playerAction][aniIndex],
+        if (animations == null) return;
+
+        // Safety: clamp aniIndex to valid range
+        int maxFrame = getSpriteAmount(playerAction);
+        if (aniIndex >= maxFrame) {
+            aniIndex = 0;
+        }
+
+        g.drawImage(animations[playerAction][aniIndex],
                 (int)(hitBox.x - xDrawOffset),
                 (int)(hitBox.y - yDrawOffset),
-                width, height, null
-        );
-        //drawHitBox(g);
+                width, height, null);
     }
 
     public void render(Graphics g, int xLvlOffset) {
+        if (animations == null) return; // Guard: driver not applied yet
         g.drawImage(
                 animations[playerAction][aniIndex],
                 (int)(hitBox.x - xDrawOffset) - xLvlOffset,
@@ -121,6 +127,10 @@ public class Player extends Entity {
         updateAnimationTick();
         setAnimation();
     }
+    public void setCurrentXSpeed(float speed) {
+        this.currentXSpeed = speed;
+    }
+
 
     // ── Car-Struck ────────────────────────────────────────────
     /**
@@ -176,12 +186,14 @@ public class Player extends Entity {
         if (struckActive) {
             playerAction = CAR_STRUCK;
         } else if (bossMode) {
-            // Fix 2: always RUNNING in boss mode regardless of movement
             playerAction = RUNNING;
+
         } else if (moving || currentXSpeed > 0) {
             playerAction = RUNNING;
+
         } else {
             playerAction = IDLE;
+
         }
 
         if (prev != playerAction) resetAnimationTick();
@@ -346,34 +358,6 @@ public class Player extends Entity {
         if (worldScrolling && right)
             moving = true;
     }
-
-    // ─────────────────────────────────────────────────────────
-    // LOAD ANIMATIONS
-    //   Row 0 = RUNNING   (4 frames)
-    //   Row 1 = IDLE      (4 frames)
-    //   Row 2 = CAR_STRUCK (4 frames)
-    //   Row 3 = SHIELD    (2 frames) — loaded by BossFightState
-    //   Row 4 = SHOOT     (4 frames) — loaded by BossFightState
-    // ─────────────────────────────────────────────────────────
-
-/*
-    private void loadAnimations(String atlas) {
-        InputStream is = getClass().getResourceAsStream(atlas);
-        try {
-            BufferedImage img = ImageIO.read(is);
-            animations = new BufferedImage[3][4]; // rows 0-2, 4 frames each
-            for (int row = 0; row < animations.length; row++)
-                for (int col = 0; col < animations[row].length; col++)
-                    animations[row][col] = img.getSubimage(col * 110, row * 40, 110, 40);
-        } catch (IOException e) {
-            e.printStackTrace();
-        } finally {
-            try { if (is != null) is.close(); } catch (IOException e) { e.printStackTrace(); }
-        }
-    }
-    */
-
-
     // ─────────────────────────────────────────────────────────
     // PUBLIC API
     // ─────────────────────────────────────────────────────────

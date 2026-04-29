@@ -67,12 +67,21 @@ public class Constants {
 
     // ── Person sprites ───────────────────────────────────────
     public static class PersonConstants {
-        // Sprite sheet per person: 610 × 120 — 10 columns, 2 rows, each cell 61 × 60 px
-        // Row 0 = IDLE / PASSENGER
-        // Row 1 = WALK
-        public static final int PERSON_FRAME_COUNT    = 10;
+        // Base dimensions for person sprites (pre-scale)
         public static final int PERSON_WIDTH_DEFAULT  = 61;
         public static final int PERSON_HEIGHT_DEFAULT = 60;
+
+        // Person3: 10 frames per row, 61px width
+        public static final int PERSON3_FRAME_COUNT = 10;
+        public static final int PERSON3_WIDTH_DEFAULT = 61;
+
+        // Person4, Person5, Person6: 12 frames per row, 61px width (732/12 = 61)
+        public static final int PERSON4_FRAME_COUNT = 12;
+        public static final int PERSON4_WIDTH_DEFAULT = 61;
+
+        // Default for backward compatibility
+        public static final int PERSON_FRAME_COUNT = 10;
+        public static final int PERSON_WIDTH_DEFAULT_LEGACY = 61;
 
         public static final int ROW_IDLE = 0;
         public static final int ROW_WALK = 1;
@@ -95,6 +104,28 @@ public class Constants {
 
         public static final float PASSENGER_Y         = 154f;
         public static final int   PASSENGER_ANI_SPEED = 25;
+
+        // Helper method to get frame count by person type
+        public static int getFrameCountForPerson(int personType) {
+            switch(personType) {
+                case 3: return PERSON3_FRAME_COUNT;
+                case 4: return PERSON4_FRAME_COUNT;
+                case 5: return PERSON4_FRAME_COUNT;
+                case 6: return PERSON4_FRAME_COUNT;
+                default: return PERSON_FRAME_COUNT;
+            }
+        }
+
+        // Helper method to get default width by person type
+        public static int getWidthDefaultForPerson(int personType) {
+            switch(personType) {
+                case 3: return PERSON3_WIDTH_DEFAULT;
+                case 4: return PERSON4_WIDTH_DEFAULT;
+                case 5: return PERSON4_WIDTH_DEFAULT;
+                case 6: return PERSON4_WIDTH_DEFAULT;
+                default: return PERSON_WIDTH_DEFAULT_LEGACY;
+            }
+        }
     }
 
     // ── Enemy sprites ────────────────────────────────────────

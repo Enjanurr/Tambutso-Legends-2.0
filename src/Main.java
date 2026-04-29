@@ -2,11 +2,13 @@
 // click the <icon src="AllIcons.Actions.Execute"/> icon in the gutter.
 import main.Game;
 import main.SpriteAnimationTester;
+import main.FontTester;
 public class Main {
     public static void main(String[] args) {
 
         Game game = new Game();
         //FOR TESTING SPRITES ANIMATIONS
         //SpriteAnimationTester.launch();
+        //FontTester.launch();
     }
 }
