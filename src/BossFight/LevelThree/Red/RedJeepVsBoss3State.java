@@ -338,7 +338,7 @@ public class RedJeepVsBoss3State extends State implements StateMethods {
         for (SlowBallProjectile ball : slowBalls) {
             if (ball.isActive() && ball.getHitbox().intersects(bossHB)) {
                 ball.setActive(false);
-                boss.applySlowEffect();  // Apply slow effect to boss
+                boss.applyStun();  // Apply slow effect to boss
                 System.out.println("[RedJeepVsBoss3] Slow ball hit boss! Slow effect applied.");
             }
         }

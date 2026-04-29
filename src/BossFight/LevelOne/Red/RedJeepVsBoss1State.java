@@ -386,12 +386,13 @@ public class RedJeepVsBoss1State extends State implements StateMethods {
         }
 
         // Check slow ball collision with boss
+        // Check slow ball collision with boss
         Rectangle bossHB = boss.getHitbox();
         for (SlowBallProjectile ball : slowBalls) {
             if (ball.isActive() && ball.getHitbox().intersects(bossHB)) {
                 ball.setActive(false);
-                boss.applySlowEffect();
-                System.out.println("[RedJeep] Slow ball hit boss! Slow effect applied.");
+                boss.applyStun();  // ← This calls the stun on the boss
+                System.out.println("[RedJeep] Slow ball hit boss! Stun effect applied.");
             }
         }
         // Player bullets → boss

@@ -1,4 +1,4 @@
-Level 1: 01:44
-Level 2: 00:06
+Level 1: 00:08
+Level 2: 00:07
 Level 3: 00:00
-Total: 01:50
+Total: 00:15

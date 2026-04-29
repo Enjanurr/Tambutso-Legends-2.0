@@ -427,10 +427,12 @@ public class Boss1 {
     public void triggerHit() {
         if (state == BossState.HIT) return;
         stateAfterHit = state;
-        state         = BossState.HIT;
-        hitTick       = 0;
-        stateTick     = 0;
-        aniIndex      = 0;
+        state = BossState.HIT;
+        hitTick = 0;
+        stateTick = 0;
+        aniIndex = 0;
+        aniTick = 0;
+        System.out.println("[Boss2] HIT triggered - currentRow: " + currentRow + ", ROW_HIT: " + ROW_HIT);
     }
 
     // ─────────────────────────────────────────────────────────
@@ -494,12 +496,13 @@ public class Boss1 {
 
     // ── Animation ─────────────────────────────────────────────
     private void updateAnimation() {
+        // Only skip animation for SKILL2 state, NOT for HIT
         if (state == BossState.SKILL2 && currentRow == ROW_SKILL2) return;
 
         int speed;
         switch (currentRow) {
-            case ROW_SKILL1: speed = ANI_SPEED_SKILL1;  break;
-            case ROW_HIT:    speed = ANI_SPEED_HIT;     break;
+            case ROW_SKILL1: speed = ANI_SPEED_SKILL1; break;
+            case ROW_HIT:    speed = ANI_SPEED_HIT; break;
             default:         speed = ANI_SPEED_RUNNING; break;
         }
 

@@ -15,16 +15,16 @@ public class Boss1 {
     public static final int SHEET_COLS = 5;
     public static final int FRAME_W    = 110;  // 550 / 5
     public static final int FRAME_H    = 79;   // 316 / 4
-    public static final int ROWS       = 4;
+    public static final int ROWS       = 5;
 
     // ── Row indices ───────────────────────────────────────────
     public static final int ROW_SKILL1  = 0;   // bullet frames only
     public static final int ROW_RUNNING = 1;
     public static final int ROW_SKILL2  = 2;
     public static final int ROW_HIT     = 3;
-
+    public static final int ROW_STUN    = 4;  // ← ADD THIS
     // ── Frame counts per row ──────────────────────────────────
-    private static final int[] FRAME_COUNTS = { 5, 5, 4, 2 };
+    private static final int[] FRAME_COUNTS = { 5, 5, 4, 2 , 4};
 
     // -------------------------------------------------------
     // BOSS SETTINGS  ← ADJUST
@@ -57,6 +57,7 @@ public class Boss1 {
     public static final int ANI_SPEED_RUNNING  = 20;
     public static final int ANI_SPEED_SKILL1   = 10;
     public static final int ANI_SPEED_HIT      = 20;
+    public static final int ANI_SPEED_STUN = 15;  // Ticks per frame for stun animation
     // -------------------------------------------------------
 
     // Skill 2 animation phase durations (ticks) ← ADJUST ─────
@@ -98,7 +99,7 @@ public class Boss1 {
     private int aniIndex   = 0;
 
     // ── State machine ─────────────────────────────────────────
-    public enum BossState { FOLLOW, SKILL1, WAIT_AFTER1, SKILL2, WAIT_AFTER2, RANDOM, HIT }
+    public enum BossState { FOLLOW, SKILL1, WAIT_AFTER1, SKILL2, WAIT_AFTER2, RANDOM, HIT, STUN }
     private BossState state         = BossState.FOLLOW;
     private BossState stateAfterHit = BossState.FOLLOW;
     private int       stateTick     = 0;
@@ -213,25 +214,24 @@ public class Boss1 {
     }
 
     private void updateStunState() {
+        currentRow = ROW_STUN;  // ← CHANGE to use stun row instead of hit row
 
-        currentRow = ROW_HIT;   // reuse hit animation (visual feedback)
+        // Update stun animation
+        aniTick++;
+        if (aniTick >= ANI_SPEED_STUN) {
+            aniTick = 0;
+            aniIndex = (aniIndex + 1) % FRAME_COUNTS[ROW_STUN];
+        }
 
         stunTick++;
-
-        // ❄️ During stun: freeze movement + suppress attacks
-        // (IMPORTANT: do NOT call wanderY or followJeepY)
 
         if (stunTick >= STUN_DURATION) {
             stunned = false;
             stunTick = 0;
-        }
-
-        // still allow hit animation exit logic if needed
-        hitTick++;
-        if (hitTick >= HIT_ANIM_TICKS) {
-            hitTick = 0;
-            state = stateAfterHit;
+            state = stateAfterHit;  // Return to previous state
             stateTick = 0;
+            aniIndex = 0;
+            currentRow = ROW_RUNNING;
         }
     }
 
@@ -257,7 +257,7 @@ public class Boss1 {
     // ─────────────────────────────────────────────────────────
 
     // ── Public API for applying slow effect ─────────────────
-    // ── Public API for applying slow effect ─────────────────
+
     public void applySlowEffect() {
         slowed = true;
         slowTick = 0;
@@ -269,9 +269,17 @@ public class Boss1 {
     public boolean isSlowed() {
         return slowed;
     }
+
     public void applyStun() {
+        if (state == BossState.STUN || stunned) return;
+        stateAfterHit = state;
+        state = BossState.STUN;
         stunned = true;
         stunTick = 0;
+        aniIndex = 0;
+        aniTick = 0;
+        currentRow = ROW_STUN;
+        System.out.println("[Boss1] ⚡ Stunned! Duration: 3 seconds.");
     }
     private void updateStateMachine(float jeepX, float jeepY) {
         if (stunned) {
@@ -380,13 +388,15 @@ public class Boss1 {
                     stateTick = 0;
                 }
                 break;
+            case STUN:
+                // Stun handled in updateStunState() called before switch
+                break;
         }
     }
 
     // ── Vertical movement ─────────────────────────────────────
     /** Smooth lerp — aligns the BOSS'S CENTRE to the jeep hitbox centre Y. */
-    /** Smooth lerp — aligns the BOSS'S CENTRE to the jeep hitbox centre Y. */
-    /** Smooth lerp — aligns the BOSS'S CENTRE to the jeep hitbox centre Y. */
+
     private void followJeepY(float jeepCenterY) {
         // ── Apply slow multiplier to lerp speed ────────────────
         float baseLerp = FOLLOW_Y_DELAY;
@@ -399,8 +409,7 @@ public class Boss1 {
     }
 
     /** Free random wander — used in all other states. */
-    /** Free random wander — used in all other states. */
-    /** Free random wander — used in all other states. */
+
     private void wanderY() {
         wanderChangeTick++;
         if (wanderChangeTick >= wanderInterval) {
@@ -524,12 +533,12 @@ public class Boss1 {
     }
 
     public void triggerHit() {
-        if (state == BossState.HIT) return;
+        if (state == BossState.HIT || state == BossState.STUN) return;
         stateAfterHit = state;
-        state         = BossState.HIT;
-        hitTick       = 0;
-        stateTick     = 0;
-        aniIndex      = 0;
+        state = BossState.HIT;
+        hitTick = 0;
+        stateTick = 0;
+        aniIndex = 0;
     }
 
     // ─────────────────────────────────────────────────────────
@@ -617,15 +626,18 @@ public class Boss1 {
         List<GarbagePile> pilesCopy = new ArrayList<>(piles);
         for (GarbagePile p : pilesCopy) p.render(g);
 
-        int safeIndex = Math.min(aniIndex, FRAME_COUNTS[currentRow] - 1);
-        BufferedImage frame = frames[currentRow][safeIndex];
+        // Make sure currentRow is within bounds
+        int safeRow = Math.min(currentRow, ROWS - 1);
+        int safeIndex = Math.min(aniIndex, FRAME_COUNTS[safeRow] - 1);
+        if (safeIndex < 0) safeIndex = 0;
+
+        BufferedImage frame = frames[safeRow][safeIndex];
         if (frame != null)
             g.drawImage(frame, (int) x, (int) y, width, height, null);
 
         List<GarbagePile.BossProjectile> bulletsCopy = new ArrayList<>(bullets);
         for (GarbagePile.BossProjectile b : bulletsCopy) b.render(g);
     }
-
     // ─────────────────────────────────────────────────────────
     // GETTERS
     // ─────────────────────────────────────────────────────────
