@@ -34,6 +34,7 @@ public class Game implements Runnable {
     private Options       options;
 
     private final AudioPlayer audioPlayer;
+    private GameIntroState gameIntroState;
     private CharSelectState charSelectState;
 
     private String activeMusicTrack;
@@ -237,8 +238,6 @@ public class Game implements Runnable {
             System.out.println("[Game] Applying driver to Playing");
             playing.applyDriver(selectedDriver);
         }
-        introOverlay.reset();
-        GameStates.state = GameStates.INTRO;
         reclaimInputFocus();
     }
 
@@ -311,7 +310,6 @@ public class Game implements Runnable {
                 System.err.println("❌ Unknown driver id: " + selectedDriver.id);
                 GameStates.state = GameStates.MENU;
         }
-        GameStates.state = GameStates.BOSS_FIGHT;
         reclaimInputFocus();
     }
 
@@ -382,26 +380,7 @@ public class Game implements Runnable {
             case MENU:
                 menu.update();
                 break;
-            case CHAR_SELECT:
-                charSelectState.update();
-                break;
             case INTRO:
-                boolean done = introOverlay.update();
-                if (done) {
-                    GameStates.state = GameStates.PLAYING;
-                    reclaimInputFocus();
-
-                    // ✨ DEBUG OUTPUT
-                    System.out.println("───────────────────────────────");
-                    System.out.println("INTRO COMPLETE");
-                    System.out.println("Selected Driver: " +
-                            (selectedDriver != null ? selectedDriver.displayName : "NULL"));
-                    System.out.println("───────────────────────────────");
-
-                    if (selectedDriver != null) {
-                        playing.applyDriver(selectedDriver);
-                    }
-                }
                 playing.update();
                 break;
             case PLAYING:
@@ -468,15 +447,9 @@ public class Game implements Runnable {
     }
 
     private String getDesiredMusicTrack() {
-        return switch (GameStates.state) {
-            case GAME_INTRO -> gameIntroState.hasLogoRevealStarted() ? "menu" : "none";
-            case CHAR_SELECT -> "menu";
-            case MENU, INTRO, OPTIONS -> "menu";
-            case PLAYING -> playing.isPaused() ? "menu" : "main";
-            case BOSS_FIGHT -> bossFightState.isPaused() ? "menu" : "main";
-            default -> "none";
-        };
         switch (GameStates.state) {
+            case GAME_INTRO:
+                return gameIntroState.hasLogoRevealStarted() ? "menu" : "none";
             case CHAR_SELECT:
                 return "menu";
             case MENU:
@@ -608,8 +581,6 @@ public class Game implements Runnable {
     public Playing         getPlaying()        { return playing; }
     public IntroOverlay    getIntroOverlay()   { return playing.getIntroOverlay(); }
     public GameIntroState  getGameIntroState() { return gameIntroState; }
-    public IntroOverlay    getIntroOverlay()   { return introOverlay; }
-    public BossFightState  getBossFightState() { return bossFightState; }
     public AudioPlayer     getAudioPlayer()    { return audioPlayer; }
     public CharSelectState getCharSelectState() { return charSelectState; }
 

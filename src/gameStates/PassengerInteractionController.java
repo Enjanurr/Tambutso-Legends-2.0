@@ -13,6 +13,7 @@ import java.awt.geom.Rectangle2D;
 import java.util.Random;
 
 public class PassengerInteractionController {
+    private final Playing playing;
     private final AcceptPassengerOverlay overlay;
     private final PassengerCounter passengerCounter;
     private final Random rng = new Random();
@@ -21,6 +22,7 @@ public class PassengerInteractionController {
     private int currentStopIndex = 0;
 
     public PassengerInteractionController(Playing playing, PassengerCounter passengerCounter) {
+        this.playing = playing;
         this.passengerCounter = passengerCounter;
         this.overlay = new AcceptPassengerOverlay(playing, passengerCounter);
     }
@@ -51,7 +53,7 @@ public class PassengerInteractionController {
     }
 
     public void checkPassengerInteractions(Player player, PersonManager personManager) {
-        if (passengerCounter.isFull()) return;
+        if (playing.getPassengerManager().isFull()) return;
 
         Rectangle2D.Float jeepHB = player.getHitBox();
         if (jeepHB == null) return;

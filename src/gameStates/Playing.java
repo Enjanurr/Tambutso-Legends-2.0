@@ -81,27 +81,12 @@ public class Playing extends State implements StateMethods {
     private GameClock              gameClock;
     private SkipOverlay            skipOverlay;
     private PaymentOverlay         paymentOverlay;
-    // =======================================================
-
-    private PowerupManager  powerupManager;
-    private Player          player;
-    private PersonManager   personManager;
-    private EnemyManager    enemyManager;
-    private StopSignManager stopSignManager;
-    private LevelManager    levelManager;
-    private PauseOverlay    pauseOverlay;
-    private HealthBar       healthBar;
-    private DeathOverlay    deathOverlay;
-    private ProgressBar     progressBar;
 
     private boolean paused              = false;
     private boolean playerDead          = false;
     private final PlayingDebugOverlay debugOverlay = new PlayingDebugOverlay();
     private PassengerInteractionController passengerInteractionController;
     private final PlayingWorldController worldController = new PlayingWorldController();
-    // ── Overlay-state flags ───────────────────────────────────
-    private boolean paused            = false;
-    private boolean playerDead        = false;
     private boolean interactionPaused = false;
     private boolean listPopupPaused   = false;
     private boolean introPaused       = false;
@@ -120,7 +105,6 @@ public class Playing extends State implements StateMethods {
 
     public static final int MAX_WORLD_LOOPS = 15;
     // -------------------------------------------------------
-    public int getMaxWorldLoops() { return  MAX_WORLD_LOOPS;}
     public int getMaxWorldLoops() { return MAX_WORLD_LOOPS; }
 
     private static final float CENTER_TOLERANCE = 10f * Game.SCALE;
@@ -232,9 +216,18 @@ public class Playing extends State implements StateMethods {
         gameClock = new GameClock();
         skipOverlay = new SkipOverlay(game, this);
         System.out.println("[Playing] initClasses() complete - Level " + levelManager.getCurrentLevelId() + " loaded");
-        deathOverlay    = new DeathOverlay(this);
         passengerInteractionController = new PassengerInteractionController(this, passengerCounter);
-        progressBar     = new ProgressBar();
+    }
+
+    private void loadBackgroundAssets() {
+        backgroundImg = LoadSave.getSpriteAtlas(LoadSave.PLAYING_BACKGROUND_IMG);
+        bigClouds = LoadSave.getSpriteAtlas(LoadSave.BIG_CLOUDS);
+        smallClouds = LoadSave.getSpriteAtlas(LoadSave.SMALL_CLOUDS);
+
+        smallCloudsPos = new int[8];
+        for (int i = 0; i < smallCloudsPos.length; i++) {
+            smallCloudsPos[i] = (int) (20 * Game.SCALE) + rnd.nextInt((int) (100 * Game.SCALE));
+        }
     }
 
     // ─────────────────────────────────────────────────────────
