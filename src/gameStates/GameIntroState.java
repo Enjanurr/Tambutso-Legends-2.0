@@ -38,7 +38,7 @@ public class GameIntroState extends State implements StateMethods {
     // Increase pace values to make the intro faster, decrease them to make it slower.
     private static final float INTRO_PACE = 0.5f;
     private static final float JEEP_PACE = 0.5f;
-    private static final float FIREBALL_PACE = 1.0f;
+    private static final float FIREBALL_PACE = 0.8f;
     private static final float EXPLOSION_PACE = 1.0f;
     private static final float LOGO_PACE = 1.0f;
 
@@ -471,6 +471,10 @@ public class GameIntroState extends State implements StateMethods {
     }
 
     private void skipIntro() {
+        if (phase == Phase.FADE_TO_MENU || GameStates.state != GameStates.GAME_INTRO) {
+            return;
+        }
+
         phase = Phase.FADE_TO_MENU;
         holdTick = getLogoHoldTicks();
         introAlpha = Math.max(introAlpha, 1f);

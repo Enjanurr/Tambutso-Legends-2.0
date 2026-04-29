@@ -39,7 +39,7 @@ public class Game implements Runnable {
         gamePanel    = new GamePanel(this);
         initClasses();
         gameWindow   = new GameWindow(gamePanel);
-        gamePanel.requestFocus();
+        reclaimInputFocus();
         syncMusicToState();
         startGameLoop();
     }
@@ -74,12 +74,14 @@ public class Game implements Runnable {
     /** Called by Menu PLAY button — goes to char select first. */
     public void startCharSelect() {
         GameStates.state = GameStates.CHAR_SELECT;
+        reclaimInputFocus();
     }
 
     /** Called by CharSelectState after confirming a driver. */
     public void startIntroOverlay() {
         introOverlay.reset();
         GameStates.state = GameStates.INTRO;
+        reclaimInputFocus();
     }
 
     /** Called by Playing when all 15 loops complete. */
@@ -97,6 +99,7 @@ public class Game implements Runnable {
         }
 
         GameStates.state = GameStates.BOSS_FIGHT;
+        reclaimInputFocus();
     }
 
     public void update() {
@@ -114,6 +117,7 @@ public class Game implements Runnable {
                 boolean done = introOverlay.update();
                 if (done) {
                     GameStates.state = GameStates.PLAYING;
+                    reclaimInputFocus();
 
                     // ✨ DEBUG OUTPUT
                     System.out.println("───────────────────────────────");
@@ -239,6 +243,10 @@ public class Game implements Runnable {
     public void windowFocusLost() {
         if (GameStates.state == GameStates.PLAYING)
             playing.windowFocusLost();
+    }
+
+    public void reclaimInputFocus() {
+        gamePanel.reclaimFocus();
     }
 
     // ── Getters ───────────────────────────────────────────────

@@ -36,6 +36,8 @@ public class GamePanel extends JPanel {
         mouseInputs = new MouseInputs(this);
         this.game   = game;
         setPanelSize();
+        setFocusable(true);
+        setRequestFocusEnabled(true);
         addKeyListener(new KeyboardInputs(this));
         addMouseListener(mouseInputs);
         addMouseMotionListener(mouseInputs);
@@ -107,4 +109,10 @@ public class GamePanel extends JPanel {
     }
 
     public Game getGame() { return game; }
+
+    public void reclaimFocus() {
+        if (!hasFocus()) {
+            requestFocusInWindow();
+        }
+    }
 }
