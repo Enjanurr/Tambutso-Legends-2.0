@@ -16,7 +16,7 @@ public class Boss3 {
     public static final int SHEET_COLS = 5;
     public static final int FRAME_W    = 115;
     public static final int FRAME_H    = 79;
-    public static final int ROWS       = 6;
+    public static final int ROWS       = 7;
 
     // ── Row indices ───────────────────────────────────────────
     public static final int ROW_SHOOT = 0;
@@ -25,9 +25,10 @@ public class Boss3 {
     public static final int ROW_RUNNING = 3;
     public static final int ROW_GRAVY = 4;
     public static final int ROW_HIT = 5;
+    public static final int ROW_STUN = 6;
 
     // ── Frame counts per row ──────────────────────────────────
-    private static final int[] FRAME_COUNTS = { 5, 5, 1, 5, 4, 2 };
+    private static final int[] FRAME_COUNTS = { 5, 5, 1, 5, 4, 2, 4 };
 
     // -------------------------------------------------------
     // BOSS SETTINGS
@@ -48,6 +49,7 @@ public class Boss3 {
     private static final int SHIELD_COOLDOWN = 4 * 200;
     private static final int GRAVY_TICKS = 6 * 200;
     private static final int HIT_ANIM_TICKS = 90;
+    private static final int STUN_DURATION = 3 * 200; // 3 seconds
 
     private static final int BULLET_DELAY = 200;
     private static final int MAX_BULLETS = 10;
@@ -57,9 +59,7 @@ public class Boss3 {
     // Animation speeds
     public static final int ANI_SPEED_RUNNING = 20;
     public static final int ANI_SPEED_SHOOT = 10;
-    public static final int ANI_SPEED_SHIELD_FORM = 15;
-    public static final int ANI_SPEED_SHIELD_FORMED = 20;
-    public static final int ANI_SPEED_GRAVY = 12;
+    public static final int ANI_SPEED_STUN = 15;
     public static final int ANI_SPEED_HIT = 20;
 
     // Gravy animation phase durations
@@ -95,10 +95,15 @@ public class Boss3 {
     private int aniIndex = 0;
 
     // ── State machine ─────────────────────────────────────────
-    public enum BossState { FOLLOW, SHOOT, SHIELD_FORMING, SHIELD_ACTIVE, SHIELD_COOLDOWN, GRAVY_DUMP, HIT }
+    public enum BossState { FOLLOW, SHOOT, SHIELD_FORMING, SHIELD_ACTIVE, SHIELD_COOLDOWN, GRAVY_DUMP, HIT, STUN }
+
     private BossState state = BossState.FOLLOW;
     private BossState stateAfterHit = BossState.FOLLOW;
     private int stateTick = 0;
+
+    // ── Stun variables ────────────────────────────────────────
+    private boolean stunned = false;
+    private int stunTick = 0;
 
     // ── Shoot variables ───────────────────────────────────────
     private boolean shootFiring = false;
@@ -146,15 +151,8 @@ public class Boss3 {
     private int comboShieldCheckTick = 0;
     private static final int COMBO_SHIELD_CHECK_DELAY = 100;
 
-    // ── Slow effect (Red Jeep specific) ────────────────────────
-    private boolean slowed = false;
-    private int slowTick = 0;
-    private static final int SLOW_DURATION = 3 * 200;
-    private static final float SLOW_SPEED_MULT = 0.5f;
-
     private final Random rng = new Random();
     private boolean isComboShieldForming = false;
-
 
     public Boss3(float startX, float startY) {
         this.width = (int)(FRAME_W * Game.SCALE);
@@ -179,7 +177,6 @@ public class Boss3 {
 
         for (int row = 0; row < ROWS; row++)
             for (int col = 0; col < SHEET_COLS; col++) {
-                // ── Special case: ROW_GRAVY has 5 columns total ─────
                 int maxCols = (row == ROW_GRAVY) ? 5 : FRAME_COUNTS[row];
                 if (col < maxCols)
                     frames[row][col] = sheet.getSubimage(
@@ -203,12 +200,10 @@ public class Boss3 {
             shieldFormedFrames[i] = frames[ROW_SHIELD_FORMED][i];
         }
 
-
-
-            // Fallback to column 3
-            gravyImage = frames[ROW_GRAVY][4];
-
+        // Load gravy image from row 4, column 4
+        gravyImage = frames[ROW_GRAVY][4];
     }
+
     private float clampY(float candidateY) {
         if (candidateY < laneTopY) candidateY = laneTopY;
         if (candidateY > laneBotY) candidateY = laneBotY;
@@ -218,47 +213,50 @@ public class Boss3 {
     public void update(float jeepX, float jeepY, float jeepWidth, float jeepHeight) {
         updateBullets();
         updateGravy();
-        updateSlowEffect();
         updateStateMachine(jeepX, jeepY);
         updateAnimation();
     }
 
-    private void updateSlowEffect() {
-        if (slowed) {
-            slowTick++;
-            if (slowTick >= SLOW_DURATION) {
-                slowed = false;
-                slowTick = 0;
-                System.out.println("[Boss3 Red] Slow effect wore off");
-            }
+    private void updateStunState() {
+        currentRow = ROW_STUN;
+
+        aniTick++;
+        if (aniTick >= ANI_SPEED_STUN) {
+            aniTick = 0;
+            aniIndex = (aniIndex + 1) % FRAME_COUNTS[ROW_STUN];
+        }
+
+        stunTick++;
+
+        if (stunTick >= STUN_DURATION) {
+            stunned = false;
+            stunTick = 0;
+            state = stateAfterHit;
+            stateTick = 0;
+            aniIndex = 0;
+            currentRow = ROW_RUNNING;
+            System.out.println("[Boss3] Stun ended");
         }
     }
 
-    private BossFight.LevelThree.Blue.Boss3.BossState lastSkillUsed = BossFight.LevelThree.Blue.Boss3.BossState.FOLLOW;  // Track skill rotationws
     private void updateStateMachine(float jeepX, float jeepY) {
+        if (stunned) {
+            updateStunState();
+            return;
+        }
+
         stateTick++;
         x = lockedX;
 
         switch (state) {
-
             case FOLLOW:
                 currentRow = ROW_RUNNING;
                 wanderY();
                 if (stateTick >= FOLLOW_TICKS) {
-                    // Always shoot on first rotation, then vary
-                    if (lastSkillUsed != BossFight.LevelThree.Blue.Boss3.BossState.SHOOT) {
-                        enterShoot();
-                        lastSkillUsed = BossFight.LevelThree.Blue.Boss3.BossState.SHOOT;  // Track last skill
-                    } else {
-                        // After shooting, pick between shield or gravy
-                        if (rng.nextBoolean()) {
-                            enterShieldForming();
-                            lastSkillUsed = BossFight.LevelThree.Blue.Boss3.BossState.SHIELD_FORMING;
-                        } else {
-                            enterGravyDump();
-                            lastSkillUsed = BossFight.LevelThree.Blue.Boss3.BossState.GRAVY_DUMP;
-                        }
-                    }
+                    int choice = rng.nextInt(3);
+                    if (choice == 0) enterShoot();
+                    else if (choice == 1) enterShieldForming();
+                    else enterGravyDump();
                 }
                 break;
 
@@ -275,7 +273,6 @@ public class Boss3 {
                         y = clampY(shootTargetY - height / 2f);
                         shootFiring = true;
                         bulletTick = BULLET_DELAY;
-
                         comboShieldTriggered = false;
                         comboShieldCheckTick = 0;
                     }
@@ -302,12 +299,10 @@ public class Boss3 {
                         }
                     }
 
-                    // ← ADD THIS - Update shield animation during combo
                     if (isComboShieldForming) {
                         updateShieldFormSequence();
                     }
 
-                    // Update shield if active during shooting
                     if (shieldActive) {
                         shieldTick++;
                         if (shieldTick >= SHIELD_DURATION) {
@@ -361,6 +356,10 @@ public class Boss3 {
                     stateTick = 0;
                 }
                 break;
+
+            case STUN:
+                // Stun handled in updateStunState() called before switch
+                break;
         }
     }
 
@@ -393,7 +392,7 @@ public class Boss3 {
                 shieldActive = true;
                 shieldHitsRemaining = SHIELD_MAX_HITS;
                 shieldFormPhase = 3;
-                isComboShieldForming = false;  // ← ADD THIS
+                isComboShieldForming = false;
                 break;
 
             case 3:
@@ -401,57 +400,49 @@ public class Boss3 {
                 break;
         }
     }
+
     private void activateComboShield() {
         shieldHitsRemaining = SHIELD_MAX_HITS;
         shieldFormPhase = 0;
         shieldFormTick = 0;
         shieldAniIndex = 0;
         shieldTick = 0;
-        isComboShieldForming = true;  // ← ADD THIS
+        isComboShieldForming = true;
         System.out.println("[Boss3] Shield forming during SHOOT combo!");
     }
 
-    // Finalize shield after forming
-    private void finalizeShieldActivation() {
-        shieldActive = true;
-        shieldTick = 0;
-        System.out.println("[Boss3] Combo shield active with " + shieldHitsRemaining + " hits!");
-    }
-
-    // Deactivate shield
     private void deactivateShield() {
         shieldActive = false;
         shieldFormPhase = 0;
         shieldTick = 0;
         System.out.println("[Boss3] Shield deactivated (time expired)");
     }
+
     private void updateGravySequence() {
         gravyTick++;
 
         switch (gravyPhase) {
-            // ── Phase 0: startup (col 0) ────────────────────────
             case 0:
                 currentRow = ROW_GRAVY;
-                aniIndex = 0;  // ← First frame only
+                aniIndex = 0;
                 if (gravyTick >= S2_COL0_TICKS) {
                     gravyTick = 0;
                     gravyLoopTick = 0;
-                    gravyLoopIndex = 1;  // ← Start loop at col 1
+                    gravyLoopIndex = 1;
                     gravySpawnTick = 0;
                     gravyLaid = 0;
                     gravyPhase = 1;
                 }
                 break;
 
-            // ── Phase 1: loop cols 1-2, spawn gravy ─────────────
             case 1:
                 currentRow = ROW_GRAVY;
                 gravyLoopTick++;
                 if (gravyLoopTick >= S2_LOOP_SPEED) {
                     gravyLoopTick = 0;
-                    gravyLoopIndex = (gravyLoopIndex == 1) ? 2 : 1;  // ← Toggle 1 ↔ 2
+                    gravyLoopIndex = (gravyLoopIndex == 1) ? 2 : 1;
                 }
-                aniIndex = gravyLoopIndex;  // ← Will be 1 or 2, never 4
+                aniIndex = gravyLoopIndex;
 
                 gravySpawnTick++;
                 if (gravySpawnTick >= S2_GRAVY_DELAY && gravyLaid < MAX_GRAVY) {
@@ -465,26 +456,18 @@ public class Boss3 {
                 }
                 break;
 
-            // ── Phase 2: closing (col 3) ────────────────────────
-            // ── Phase 2: closing (col 3) ────────────────────────
             case 2:
                 currentRow = ROW_GRAVY;
                 aniIndex = 3;
                 if (gravyTick >= S2_COL3_TICKS) {
                     gravyTick = 0;
                     currentRow = ROW_RUNNING;
-
-                    // ── Reset animation counters ← ADD THESE ────────────
-                    aniIndex = 0;      // Start running animation from frame 0
-                    aniTick = 0;       // Reset animation timer
-
+                    aniIndex = 0;
+                    aniTick = 0;
                     gravyPhase = 3;
-
-                    System.out.println("[Boss3] Gravy phase 3: returning to running animation");
                 }
                 break;
 
-            // ── Phase 3: back to running ────────────────────────
             case 3:
                 currentRow = ROW_RUNNING;
                 break;
@@ -492,10 +475,8 @@ public class Boss3 {
     }
 
     private void followJeepY(float jeepCenterY) {
-        float baseLerp = FOLLOW_Y_DELAY;
-        float effectiveLerp = slowed ? baseLerp * SLOW_SPEED_MULT : baseLerp;
         float targetTopY = jeepCenterY - height / 2f;
-        y += (targetTopY - y) * effectiveLerp;
+        y += (targetTopY - y) * FOLLOW_Y_DELAY;
         y = clampY(y);
     }
 
@@ -508,10 +489,7 @@ public class Boss3 {
             wanderDir = (roll == 0) ? -1f : (roll == 1) ? 1f : 0f;
         }
 
-        float baseSpeed = WANDER_SPEED * Game.SCALE;
-        float effectiveSpeed = slowed ? baseSpeed * SLOW_SPEED_MULT : baseSpeed;
-
-        float nextY = y + wanderDir * effectiveSpeed;
+        float nextY = y + wanderDir * WANDER_SPEED * Game.SCALE;
         if (nextY < laneTopY) { nextY = laneTopY; wanderDir = 1f; }
         else if (nextY > laneBotY) { nextY = laneBotY; wanderDir = -1f; }
         y = nextY;
@@ -534,15 +512,12 @@ public class Boss3 {
         float gravyH = GravySauce.PILE_H * Game.SCALE;
         float gap = VERTICAL_GAP * Game.SCALE;
 
-        // Centre of the 3-gravy column = boss's current vertical centre
         float colCentreY = y + height / 2f;
-        // Offsets: gravy 0 is top, gravy 2 is bottom
-        float offsetY = (gravyIndex - 1) * (gravyH + gap);  // -1 → top, 0 → mid, +1 → bot
+        float offsetY = (gravyIndex - 1) * (gravyH + gap);
 
-        float px = x + width * 0.25f;  // slightly left of boss centre
+        float px = x + width * 0.25f;
         float py = colCentreY + offsetY - gravyH / 2f;
 
-        // Clamp so gravy never lands outside the road
         float gravyTop = laneTopY;
         float gravyBot = LANE_BOTTOM_PRE_SCALE * Game.TILES_SIZE - gravyH;
         if (py < gravyTop) py = gravyTop;
@@ -550,7 +525,6 @@ public class Boss3 {
 
         gravySauces.add(new GravySauce(px, py, gravyImage));
         gravyLaid++;
-        System.out.println("[Boss3 Green] 💧 Gravy " + (gravyIndex + 1) + " dumped!");
     }
 
     private void updateBullets() {
@@ -562,16 +536,9 @@ public class Boss3 {
     }
 
     private void updateAnimation() {
-        // Skip auto-animation for SHIELD_FORMING
-        if (state == BossState.SHIELD_FORMING) {
-            return;
-        }
-
-        // ── Skip GRAVY_DUMP only during phases 0-2 ← CHANGE THIS ──
-        if (state == BossState.GRAVY_DUMP && gravyPhase < 3) {
-            return;  // Manual control during gravy drop phases
-        }
-        // Once gravyPhase == 3, animation resumes normally
+        if (state == BossState.STUN) return;
+        if (state == BossState.SHIELD_FORMING) return;
+        if (state == BossState.GRAVY_DUMP && gravyPhase < 3) return;
 
         int speed;
         switch (currentRow) {
@@ -655,14 +622,8 @@ public class Boss3 {
         System.out.println("[Boss3 Red] 🏃 Back to FOLLOW state");
     }
 
-    private void applyComboSlow() {
-        slowed = true;
-        slowTick = 0;
-        System.out.println("[Boss3 Red] 🐌 COMBO: Slow effect activated during shooting!");
-    }
-
     public void triggerHit() {
-        if (state == BossState.HIT) return;
+        if (state == BossState.HIT || state == BossState.STUN) return;
 
         if (shieldActive) {
             shieldHitsRemaining--;
@@ -681,14 +642,16 @@ public class Boss3 {
         aniIndex = 0;
     }
 
-    public void applySlowEffect() {
-        slowed = true;
-        slowTick = 0;
-        System.out.println("[Boss3 Red] Slowed! Duration: 3 seconds.");
-    }
-
-    public boolean isSlowed() {
-        return slowed;
+    public void applyStun() {
+        if (state == BossState.STUN || stunned) return;
+        stateAfterHit = state;
+        state = BossState.STUN;
+        stunned = true;
+        stunTick = 0;
+        aniIndex = 0;
+        aniTick = 0;
+        currentRow = ROW_STUN;
+        System.out.println("[Boss3] ⚡ Stunned! Duration: 3 seconds.");
     }
 
     // ── RENDER ─────────────────────────────────────────────────
@@ -699,9 +662,8 @@ public class Boss3 {
         List<GravySauce.BossProjectile> bulletsCopy = new ArrayList<>(bullets);
         for (GravySauce.BossProjectile bullet : bulletsCopy) bullet.render(g);
 
-        // ── Draw shield (including combo shield) ─────────────────
+        // Draw shield
         if ((state == BossState.SHIELD_FORMING || isComboShieldForming) && shieldFormFrames != null) {
-            // Drawing forming shield (row 1)
             BufferedImage shieldFrame = shieldFormFrames[shieldAniIndex];
             if (shieldFrame != null) {
                 int shieldW = (int)(FRAME_W * Game.SCALE);
@@ -711,7 +673,6 @@ public class Boss3 {
                 g.drawImage(shieldFrame, shieldX, shieldY, shieldW, shieldH, null);
             }
         } else if (shieldActive && shieldFormedFrames != null) {
-            // Drawing formed shield (row 2) - static
             BufferedImage shieldFrame = shieldFormedFrames[0];
             if (shieldFrame != null) {
                 int shieldW = (int)(FRAME_W * Game.SCALE);
@@ -730,8 +691,6 @@ public class Boss3 {
             g.drawImage(frame, (int)x, (int)y, width, height, null);
     }
 
-    // ── Shield hit counter display ← NEW METHOD ─────────────────
-    // ── Shield hit counter display ← SIMPLIFIED ─────────────────
     private void drawShieldHitCounter(Graphics g, int shieldX, int shieldY,
                                       int shieldW, int shieldH) {
         if (shieldHitsRemaining <= 0) return;
@@ -740,21 +699,19 @@ public class Boss3 {
         g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
                 RenderingHints.VALUE_ANTIALIAS_ON);
 
-        // Calculate center position
         int centerX = shieldX + shieldW / 2;
         int centerY = shieldY + shieldH / 2;
 
         String hitText = String.valueOf(shieldHitsRemaining);
-        Font font = new Font("Arial", Font.BOLD, (int)(24 * Game.SCALE));  // ← Smaller
+        Font font = new Font("Arial", Font.BOLD, (int)(24 * Game.SCALE));
         g2d.setFont(font);
 
         FontMetrics fm = g2d.getFontMetrics();
         int textWidth = fm.stringWidth(hitText);
         int textHeight = fm.getAscent();
         int textX = centerX - textWidth / 2;
-        int textY = centerY + textHeight / 2 - (int)(15 * Game.SCALE);  // ← Moved up
+        int textY = centerY + textHeight / 2 - (int)(15 * Game.SCALE);
 
-        // Black outline (2 pixels)
         g2d.setColor(Color.BLACK);
         for (int dx = -2; dx <= 2; dx++) {
             for (int dy = -2; dy <= 2; dy++) {
@@ -764,10 +721,10 @@ public class Boss3 {
             }
         }
 
-        // White number
         g2d.setColor(Color.WHITE);
         g2d.drawString(hitText, textX, textY);
     }
+
     // ── GETTERS ────────────────────────────────────────────────
     private static final float HB_INSET_PERCENT = 0.6f;
     private static final int X_OFFSET = 0;

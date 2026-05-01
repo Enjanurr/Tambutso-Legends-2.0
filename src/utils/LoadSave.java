@@ -48,6 +48,8 @@ public class LoadSave {
     public static final String INTRO_FIREBALL   = "ui/logo/fireball.png";
     public static final String INTRO_EXPLOSION  = "ui/logo/explosion.png";
     public static final String INTRO_PRESS_KEY  = "ui/logo/presskey.png";
+    public static final String MISSION_MAP2_IMG = "ui/overlays/mission_map2.png";
+    public static final String MISSION_MAP3_IMG = "ui/overlays/mission_map3.png";
     public static final String PROGRESS_BAR     = "ui/hud/progress_bar.png";
     public static final String PROGRESS_BAR2    = "ui/hud/progress_bar2.png";  // Level 2: 20 stops
     public static final String PROGRESS_BAR3    = "ui/hud/progress_bar3.png";  // Level 3: 25 stops

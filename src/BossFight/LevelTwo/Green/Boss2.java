@@ -29,7 +29,7 @@ public class Boss2 {
     public static final int ROW_HIT     = 2;
 
     // ── Frame counts per row ──────────────────────────────────
-    private static final int[] FRAME_COUNTS = { 5, 5, 4, 2 };
+    private static final int[] FRAME_COUNTS = { 5, 5, 2 };
 
     // -------------------------------------------------------
     // BOSS SETTINGS  ← ADJUST

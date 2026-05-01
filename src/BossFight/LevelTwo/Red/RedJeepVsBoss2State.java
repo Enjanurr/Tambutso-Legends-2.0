@@ -236,9 +236,9 @@ public class RedJeepVsBoss2State extends State implements StateMethods {
      */
     private void onNextLevel() {
         game.getPlaying().setBossFightActive(false);
-        player.setBossMode(false);  // Reset boss mode before returning to normal gameplay
-        game.advanceToNextLevel();
+        player.setBossMode(false);
         game.getPlaying().advanceToNextLevel();
+        game.getPlaying().showMissionForCurrentLevel();
         GameStates.state = GameStates.PLAYING;
     }
 
@@ -394,12 +394,13 @@ public class RedJeepVsBoss2State extends State implements StateMethods {
             }
         }
         // Check slow ball collision with boss
+        // Check slow ball collision with boss
         Rectangle bossHB = boss.getHitbox();
         for (SlowBallProjectile ball : slowBalls) {
             if (ball.isActive() && ball.getHitbox().intersects(bossHB)) {
                 ball.setActive(false);
-                boss.applySlowEffect();
-                System.out.println("[RedJeep] Slow ball hit boss! Slow effect applied.");
+                boss.applyStun();  // ← THIS IS WHERE applyStun() IS CALLED
+                System.out.println("[RedJeep] Slow ball hit boss! Stun effect applied.");
             }
         }
         // Player bullets → boss

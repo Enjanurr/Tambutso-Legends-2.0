@@ -259,9 +259,18 @@ public class Game implements Runnable {
      */
     public void startBossFightWithLevel(int levelIndex) {
         if (selectedDriver == null) {
-            System.err.println("❌ [Game] Cannot start boss fight - no driver selected!");
-            GameStates.state = GameStates.MENU;
-            return;
+            // Attempt to recover driver from Playing
+            DriverProfile playingDriver = playing.getCurrentDriver();
+            if (playingDriver != null) {
+                System.out.println("[Game] Recovered driver from Playing: " + playingDriver.displayName);
+                selectedDriver = playingDriver;
+            } else {
+                System.err.println("❌ [Game] Cannot start boss fight - no driver selected!");
+                System.err.println("   Current state: " + GameStates.state);
+                System.err.println("   Has active game: " + hasActiveGame);
+                GameStates.state = GameStates.MENU;
+                return;
+            }
         }
         System.out.println("════════════════════════════════════════");
         System.out.println("BEFORE: GameStates.state = " + GameStates.state);
