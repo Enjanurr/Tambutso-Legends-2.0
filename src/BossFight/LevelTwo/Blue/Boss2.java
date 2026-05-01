@@ -29,7 +29,7 @@ public class Boss2 {
     public static final int ROW_HIT     = 2;
 
     // ── Frame counts per row ──────────────────────────────────
-    private static final int[] FRAME_COUNTS = { 5, 5, 4, 2 };
+    private static final int[] FRAME_COUNTS = { 5, 5, 2};
 
     // -------------------------------------------------------
     // BOSS SETTINGS  ← ADJUST
@@ -51,7 +51,7 @@ public class Boss2 {
     private static final int SKILL1_TICKS   = 10 * 200; // 4 s window for firing
     private static final int WAIT_TICKS     = 2 * 200; // 2 s wait between phases
     private static final int SKILL2_TICKS   = 6 * 200; // 6 s window for piles
-    private static final int HIT_ANIM_TICKS = 90;  // hit animation duration
+    private static final int HIT_ANIM_TICKS = 30;  // hit animation duration
 
     private static final int BULLET_DELAY  = 200; // 1 s between bullets
     private static final int MAX_BULLETS   = 10;        // bullets per Skill 1 phase
@@ -326,11 +326,13 @@ public class Boss2 {
 
             case HIT:
                 currentRow = ROW_HIT;
+                updateAnimation();  // Make sure animation updates
                 hitTick++;
                 if (hitTick >= HIT_ANIM_TICKS) {
-                    hitTick   = 0;
-                    state     = stateAfterHit;
+                    hitTick = 0;
+                    state = stateAfterHit;
                     stateTick = 0;
+                    aniIndex = 0;  // Reset animation index
                 }
                 break;
         }
@@ -467,10 +469,11 @@ public class Boss2 {
     public void triggerHit() {
         if (state == BossState.HIT) return;
         stateAfterHit = state;
-        state         = BossState.HIT;
-        hitTick       = 0;
-        stateTick     = 0;
-        aniIndex      = 0;
+        state = BossState.HIT;
+        hitTick = 0;
+        stateTick = 0;
+        aniIndex = 0;  // Start hit animation from first frame
+        aniTick = 0;   // Reset animation tick
     }
 
     // ─────────────────────────────────────────────────────────
@@ -557,10 +560,15 @@ public class Boss2 {
     private void updateAnimation() {
         if (state == BossState.SKILL2 && currentRow == ROW_SKILL2) return;
 
+        // ── Don't loop hit animation ← ADD THIS ─────────────────
+        if (state == BossState.HIT && aniIndex >= FRAME_COUNTS[ROW_HIT] - 1) {
+            return;  // Hold on last frame, don't loop
+        }
+
         int speed;
         switch (currentRow) {
-                    case ROW_SKILL1: speed = ANI_SPEED_SKILL1;  break;
-            case ROW_HIT:    speed = ANI_SPEED_HIT;     break;
+            case ROW_SKILL1: speed = ANI_SPEED_SKILL1; break;
+            case ROW_HIT:    speed = ANI_SPEED_HIT; break;
             default:         speed = ANI_SPEED_RUNNING; break;
         }
 

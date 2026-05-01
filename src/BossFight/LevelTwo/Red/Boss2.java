@@ -15,7 +15,7 @@ public class Boss2 {
     public static final int SHEET_COLS = 5;
     public static final int FRAME_W    = 110;  // 550 / 5
     public static final int FRAME_H    = 79;   // 316 / 4
-    public static final int ROWS       = 3;
+    public static final int ROWS       = 4;
 
     public static final int FRAME_W_SKILL1   = 36;  // 550 / 5
     public static final int FRAME_H_SKILL1    = 34;   // 316 / 4
@@ -27,9 +27,9 @@ public class Boss2 {
     public static final int ROW_RUNNING = 1;
     public static final int ROW_SKILL2  = 0;
     public static final int ROW_HIT     = 2;
-
+    public static final int ROW_STUN    = 3;
     // ── Frame counts per row ──────────────────────────────────
-    private static final int[] FRAME_COUNTS = { 5, 5, 4, 2 };
+    private static final int[] FRAME_COUNTS = { 5, 5, 2, 4};
 
     // -------------------------------------------------------
     // BOSS SETTINGS  ← ADJUST
@@ -62,6 +62,7 @@ public class Boss2 {
     public static final int ANI_SPEED_RUNNING  = 20;
     public static final int ANI_SPEED_SKILL1   = 10;
     public static final int ANI_SPEED_HIT      = 20;
+    public static final int ANI_SPEED_STUN = 15;
     // -------------------------------------------------------
 
     // Skill 2 animation phase durations (ticks) ← ADJUST ─────
@@ -103,7 +104,7 @@ public class Boss2 {
     private int aniIndex   = 0;
 
     // ── State machine ─────────────────────────────────────────
-    public enum BossState { FOLLOW, SKILL1, WAIT_AFTER1, SKILL2, WAIT_AFTER2, RANDOM, HIT }
+    public enum BossState { FOLLOW, SKILL1, WAIT_AFTER1, SKILL2, WAIT_AFTER2, RANDOM, HIT,STUN  }
     private BossState state         = BossState.FOLLOW;
     private BossState stateAfterHit = BossState.FOLLOW;
     private int       stateTick     = 0;
@@ -251,25 +252,25 @@ public class Boss2 {
     }
 
     private void updateStunState() {
+        currentRow = ROW_STUN;
 
-        currentRow = ROW_HIT;   // reuse hit animation (visual feedback)
+        // Update stun animation
+        aniTick++;
+        if (aniTick >= ANI_SPEED_STUN) {
+            aniTick = 0;
+            aniIndex = (aniIndex + 1) % FRAME_COUNTS[ROW_STUN];
+        }
 
         stunTick++;
-
-        // ❄️ During stun: freeze movement + suppress attacks
-        // (IMPORTANT: do NOT call wanderY or followJeepY)
 
         if (stunTick >= STUN_DURATION) {
             stunned = false;
             stunTick = 0;
-        }
-
-        // still allow hit animation exit logic if needed
-        hitTick++;
-        if (hitTick >= HIT_ANIM_TICKS) {
-            hitTick = 0;
             state = stateAfterHit;
             stateTick = 0;
+            aniIndex = 0;
+            currentRow = ROW_RUNNING;
+            System.out.println("[Boss2] Stun ended");
         }
     }
 
@@ -312,10 +313,23 @@ public class Boss2 {
         return slowed;
     }
     public void applyStun() {
+        if (state == BossState.STUN || stunned) return;
+        stateAfterHit = state;
+        state = BossState.STUN;
         stunned = true;
         stunTick = 0;
+        aniIndex = 0;
+        aniTick = 0;
+        currentRow = ROW_STUN;
+        System.out.println("[Boss2] ⚡ Stunned! Duration: 3 seconds.");
     }
     private void updateStateMachine(float jeepX, float jeepY) {
+        if (stunned) {
+            updateStunState();
+            return;
+        }
+
+
         stateTick++;
         x = lockedX;
 
@@ -403,6 +417,9 @@ public class Boss2 {
                     state     = stateAfterHit;
                     stateTick = 0;
                 }
+                break;
+            case STUN:
+                // Stun handled in updateStunState()
                 break;
         }
     }
@@ -548,12 +565,12 @@ public class Boss2 {
     }
 
     public void triggerHit() {
-        if (state == BossState.HIT) return;
+        if (state == BossState.HIT || state == BossState.STUN) return;
         stateAfterHit = state;
-        state         = BossState.HIT;
-        hitTick       = 0;
-        stateTick     = 0;
-        aniIndex      = 0;
+        state = BossState.HIT;
+        hitTick = 0;
+        stateTick = 0;
+        aniIndex = 0;
     }
 
     // ─────────────────────────────────────────────────────────
@@ -665,12 +682,14 @@ public class Boss2 {
 
     // ── Animation ─────────────────────────────────────────────
     private void updateAnimation() {
-        if (state == BossFight.LevelTwo.Red.Boss2.BossState.SKILL2 && currentRow == ROW_SKILL2) return;
+        if (state == BossState.SKILL2 && currentRow == ROW_SKILL2) return;
+        // Skip animation update during stun (handled by updateStunState)
+        if (state == BossState.STUN) return;
 
         int speed;
         switch (currentRow) {
-            case ROW_SKILL1: speed = ANI_SPEED_SKILL1;  break;
-            case ROW_HIT:    speed = ANI_SPEED_HIT;     break;
+            case ROW_SKILL1: speed = ANI_SPEED_SKILL1; break;
+            case ROW_HIT:    speed = ANI_SPEED_HIT; break;
             default:         speed = ANI_SPEED_RUNNING; break;
         }
 
@@ -686,19 +705,20 @@ public class Boss2 {
     // RENDER
     // ─────────────────────────────────────────────────────────
     public void render(Graphics g) {
-        // Use copies to avoid ConcurrentModificationException
         List<NukeProjectile.Nuke> nukesCopy = new ArrayList<>(nukes);
         for (NukeProjectile.Nuke n : nukesCopy) n.render(g);
 
-        int safeIndex = Math.min(aniIndex, FRAME_COUNTS[currentRow] - 1);
-        BufferedImage frame = frames[currentRow][safeIndex];
+        int safeRow = Math.min(currentRow, ROWS - 1);
+        int safeIndex = Math.min(aniIndex, FRAME_COUNTS[safeRow] - 1);
+        if (safeIndex < 0) safeIndex = 0;
+
+        BufferedImage frame = frames[safeRow][safeIndex];
         if (frame != null)
             g.drawImage(frame, (int) x, (int) y, width, height, null);
 
         List<NukeProjectile.BossProjectile> bulletsCopy = new ArrayList<>(bullets);
         for (NukeProjectile.BossProjectile b : bulletsCopy) b.render(g);
     }
-
     private static final float HB_INSET_PERCENT = 0.6f;
     private static final int X_OFFSET = 0;
     private static final int Y_OFFSET = 20;
