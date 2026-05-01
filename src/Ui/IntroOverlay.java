@@ -24,8 +24,7 @@ import static utils.Constants.UI.URMButtons.*;
 public class IntroOverlay {
 
     // ── Screens ───────────────────────────────────────────────
-    private static final int TOTAL_STEPS = 2;
-    private final BufferedImage[] screens = new BufferedImage[TOTAL_STEPS];
+    private final BufferedImage[] screens = new BufferedImage[2];
     private int currentStep = 0;
 
     // ── Image layout ──────────────────────────────────────────
@@ -147,9 +146,11 @@ public class IntroOverlay {
                 // In IntroOverlay.java, in update() where fadeState == FADE_OUT completes:
                 if (fadeAlpha <= 0f) {
                     currentStep++;
-                    if (currentStep >= TOTAL_STEPS) {
+                    if (currentStep >= screens.length) {
                         // All screens shown — close and notify Playing
                         open = false;
+                        fadeState = FadeState.FADE_IN;
+                        nextBtn.resetBools();
 
                         if (onComplete != null) onComplete.run();
                     } else {
@@ -172,7 +173,14 @@ public class IntroOverlay {
         if (!open) return;
 
         // Guard: step out of range means we're in the closing tick
-        if (currentStep < 0 || currentStep >= TOTAL_STEPS) return;
+        int step = currentStep;
+        if (step < 0 || step >= screens.length) {
+            System.err.println("[IntroOverlay] Invalid step index during render: " + step);
+            open = false;
+            fadeState = FadeState.FADE_IN;
+            nextBtn.resetBools();
+            return;
+        }
 
         Graphics2D g2d = (Graphics2D) g;
 
@@ -183,10 +191,11 @@ public class IntroOverlay {
         g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1f));
 
         // 2 — tutorial / mission image
-        if (screens[currentStep] != null) {
+        BufferedImage screen = screens[step];
+        if (screen != null) {
             float imgAlpha = Math.min(fadeAlpha / MAX_OVERLAY, 1f);
             g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, imgAlpha));
-            g2d.drawImage(screens[currentStep], imgX, imgY, imgW, imgH, null);
+            g2d.drawImage(screen, imgX, imgY, imgW, imgH, null);
             g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1f));
         }
 

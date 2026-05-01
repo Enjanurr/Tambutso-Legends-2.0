@@ -13,6 +13,7 @@ import gameStates.State;
 import gameStates.StateMethods;
 import main.Game;
 import utils.LoadSave;
+import utils.ScrollingCloudLayer;
 
 import java.awt.*;
 import java.awt.event.KeyEvent;
@@ -75,8 +76,8 @@ public class BlueJeepVsBoss2State extends State implements StateMethods {
 
     // ── Background ───────────────────────────────────────────
     private BufferedImage backgroundImg, bigClouds, smallClouds;
-    private float bigCloudOffset   = 0f;
-    private float smallCloudOffset = 0f;
+    private ScrollingCloudLayer bigCloudLayer;
+    private ScrollingCloudLayer smallCloudLayer;
     private static final float BIG_CLOUD_PARALLAX   = 0.3f;
     private static final float SMALL_CLOUD_PARALLAX = 0.5f;
 
@@ -153,6 +154,7 @@ public class BlueJeepVsBoss2State extends State implements StateMethods {
         backgroundImg = LoadSave.getSpriteAtlas(LoadSave.PLAYING_BACKGROUND_IMG);
         bigClouds     = LoadSave.getSpriteAtlas(LoadSave.BIG_CLOUDS);
         smallClouds   = LoadSave.getSpriteAtlas(LoadSave.SMALL_CLOUDS);
+        initCloudLayers();
 
         // ✨ Add leading slash if missing
         if (!atlasPath.startsWith("/")) {
@@ -300,10 +302,8 @@ public class BlueJeepVsBoss2State extends State implements StateMethods {
         worldOffset += SCROLL_SPEED * Game.SCALE;
         if (worldOffset >= levelPixelWidth) worldOffset -= levelPixelWidth;
 
-        bigCloudOffset += SCROLL_SPEED * BIG_CLOUD_PARALLAX;
-        if (bigCloudOffset >= BIG_CLOUD_WIDTH) bigCloudOffset -= BIG_CLOUD_WIDTH;
-        smallCloudOffset += SCROLL_SPEED * SMALL_CLOUD_PARALLAX;
-        if (smallCloudOffset >= SMALL_CLOUD_WIDTH) smallCloudOffset -= SMALL_CLOUD_WIDTH;
+        bigCloudLayer.update(SCROLL_SPEED * Game.SCALE);
+        smallCloudLayer.update(SCROLL_SPEED * Game.SCALE);
 
         // ── Player clamping ───────────────────────────────────
         float leftLimit = 20 * Game.SCALE;
@@ -517,18 +517,8 @@ public class BlueJeepVsBoss2State extends State implements StateMethods {
     }
 
     private void drawClouds(Graphics g) {
-        int bigTilesNeeded = (Game.GAME_WIDTH / BIG_CLOUD_WIDTH) + 2;
-        for (int i = 0; i < bigTilesNeeded; i++) {
-            int dx = (int)(i * BIG_CLOUD_WIDTH - bigCloudOffset);
-            g.drawImage(bigClouds, dx, (int)(40 * Game.SCALE),
-                    BIG_CLOUD_WIDTH, BIG_CLOUD_HEIGHT, null);
-        }
-        int smallTilesNeeded = (Game.GAME_WIDTH / SMALL_CLOUD_WIDTH) + 2;
-        for (int i = 0; i < smallTilesNeeded; i++) {
-            int dx = (int)(i * SMALL_CLOUD_WIDTH - smallCloudOffset);
-            g.drawImage(smallClouds, dx, (int)(60 * Game.SCALE),
-                    SMALL_CLOUD_WIDTH, SMALL_CLOUD_HEIGHT, null);
-        }
+        bigCloudLayer.draw(g);
+        smallCloudLayer.draw(g);
     }
 
     // ─────────────────────────────────────────────────────────
@@ -636,9 +626,8 @@ public class BlueJeepVsBoss2State extends State implements StateMethods {
         canShoot         = true;
         playerBullets.clear();
 
-        worldOffset      = 0;
-        bigCloudOffset   = 0;
-        smallCloudOffset = 0;
+        worldOffset = 0;
+        initCloudLayers();
 
         walkerManager.resetAll();   // NEW from first version
         resetDeathOverlay();
@@ -652,6 +641,16 @@ public class BlueJeepVsBoss2State extends State implements StateMethods {
         if (game.getSelectedDriver() != null) {
             applyDriverAssets(game.getSelectedDriver());
         }}
+    private void initCloudLayers() {
+        int bigCloudCount = (Game.GAME_WIDTH / BIG_CLOUD_WIDTH) + 3;
+        int smallCloudCount = (Game.GAME_WIDTH / SMALL_CLOUD_WIDTH) + 3;
+        bigCloudLayer = new ScrollingCloudLayer(
+                bigClouds, BIG_CLOUD_WIDTH, BIG_CLOUD_HEIGHT,
+                BIG_CLOUD_PARALLAX, bigCloudCount, (int)(40 * Game.SCALE));
+        smallCloudLayer = new ScrollingCloudLayer(
+                smallClouds, SMALL_CLOUD_WIDTH, SMALL_CLOUD_HEIGHT,
+                SMALL_CLOUD_PARALLAX, smallCloudCount, (int)(60 * Game.SCALE));
+    }
     public boolean isPaused() { return paused; }
 
     public Player getPlayer() { return player; }

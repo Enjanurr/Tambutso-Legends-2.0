@@ -20,6 +20,7 @@ import levels.LevelManager;
 import main.Game;
 import utils.RouteMap;
 import utils.LoadSave;
+import utils.ScrollingCloudLayer;
 
 import java.awt.*;
 import java.awt.event.KeyEvent;
@@ -120,8 +121,6 @@ public class Playing extends State implements StateMethods {
     private boolean dKeyHeld       = false;
     private int     passengersDroppedCount = 0;
 
-    private float bigCloudOffset   = 0f;
-    private float smallCloudOffset = 0f;
     private static final float BIG_CLOUD_PARALLAX   = 0.3f;
     private static final float SMALL_CLOUD_PARALLAX = 0.5f;
 
@@ -130,6 +129,8 @@ public class Playing extends State implements StateMethods {
 
     private BufferedImage backgroundImg, bigClouds, smallClouds;
     private int[] smallCloudsPos;
+    private ScrollingCloudLayer bigCloudLayer;
+    private ScrollingCloudLayer smallCloudLayer;
     private final Random rnd = new Random();
     private WorldObjectManager worldObjectManager;
 
@@ -235,8 +236,8 @@ public class Playing extends State implements StateMethods {
         smallClouds   = LoadSave.getSpriteAtlas(LoadSave.SMALL_CLOUDS);
 
         smallCloudsPos = new int[8];
-        for (int i = 0; i < smallCloudsPos.length; i++)
-            smallCloudsPos[i] = (int)(20 * Game.SCALE) + rnd.nextInt((int)(100 * Game.SCALE));
+        randomizeSmallCloudRows();
+        initCloudLayers();
     }
 
     // ─────────────────────────────────────────────────────────
@@ -405,11 +406,8 @@ public class Playing extends State implements StateMethods {
         paymentPaused    = false;
         paymentOverlay.close();
 
-        bigCloudOffset   = 0f;
-        smallCloudOffset = 0f;
-
-        for (int i = 0; i < smallCloudsPos.length; i++)
-            smallCloudsPos[i] = (int)(20 * Game.SCALE) + rnd.nextInt((int)(100 * Game.SCALE));
+        randomizeSmallCloudRows();
+        initCloudLayers();
 
         int jeepHitboxW = (int)(70 * Game.SCALE);
         player.getHitBox().x = (float)(Game.GAME_WIDTH - jeepHitboxW) / 2;
@@ -525,10 +523,8 @@ public class Playing extends State implements StateMethods {
                         }
                     }
 
-                    bigCloudOffset += spd * BIG_CLOUD_PARALLAX;
-                    if (bigCloudOffset >= BIG_CLOUD_WIDTH)     bigCloudOffset -= BIG_CLOUD_WIDTH;
-                    smallCloudOffset += spd * SMALL_CLOUD_PARALLAX;
-                    if (smallCloudOffset >= SMALL_CLOUD_WIDTH) smallCloudOffset -= SMALL_CLOUD_WIDTH;
+                    bigCloudLayer.update(spd);
+                    smallCloudLayer.update(spd);
                 }
             }
 
@@ -605,22 +601,24 @@ public class Playing extends State implements StateMethods {
     }
 
     private void drawClouds(Graphics g) {
-        int bigTilesNeeded = (Game.GAME_WIDTH / BIG_CLOUD_WIDTH) + 2;
-        for (int i = 0; i < bigTilesNeeded; i++) {
-            int drawX = (int)(i * BIG_CLOUD_WIDTH - bigCloudOffset);
-            g.drawImage(bigClouds, drawX, (int)(40 * Game.SCALE), BIG_CLOUD_WIDTH, BIG_CLOUD_HEIGHT, null);
-        }
-        int smallTilesNeeded = (Game.GAME_WIDTH / SMALL_CLOUD_WIDTH) + 2;
-        for (int i = 0; i < smallCloudsPos.length; i++) {
-            int drawX = (int)(i * SMALL_CLOUD_WIDTH - smallCloudOffset);
-            g.drawImage(smallClouds, drawX, smallCloudsPos[i % smallCloudsPos.length],
-                    SMALL_CLOUD_WIDTH, SMALL_CLOUD_HEIGHT, null);
-        }
-        for (int i = 0; i < smallTilesNeeded - smallCloudsPos.length; i++) {
-            int drawX = (int)((smallCloudsPos.length + i) * SMALL_CLOUD_WIDTH - smallCloudOffset);
-            g.drawImage(smallClouds, drawX, smallCloudsPos[i % smallCloudsPos.length],
-                    SMALL_CLOUD_WIDTH, SMALL_CLOUD_HEIGHT, null);
-        }
+        bigCloudLayer.draw(g);
+        smallCloudLayer.draw(g);
+    }
+
+    private void initCloudLayers() {
+        int bigCloudCount = (Game.GAME_WIDTH / BIG_CLOUD_WIDTH) + 3;
+        int smallCloudCount = (Game.GAME_WIDTH / SMALL_CLOUD_WIDTH) + 3;
+        bigCloudLayer = new ScrollingCloudLayer(
+                bigClouds, BIG_CLOUD_WIDTH, BIG_CLOUD_HEIGHT,
+                BIG_CLOUD_PARALLAX, bigCloudCount, (int)(40 * Game.SCALE));
+        smallCloudLayer = new ScrollingCloudLayer(
+                smallClouds, SMALL_CLOUD_WIDTH, SMALL_CLOUD_HEIGHT,
+                SMALL_CLOUD_PARALLAX, smallCloudCount, smallCloudsPos);
+    }
+
+    private void randomizeSmallCloudRows() {
+        for (int i = 0; i < smallCloudsPos.length; i++)
+            smallCloudsPos[i] = (int)(20 * Game.SCALE) + rnd.nextInt((int)(100 * Game.SCALE));
     }
 
     // ─────────────────────────────────────────────────────────
