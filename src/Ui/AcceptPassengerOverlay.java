@@ -29,8 +29,8 @@ import java.util.List;
  *
  * Input blocking (Part 2):
  *   mousePressed / mouseReleased only act on YES and NO.
- *   Playing.mousePressed() already routes to this overlay exclusively when
- *   interactionPaused == true, so outside clicks never reach here.
+ *   Playing.activeOverlay() returns ACCEPT whenever acceptPassengerOverlay.isOpen()
+ *   is true, so all input is routed exclusively to this overlay while it is open.
  *   ESC closes the overlay (acts like NO) — handled in Playing.keyPressed().
  */
 public class AcceptPassengerOverlay {
@@ -102,8 +102,6 @@ public class AcceptPassengerOverlay {
 
     private boolean open         = false;
     private Person  activePerson = null;
-    private int     ignoreInputTimer = 0;
-    private int     openingTimestamp = 0;  // Frame counter when opened
 
     /**
      * The real stop and fare generated at open() time.
@@ -200,8 +198,6 @@ public class AcceptPassengerOverlay {
 
         activePerson = person;
         open = true;
-        ignoreInputTimer = 30;  // Ignore mouse for ~30 frames (150ms at 200 UPS)
-        openingTimestamp = 30;  // Mark as recently opened (same duration as ignoreInputTimer)
 
         // Pre-wrap the stop name for rendering
         wrapStopName();
@@ -283,16 +279,10 @@ public class AcceptPassengerOverlay {
      */
     public void close() {
         System.out.println("[AcceptOverlay] close() called - open was " + open);
-        open             = false;
-        activePerson     = null;
-        generatedStop    = -1;
-        generatedFare    =  0;
-        ignoreInputTimer = 0;   // Clear input lock so next open() starts clean
-        // NOTE: openingTimestamp is intentionally NOT zeroed here.
-        // It ticks down naturally in update(), keeping isRecentlyOpened() == true
-        // for the remainder of the 30-frame grace period even after close() is called.
-        // This prevents the force-reset in Playing.update() from firing before the
-        // AWT event queue has fully drained, which would cause the ghost-overlay bug.
+        open          = false;
+        activePerson  = null;
+        generatedStop = -1;
+        generatedFare =  0;
         wrappedStopNameLines.clear();
         resetBools();
         System.out.println("[AcceptOverlay] close() completed - open=" + open);
@@ -312,28 +302,9 @@ public class AcceptPassengerOverlay {
     // UPDATE
     // ─────────────────────────────────────────────────────────
     public void update() {
-        // Always tick timers — even when closed — so they never freeze mid-countdown.
-        if (ignoreInputTimer > 0) ignoreInputTimer--;
-        if (openingTimestamp > 0) openingTimestamp--;
         if (!open) return;
         yesButton.update();
         noButton.update();
-    }
-
-    /**
-     * Returns true if overlay was opened within the last 30 frames.
-     * Used by Playing to prevent premature force-reset of interactionPaused.
-     */
-    public boolean isRecentlyOpened() {
-        return openingTimestamp > 0;
-    }
-
-    /**
-     * Returns number of frames since overlay was opened.
-     * 0 = just opened, 30+ = safe to force reset if closed.
-     */
-    public int getFramesSinceOpen() {
-        return openingTimestamp > 0 ? (30 - openingTimestamp) : 999;
     }
 
     // ─────────────────────────────────────────────────────────
@@ -420,10 +391,7 @@ public class AcceptPassengerOverlay {
     // INPUT — only YES and NO are wired; all other clicks are silently swallowed
     // ─────────────────────────────────────────────────────────
     public void mousePressed(MouseEvent e) {
-        if (!open || ignoreInputTimer > 0) {
-            if (ignoreInputTimer > 0) System.out.println("[AcceptOverlay] mousePressed - ignoring during input lock");
-            return;
-        }
+        if (!open) return;
         System.out.println("[AcceptOverlay] mousePressed at (" + e.getX() + ", " + e.getY() + ")");
         System.out.println("[AcceptOverlay] yesButton bounds: " + yesButton.getBounds());
         System.out.println("[AcceptOverlay] noButton bounds: " + noButton.getBounds());
@@ -440,7 +408,7 @@ public class AcceptPassengerOverlay {
     }
 
     public void mouseReleased(MouseEvent e) {
-        if (!open || ignoreInputTimer > 0) return;
+        if (!open) return;
 
         if (isIn(e, yesButton) && yesButton.isMousePressed()) {
             handleYes();
@@ -493,14 +461,12 @@ public class AcceptPassengerOverlay {
 
         System.out.println("[AcceptOverlay] handleYes() - closing overlay");
         close();
-        playing.resumeFromInteraction();
         System.out.println("[AcceptOverlay] handleYes() COMPLETED - open=" + open);
     }
 
     private void handleNo() {
         System.out.println("[AcceptOverlay] handleNo() called - closing");
         close();
-        playing.resumeFromInteraction();
         System.out.println("[AcceptOverlay] handleNo() COMPLETED - open=" + open);
     }
 

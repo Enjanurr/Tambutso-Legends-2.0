@@ -184,6 +184,21 @@ public class SkipOverlay {
 
     private void skipToBoss() {
         System.out.println("[SkipOverlay] Skipping to boss");
+
+        // Check if driver is selected before proceeding
+        if (game.getSelectedDriver() == null) {
+            System.err.println("[SkipOverlay] Cannot start boss fight - no driver selected!");
+            // Try to recover from Playing
+            var playingDriver = game.getPlaying().getCurrentDriver();
+            if (playingDriver != null) {
+                System.out.println("[SkipOverlay] Recovered driver: " + playingDriver.displayName);
+            } else {
+                System.err.println("[SkipOverlay] No driver to recover - must complete character selection first");
+                hide();
+                return;
+            }
+        }
+
         int currentLevel = game.getPlaying().getLevelManager().getCurrentLevelId();
         game.startBossFightWithLevel(currentLevel);
         hide();
@@ -192,34 +207,70 @@ public class SkipOverlay {
     private void skipToNextLevel() {
         System.out.println("[SkipOverlay] Skipping to next level");
 
-        // Advance to next level
+        int currentLevel = game.getPlaying().getLevelManager().getCurrentLevelId();
+
+        if (currentLevel >= 3) {
+            System.out.println("[SkipOverlay] Already at max level!");
+            hide();
+            return;
+        }
+
+        // Advance level in Playing's LevelManager
         game.getPlaying().getLevelManager().advanceToNextLevel();
 
         // Get the new level ID after advancement
         int newLevelId = game.getPlaying().getLevelManager().getCurrentLevelId();
 
-        // CRITICAL FIX: Create new ProgressBar instance for the new level
+        // Create new ProgressBar instance for the new level
         ProgressBar newProgressBar = new ProgressBar(newLevelId);
-        newProgressBar.setProgress(0);  // Start at 0 for new level
+        newProgressBar.setProgress(0);
 
         // Replace the old progress bar with the new one
         game.getPlaying().setProgressBar(newProgressBar);
 
-        System.out.println("[SkipOverlay] Created new progress bar for Level " + newLevelId);
+        System.out.println("[SkipOverlay] Advanced to Level " + newLevelId);
 
-        // Reset game state
-        game.resetGameState();
-        game.getPlaying().getGameClock().start();
-        GameStates.state = GameStates.PLAYING;
+        // DO NOT call game.resetGameState() - that clears selectedDriver!
+        // Just show the mission screen for the new level
+        game.getPlaying().showMissionForCurrentLevel();
         hide();
     }
 
     private void skipToNextBoss() {
-        System.out.println("[SkipOverlay] Skipping to next boss");
-        int nextLevel = game.getPlaying().getLevelManager().getCurrentLevelId() + 1;
+        int currentLevel = game.getPlaying().getLevelManager().getCurrentLevelId();
+        int nextLevel = currentLevel + 1;
+
+        System.out.println("[SkipOverlay] Skipping to next boss - Level " + currentLevel + " -> " + nextLevel);
+
+        // Ensure driver is set
+        if (game.getSelectedDriver() == null) {
+            var playingDriver = game.getPlaying().getCurrentDriver();
+            if (playingDriver != null) {
+                game.setSelectedDriver(playingDriver);
+                System.out.println("[SkipOverlay] Restored driver: " + playingDriver.displayName);
+            } else {
+                System.err.println("[SkipOverlay] ERROR: No driver available!");
+                hide();
+                return;
+            }
+        }
+
         if (nextLevel <= 3) {
+            // FIRST: Advance Playing's level manager
+            game.getPlaying().getLevelManager().advanceToNextLevel();
+
+            // SECOND: Create new progress bar for the new level
+            ProgressBar newProgressBar = new ProgressBar(nextLevel);
+            newProgressBar.setProgress(0);
+            game.getPlaying().setProgressBar(newProgressBar);
+
+            // THIRD: Update Game's boss level
             game.setCurrentGameLevel(nextLevel);
+
+            // FOURTH: Start boss fight
             game.startBossFightWithLevel(nextLevel);
+        } else {
+            System.out.println("[SkipOverlay] Already at max level (3), cannot skip further");
         }
         hide();
     }

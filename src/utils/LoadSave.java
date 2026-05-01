@@ -44,6 +44,8 @@ public class LoadSave {
     public static final String DEATH_SCREEN     = "ui/overlays/death_screen.png";
     public static final String TUTORIAL_IMG     = "ui/overlays/tutorial.png";
     public static final String MISSION_MAP1_IMG = "ui/overlays/mission_map1.png";
+    public static final String MISSION_MAP2_IMG = "ui/overlays/mission_map2.png";
+    public static final String MISSION_MAP3_IMG = "ui/overlays/mission_map3.png";
     public static final String PROGRESS_BAR     = "ui/hud/progress_bar.png";
     public static final String PROGRESS_BAR2    = "ui/hud/progress_bar2.png";  // Level 2: 20 stops
     public static final String PROGRESS_BAR3    = "ui/hud/progress_bar3.png";  // Level 3: 25 stops

@@ -33,14 +33,14 @@ import static utils.Constants.Environment.*;
  *   receives input; everything else is silently swallowed.
  *
  *   Priority order (highest → lowest):
- *     1. paymentPaused      → PaymentOverlay
- *     2. statusCheckPaused  → StatusCheckOverlay
- *     3. introPaused        → IntroOverlay
- *     4. playerDead         → DeathOverlay
- *     5. interactionPaused  → AcceptPassengerOverlay
- *     6. listPopupPaused    → PassengerListOverlay (popup open)
- *     7. paused             → PauseOverlay
- *     8. none               → normal game + Open button of PassengerListOverlay
+ *     1. paymentPaused                   → PaymentOverlay
+ *     2. statusCheckPaused               → StatusCheckOverlay
+ *     3. introPaused                     → IntroOverlay
+ *     4. playerDead                      → DeathOverlay
+ *     5. acceptPassengerOverlay.isOpen() → AcceptPassengerOverlay
+ *     6. listPopupPaused                 → PassengerListOverlay (popup open)
+ *     7. paused                          → PauseOverlay
+ *     8. none                            → normal game + Open button of PassengerListOverlay
  *
  *   ESC behaviour:
  *     - AcceptPassengerOverlay open  → close it (acts like NO)
@@ -74,20 +74,19 @@ public class Playing extends State implements StateMethods {
     private GameClock              gameClock;
     private SkipOverlay            skipOverlay;
     private PaymentOverlay         paymentOverlay;
+    private MissionOverlay         missionOverlay;
 
     // ── Overlay-state flags ───────────────────────────────────
     private boolean paused            = false;
     private boolean playerDead        = false;
-    private boolean interactionPaused = false;
     private boolean listPopupPaused   = false;
     private boolean introPaused       = false;
     private boolean statusCheckPaused = false;
     private boolean paymentPaused     = false;
+    private boolean missionShowing    = false;
 
-    // ── Interaction safety timeout ────────────────────────────
-    // Counts frames while interactionPaused == true.
-    // Auto-recovers if the flag is stuck for more than 2 seconds (400 frames @ 200 UPS).
-    private int interactionStuckTimer = 0;
+    // ── Driver reference backup ───────────────────────────────
+    private entities.DriverProfile currentDriver = null;
 
     // ── World ─────────────────────────────────────────────────
     private float worldOffset    = 0;
@@ -143,22 +142,13 @@ public class Playing extends State implements StateMethods {
 
     /** Called by CharSelectState before gameplay begins. */
     public void applyDriver(entities.DriverProfile profile) {
+        this.currentDriver = profile;  // Store reference for recovery
         player.applyDriver(profile);
         System.out.println("Driver selected: " + profile.displayName
                 + " | Speed: " + profile.maxSpeed);
     }
 
-    public void resumeFromInteraction() {
-        if (!interactionPaused) return;  // Already resumed — nothing to do
-        System.out.println("[Playing] resumeFromInteraction() - clearing interactionPaused");
-        // Overlay is already closed by handleYes/handleNo before this is called;
-        // call close() defensively in case we got here via a direct ESC path.
-        acceptPassengerOverlay.close();
-        interactionPaused = false;
-        System.out.println("[Playing] interactionPaused=" + interactionPaused + ", activeOverlay=" + activeOverlay());
-    }
-
-    public boolean isInteractionPaused() { return interactionPaused; }
+    public entities.DriverProfile getCurrentDriver() { return currentDriver; }
 
     private void initClasses() {
         System.out.println("[Playing] initClasses() started");
@@ -203,6 +193,7 @@ public class Playing extends State implements StateMethods {
         statusCheckOverlay = new StatusCheckOverlay(this);
         gameClock = new GameClock();
         skipOverlay = new SkipOverlay(game, this);
+        missionOverlay = null;  // Created on-demand for current level
         System.out.println("[Playing] initClasses() complete - Level " + levelManager.getCurrentLevelId() + " loaded");
     }
 
@@ -220,18 +211,17 @@ public class Playing extends State implements StateMethods {
     // OVERLAY PRIORITY HELPERS
     // ─────────────────────────────────────────────────────────
 
-    private enum ActiveOverlay { PAYMENT, STATUS_CHECK, INTRO, DEATH, ACCEPT, LIST_POPUP, PAUSE, NONE }
+    private enum ActiveOverlay { PAYMENT, STATUS_CHECK, INTRO, DEATH, ACCEPT, LIST_POPUP, PAUSE, MISSION, NONE }
 
     private ActiveOverlay activeOverlay() {
-        // Pure query — no side effects. Cleanup of stale interactionPaused
-        // is handled exclusively in update() via the force-reset / stuck-timer block.
-        if (paymentPaused)     return ActiveOverlay.PAYMENT;
-        if (statusCheckPaused) return ActiveOverlay.STATUS_CHECK;
-        if (introPaused)       return ActiveOverlay.INTRO;
-        if (playerDead)        return ActiveOverlay.DEATH;
-        if (interactionPaused) return ActiveOverlay.ACCEPT;
-        if (listPopupPaused)   return ActiveOverlay.LIST_POPUP;
-        if (paused)            return ActiveOverlay.PAUSE;
+        if (paymentPaused)                    return ActiveOverlay.PAYMENT;
+        if (statusCheckPaused)                return ActiveOverlay.STATUS_CHECK;
+        if (introPaused)                      return ActiveOverlay.INTRO;
+        if (playerDead)                       return ActiveOverlay.DEATH;
+        if (acceptPassengerOverlay.isOpen())  return ActiveOverlay.ACCEPT;
+        if (listPopupPaused)                  return ActiveOverlay.LIST_POPUP;
+        if (paused)                           return ActiveOverlay.PAUSE;
+        if (missionOverlay != null && missionOverlay.isOpen()) return ActiveOverlay.MISSION;
         return ActiveOverlay.NONE;
     }
 
@@ -378,7 +368,6 @@ public class Playing extends State implements StateMethods {
         dKeyHeld         = false;
         playerDead       = false;
         listPopupPaused  = false;
-        interactionPaused = false;
         introPaused      = false;
         statusCheckPaused = false;
         paymentPaused    = false;
@@ -428,6 +417,10 @@ public class Playing extends State implements StateMethods {
         // Clock keeps running - no reset on restart, only on level advance
     }
 
+    public void resetGame() {
+        restartGame();
+    }
+
     // ── Health callbacks ─────────────────────────────────────
     public void onPlayerHit() {
         boolean dead = healthBar.takeDamage();
@@ -441,7 +434,7 @@ public class Playing extends State implements StateMethods {
         boolean hasSpeed = player.getCurrentXSpeed() > 0;
         return (dKeyHeld || hasSpeed) && isJeepCentered() && !paused && !worldLoopDone
                 && !player.isStruckActive() && !playerDead
-                && !introPaused && !listPopupPaused && !interactionPaused
+                && !introPaused && !listPopupPaused && !acceptPassengerOverlay.isOpen()
                 && !statusCheckPaused;
     }
 
@@ -462,6 +455,7 @@ public class Playing extends State implements StateMethods {
         if (paymentPaused) { paymentOverlay.update(); return; }
         if (statusCheckPaused) { statusCheckOverlay.update(); return; }
         if (introPaused) { introOverlay.update(); return; }
+        if (missionOverlay != null && missionOverlay.isOpen()) { missionOverlay.update(); return; }
 
         if (listPopupPaused) {
             passengerListOverlay.update();
@@ -469,29 +463,6 @@ public class Playing extends State implements StateMethods {
         }
 
         acceptPassengerOverlay.update();
-
-        if (interactionPaused) {
-            interactionStuckTimer++;
-
-            // Safety timeout — 6 seconds at 200 UPS = 1200 frames
-            if (interactionStuckTimer > 1200) {
-                System.out.println("[Playing] SAFETY TIMEOUT – forcing interactionPaused reset after 6 seconds");
-                acceptPassengerOverlay.close();
-                interactionPaused = false;
-                interactionStuckTimer = 0;
-                return;
-            }
-
-            // Force reset only if overlay is confirmed closed and not recently opened
-            if (!acceptPassengerOverlay.isOpen() && !acceptPassengerOverlay.isRecentlyOpened()) {
-                System.out.println("[Playing] Force resetting interactionPaused - overlay closed but flag still true");
-                interactionPaused = false;
-                interactionStuckTimer = 0;
-            }
-            return;
-        } else {
-            interactionStuckTimer = 0;
-        }
 
         if (!paused) {
             boolean scrolling = isScrolling();
@@ -589,6 +560,7 @@ public class Playing extends State implements StateMethods {
         if (paymentPaused)     { paymentOverlay.render(g);       return; }
         if (statusCheckPaused) { statusCheckOverlay.render(g);   return; }
         if (introPaused)       { introOverlay.render(g);         return; }
+        if (missionOverlay != null && missionOverlay.isOpen()) { missionOverlay.render(g); return; }
         acceptPassengerOverlay.render(g);
         if (playerDead)        { deathOverlay.render(g);         return; }
         if (paused) {
@@ -646,12 +618,7 @@ public class Playing extends State implements StateMethods {
                         System.out.println("[Playing] Last loop — no future stops");
                         return;
                     }
-                    interactionPaused = true;
-                    boolean opened = acceptPassengerOverlay.open(p);
-                    if (!opened) {
-                        System.out.println("[Playing] open() returned false - clearing interactionPaused");
-                        interactionPaused = false;
-                    }
+                    acceptPassengerOverlay.open(p);
                     return;
                 }
             }
@@ -670,6 +637,7 @@ public class Playing extends State implements StateMethods {
             case PAYMENT:    paymentOverlay.mousePressed(e);                          return;
             case STATUS_CHECK: statusCheckOverlay.mousePressed(e);                    return;
             case INTRO:      introOverlay.mousePressed(e);                            return;
+            case MISSION:    missionOverlay.mousePressed(e);                          return;
             case DEATH:      deathOverlay.mousePressed(e);                            return;
             case ACCEPT:     acceptPassengerOverlay.mousePressed(e);                  return;
             case LIST_POPUP: passengerListOverlay.mousePressed(e, passengerManager.getSeatList()); return;
@@ -690,6 +658,7 @@ public class Playing extends State implements StateMethods {
             case PAYMENT:    paymentOverlay.mouseReleased(e);            return;
             case STATUS_CHECK: statusCheckOverlay.mouseReleased(e);             return;
             case INTRO:      introOverlay.mouseReleased(e);                  return;
+            case MISSION:    missionOverlay.mouseReleased(e);            return;
             case DEATH:      deathOverlay.mouseReleased(e);                  return;
             case ACCEPT:     acceptPassengerOverlay.mouseReleased(e);        return;
             case LIST_POPUP: passengerListOverlay.mouseReleased(e);          return;
@@ -706,6 +675,7 @@ public class Playing extends State implements StateMethods {
             case PAYMENT:    paymentOverlay.mouseMoved(e);             return;
             case STATUS_CHECK: statusCheckOverlay.mouseMoved(e);           return;
             case INTRO:      introOverlay.mouseMoved(e);              return;
+            case MISSION:    missionOverlay.mouseMoved(e);            return;
             case DEATH:      deathOverlay.mouseMoved(e);              return;
             case ACCEPT:     acceptPassengerOverlay.mouseMoved(e);    return;
             case LIST_POPUP: passengerListOverlay.mouseMoved(e);      return;
@@ -737,12 +707,9 @@ public class Playing extends State implements StateMethods {
         }
 
         if (e.getKeyCode() == KeyEvent.VK_ESCAPE) {
-            // FORCE CLOSE — emergency exit for any stuck overlay, checked before activeOverlay()
             if (acceptPassengerOverlay.isOpen()) {
-                System.out.println("[Playing] ESC force closed AcceptPassengerOverlay");
-                acceptPassengerOverlay.close();
-                interactionPaused = false;
-                interactionStuckTimer = 0;
+                System.out.println("[Playing] ESC closing AcceptPassengerOverlay");
+                acceptPassengerOverlay.handleEsc();  // calls handleNo() → close()
                 return;
             }
             if (paymentPaused) {
@@ -767,9 +734,6 @@ public class Playing extends State implements StateMethods {
                 case STATUS_CHECK:
                 case INTRO:
                 case DEATH:
-                    break;
-                case ACCEPT:
-                    acceptPassengerOverlay.handleEsc();  // calls handleNo → close + resumeFromInteraction
                     break;
                 case LIST_POPUP:
                     passengerListOverlay.handleEsc();
@@ -857,6 +821,7 @@ public class Playing extends State implements StateMethods {
             return false;
         }
 
+        System.out.println("[Playing] advanceToNextLevel() - Level " + currentLevel + " -> " + (currentLevel + 1));
         gameClock.stop();
         gameClock.saveLevelRecord();
         System.out.println("[Playing] Level " + currentLevel + " completed in " + gameClock.getFormattedTime());
@@ -869,9 +834,7 @@ public class Playing extends State implements StateMethods {
         gameClock.reset();
         gameClock.setCurrentLevel(levelManager.getCurrentLevelId());
 
-        restartGame();
         player.setBossMode(false);
-        gameClock.start();
 
         System.out.println("[Playing] Advanced to Level " + levelManager.getCurrentLevelId());
         return true;
@@ -889,6 +852,43 @@ public class Playing extends State implements StateMethods {
         int requiredPassengers = levelManager.getRequiredPassengers();
         int requiredFare = levelManager.getRequiredFare();
         statusCheckOverlay.open(passengersDroppedCount, totalFare, requiredPassengers, requiredFare);
+    }
+
+    // ─────────────────────────────────────────────────────────
+    // MISSION OVERLAY
+    // ─────────────────────────────────────────────────────────
+    /**
+     * Shows mission screen for current level before starting gameplay.
+     * Called after boss defeat (NEXT button) or SkipOverlay (Next Level).
+     */
+    public void showMissionForCurrentLevel() {
+        int levelId = levelManager.getCurrentLevelId();
+
+        // Guard: prevent duplicate mission shows
+        if (missionShowing) {
+            System.out.println("[Playing] Mission already showing for Level " + levelId + ", skipping");
+            return;
+        }
+        if (missionOverlay != null && missionOverlay.isOpen()) {
+            System.out.println("[Playing] Mission overlay already open, skipping");
+            return;
+        }
+
+        System.out.println("[Playing] Showing mission for Level " + levelId);
+        missionShowing = true;
+        missionOverlay = new MissionOverlay(levelId, this::onMissionDone);
+        missionOverlay.open();
+
+        // Game clock stopped - will start when mission completes
+        gameClock.stop();
+    }
+
+    private void onMissionDone() {
+        System.out.println("[Playing] Mission complete - starting gameplay");
+        missionOverlay = null;
+        missionShowing = false;
+        gameClock.start();
+        GameStates.state = GameStates.PLAYING;
     }
 
     // ── Getters ───────────────────────────────────────────────

@@ -232,13 +232,13 @@ public class RedJeepVsBoss1State extends State implements StateMethods {
 
     /**
      * Called when Next button clicked on BossDefeatOverlay.
-     * Advances to next level.
+     * Shows mission screen for next level.
      */
     private void onNextLevel() {
         game.getPlaying().setBossFightActive(false);
-        player.setBossMode(false);  // Reset boss mode before returning to normal gameplay
-        game.advanceToNextLevel();
+        player.setBossMode(false);
         game.getPlaying().advanceToNextLevel();
+        game.getPlaying().showMissionForCurrentLevel();
         GameStates.state = GameStates.PLAYING;
     }
 

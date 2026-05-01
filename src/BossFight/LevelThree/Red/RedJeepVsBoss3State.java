@@ -108,6 +108,7 @@ public class RedJeepVsBoss3State extends State implements StateMethods {
     public RedJeepVsBoss3State(Game game, Player player, HealthBar healthBar) {
         super(game);
         this.player    = player;
+        player.setBossMode(true);
         this.healthBar = healthBar;
         this.levelPixelWidth = LoadSave.GetLevelData()[0].length * Game.TILES_SIZE;
         this.playerRightLimit = Game.GAME_WIDTH * PLAYER_RIGHT_LIMIT_FRACTION - player.getHitBox().width;
@@ -637,6 +638,7 @@ public class RedJeepVsBoss3State extends State implements StateMethods {
         walkerManager.resetAll();
         resetDeathOverlay();
         spawnBoss();
+        player.setBossMode(true);
     }
 
     public void resetAll() {

@@ -43,6 +43,7 @@ public class BossDefeatOverlay {
     // -------------------------------------------------------
     private float   overlayAlpha = 0f;
     private boolean fadeComplete = false;
+    private boolean processingNext = false;
 
     // Callbacks set by BossFightState
     private Runnable onRestart;
@@ -147,9 +148,13 @@ public class BossDefeatOverlay {
     }
 
     public void mouseReleased(MouseEvent e) {
-        if (!fadeComplete) return;
-        if (nextBtn.isMousePressed() && nextBtn.getBounds().contains(e.getX(), e.getY()))
+        if (!fadeComplete || processingNext) return;
+        if (nextBtn.isMousePressed() && nextBtn.getBounds().contains(e.getX(), e.getY())) {
+            System.out.println("[BossDefeatOverlay] NEXT clicked - calling onNext");
+            processingNext = true;
             onNext.run();
+            processingNext = false;
+        }
         if (restartBtn.isMousePressed() && restartBtn.getBounds().contains(e.getX(), e.getY()))
             onRestart.run();
         if (menuBtn.isMousePressed() && menuBtn.getBounds().contains(e.getX(), e.getY()))
