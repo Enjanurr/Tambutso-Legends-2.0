@@ -15,8 +15,6 @@ public class LoadSave {
     public static final String GREEN_JEEP_SKILL1 = "characters/player/greenjeep_skill1.png";
     public static final String GREEN_JEEP_SKILL2 = "characters/player/greenjeep_skill2.png";
     public static final String PLAYER_ATLAS_3 = "characters/player/blue_jeep.png";
-    public static final String BOSS3_SKILL2_GSM = "boss/gsm-obstacle.png";
-    public static final String BOSS3_SKILL2_EJEEP = "boss/modernjeep.png";
 
     public static final String LEVEL_ATLAS  = "level/road_tiles.png";
     public static final String ROAD_DATA    = "level/road_data_new.png";
@@ -24,6 +22,8 @@ public class LoadSave {
     // ── Enemy atlases ─────────────────────────────────────────
     public static final String GSM_ATLAS   = "characters/enemies/gsm-taxi.png";
     public static final String EJEEP_ATLAS = "characters/enemies/modern_jeep.png";
+    public static final String MOTORCYCLE = "characters/enemies/motorcycle.png";
+    public static final String CART = "characters/enemies/mp_cart.png";
 
     // ── Boss atlases ──────────────────────────────────────────
 
@@ -54,6 +54,13 @@ public class LoadSave {
     public static final String PROGRESS_BAR2    = "ui/hud/progress_bar2.png";  // Level 2: 20 stops
     public static final String PROGRESS_BAR3    = "ui/hud/progress_bar3.png";  // Level 3: 25 stops
 
+    public static final String LEVEL_BANNER1     = "ui/hud/level1banner.png";
+    public static final String LEVEL_BANNER2    = "ui/hud/level2banner.png";
+    public static final String LEVEL_BANNER3    = "ui/hud/level3banner.png";
+
+    public static final String BOSS1BANNER      = "ui/hud/Boss1Banner.png";
+    public static final String BOSS2BANNER    = "ui/hud/Boss2Banner.png";
+    public static final String BOSS3BANNER    = "ui/hud/Boss3Banner.png";
 
 
     // ── Playing state background / environment ───────────────

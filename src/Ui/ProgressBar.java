@@ -120,4 +120,7 @@ public class ProgressBar {
         int col = Math.min(currentColumn, maxColumn);
         g.drawImage(frames[col], drawX, drawY, drawW, drawH, null);
     }
+    public int getDrawY() { return drawY; }
+    public int getDrawHeight() { return drawH; }
+
 }

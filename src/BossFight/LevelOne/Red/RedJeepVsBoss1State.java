@@ -1,20 +1,17 @@
 package BossFight.LevelOne.Red;
 
-
+import BossFight.BossObstacleManager;
 import BossFight.BossWalkerManager;
+import BossFight.CloudRenderer;
 import BossFight.LevelOne.GarbagePile;
-import Ui.BossDefeatOverlay;
-import Ui.BossHealthBar;
-import Ui.HealthBar;
-import Ui.JeepSkillButtons;
-import Ui.UrmButton;
+import Ui.*;
+import entities.EnemyCar;
 import entities.Player;
 import gameStates.GameStates;
 import gameStates.State;
 import gameStates.StateMethods;
 import main.Game;
 import utils.LoadSave;
-import utils.ScrollingCloudLayer;
 
 import java.awt.*;
 import java.awt.event.KeyEvent;
@@ -23,142 +20,107 @@ import java.awt.image.BufferedImage;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
-import static utils.Constants.Environment.*;
-import static utils.Constants.Environment.SMALL_CLOUD_HEIGHT;
-import static utils.Constants.Environment.SMALL_CLOUD_WIDTH;
 import static utils.Constants.UI.URMButtons.URM_SIZE;
 
 public class RedJeepVsBoss1State extends State implements StateMethods {
+    private BossBanner bossBanner;
+    private CloudRenderer cloudRenderer;
+
     // -------------------------------------------------------
-    // BOSS FIGHT SETTINGS  ← ADJUST
+    // BOSS FIGHT SETTINGS
     // -------------------------------------------------------
-    private static final float SCROLL_SPEED                = BossFight.LevelOne.Red.Boss1.BOSS_SCROLL_SPEED;
-    private static final float LEFT_BORDER_PUSH            = 0.3f;
+    private static final float SCROLL_SPEED = BossFight.LevelOne.Red.Boss1.BOSS_SCROLL_SPEED;
+    private static final float LEFT_BORDER_PUSH = 0.3f;
     private static final float PLAYER_RIGHT_LIMIT_FRACTION = 0.50f;
 
-    // ── Shoot settings ← ADJUST ──────────────────────────────
-    private static final int MAX_BULLETS_PER_USE = 5;        // bullets per E press
-    private static final int SHOOT_FULL_COOLDOWN = 3 * 200;  // 3 s at 200 UPS
+    // Shoot settings
+    private static final int MAX_BULLETS_PER_USE = 5;
+    private static final int SHOOT_FULL_COOLDOWN = 3 * 200;
 
-
-    // ── Death overlay fade ← ADJUST ──────────────────────────
+    // Death overlay fade
     private static final float DEATH_FADE_SPEED = 0.03f;
-    private static final float DEATH_FADE_MAX   = 0.85f;
-    // -------------------------------------------------------
+    private static final float DEATH_FADE_MAX = 0.85f;
 
     private final Player player;
-    private final HealthBar healthBar;    // jeepney life bar (shared with Playing)
-    private BossHealthBar bossBar;     // boss life bar (new)
+    private final HealthBar healthBar;
+    private BossHealthBar bossBar;
     private BossFight.LevelOne.Red.Boss1 boss;
 
-    // ── Walkers during boss fight ─────────────────────────────
-    private BossWalkerManager walkerManager;              // NEW from first version
+    private BossWalkerManager walkerManager;
 
-
-
-    // ── Shoot state ───────────────────────────────────────────
-    // Thread-safe list — safe to iterate during concurrent updates
-    private final List<RedJeepProjectile> playerBullets =
-            new CopyOnWriteArrayList<>();
+    // Shoot state
+    private final List<RedJeepProjectile> playerBullets = new CopyOnWriteArrayList<>();
     private BufferedImage[] shootFramesSkill1;
+    private int shootCooldown = 0;
+    private int bulletsRemaining = 0;
+    private boolean canShoot = true;
 
-    private int     shootCooldown   = 0;
-    private int     bulletsRemaining = 0;
-    private boolean canShoot        = true;
-
-
-
-    // ── World scroll ─────────────────────────────────────────
+    // World scroll
     private float worldOffset = 0;
     private final int levelPixelWidth;
 
-    // ── Background ───────────────────────────────────────────
-    private BufferedImage backgroundImg, bigClouds, smallClouds;
-    private ScrollingCloudLayer bigCloudLayer;
-    private ScrollingCloudLayer smallCloudLayer;
-    private static final float BIG_CLOUD_PARALLAX   = 0.3f;
-    private static final float SMALL_CLOUD_PARALLAX = 0.5f;
-
     private final float playerRightLimit;
 
-    // ── Pause ─────────────────────────────────────────────────
-    private boolean          paused      = false;
+    // Pause
+    private boolean paused = false;
     private BossPauseOverlay pauseOverlay;
 
-    // ── Jeep death overlay ────────────────────────────────────
-    private boolean       playerDead    = false;
-    private float         deathAlpha    = 0f;
-    private boolean       deathFadeDone = false;
+    // Jeep death overlay
+    private boolean playerDead = false;
+    private float deathAlpha = 0f;
+    private boolean deathFadeDone = false;
     private UrmButton deathRestartBtn;
     private BufferedImage deathScreenImg;
     private int deathImgW, deathImgH, deathImgX, deathImgY;
 
-    // ── Boss defeat overlay ───────────────────────────────────
-    private boolean          bossDefeated   = false;
+    // Boss defeat overlay
+    private boolean bossDefeated = false;
     private BossDefeatOverlay defeatOverlay;
 
-    // ── Skill buttons ────────────────────────────────────────
+    // Skill buttons
     private JeepSkillButtons skillButtons;
 
-    // ─────────────────────────────────────────────────────────
-    // Second Skill
-    // ─────────────────────────────────────────────────────────
-
-    // ── Slow Ball (Skill 2) tracking ← ADD THESE ────────────
+    // Slow Ball (Skill 2)
     private final List<SlowBallProjectile> slowBalls = new CopyOnWriteArrayList<>();
     private long skill2LastUsed = 0;
-    private static final int SKILL2_COOLDOWN = 7000;  // 7 seconds in milliseconds
-    private BufferedImage[] slowBallFrames;  // if you have sprite frames for slow ball
+    private static final int SKILL2_COOLDOWN = 7000;
+    private BufferedImage[] slowBallFrames;
+    private BossObstacleManager obstacleManager;
+
     public RedJeepVsBoss1State(Game game, Player player, HealthBar healthBar) {
         super(game);
-        this.player    = player;
+        this.player = player;
         this.player.setBossMode(true);
         this.healthBar = healthBar;
-        this.levelPixelWidth =
-                LoadSave.GetLevelData()[0].length * Game.TILES_SIZE;
-
-        this.playerRightLimit =
-                Game.GAME_WIDTH * PLAYER_RIGHT_LIMIT_FRACTION
-                        - player.getHitBox().width;
-
-        // ✨ Load assets with default first (in case boss fight starts without selection)
-        // loadAssets(LoadSave.PLAYER_ATLAS_1);
+        this.cloudRenderer = new CloudRenderer();
+        obstacleManager = new BossObstacleManager();  // ← ADD THIS
+        this.levelPixelWidth = LoadSave.GetLevelData()[0].length * Game.TILES_SIZE;
+        this.playerRightLimit = Game.GAME_WIDTH * PLAYER_RIGHT_LIMIT_FRACTION - player.getHitBox().width;
 
         pauseOverlay = new BossPauseOverlay(this);
         buildDeathOverlay();
         buildDefeatOverlay();
         bossBar = new BossHealthBar(BossHealthBar.LifeBarType.BOSS1);
+        bossBanner = new BossBanner(1);
         walkerManager = new BossWalkerManager();
         spawnBoss();
 
-        // Initialize skill buttons based on jeep color
-        String jeepColor = getJeepColor(); // "blue", "red", or "green"
+        String jeepColor = getJeepColor();
         skillButtons = new JeepSkillButtons(jeepColor,
                 this::isSkill1Ready, this::onSkill1, this::getSkill1CooldownRemaining,
                 this::isSkill2Ready, this::onSkill2, this::getSkill2CooldownRemaining);
     }
-
 
     public void applyDriverAssets(entities.DriverProfile profile) {
         if (profile == null) {
             System.out.println("⚠️ [BossFightState] No driver profile - keeping default assets");
             return;
         }
-
         System.out.println("🎮 [BossFightState] Applying driver assets: " + profile.displayName);
         loadAssets(profile.atlasPath);
     }
 
-    // ─────────────────────────────────────────────────────────
-    // ASSET LOADING
-    // ─────────────────────────────────────────────────────────
-// Change loadAssets() signature to accept a parameter
     private void loadAssets(String atlasPath) {
-        backgroundImg = LoadSave.getSpriteAtlas(LoadSave.PLAYING_BACKGROUND_IMG);
-        bigClouds     = LoadSave.getSpriteAtlas(LoadSave.BIG_CLOUDS);
-        smallClouds   = LoadSave.getSpriteAtlas(LoadSave.SMALL_CLOUDS);
-        initCloudLayers();
-
         if (!atlasPath.startsWith("/")) {
             atlasPath = "/" + atlasPath;
         }
@@ -173,10 +135,7 @@ public class RedJeepVsBoss1State extends State implements StateMethods {
         try {
             java.awt.image.BufferedImage sheet = javax.imageio.ImageIO.read(is);
 
-
             shootFramesSkill1 = new BufferedImage[RedJeepProjectile.FRAME_COUNT];
-
-
             for (int i = 0; i < RedJeepProjectile.FRAME_COUNT; i++)
                 shootFramesSkill1[i] = sheet.getSubimage(
                         i * RedJeepProjectile.FRAME_W,
@@ -184,27 +143,19 @@ public class RedJeepVsBoss1State extends State implements StateMethods {
                         RedJeepProjectile.FRAME_W,
                         RedJeepProjectile.FRAME_H);
 
-            // Load Skill 2 slow ball frames SEPARATELY (don't reuse shootFramesSkill2 for skill1)
             BufferedImage[] slowBallFrames_Temp = new BufferedImage[SlowBallProjectile.FRAME_COUNT];
-
             for (int i = 0; i < SlowBallProjectile.FRAME_COUNT; i++) {
                 slowBallFrames_Temp[i] = sheet.getSubimage(
                         i * SlowBallProjectile.FRAME_W,
-                        SlowBallProjectile.SPRITE_ROW * SlowBallProjectile.FRAME_H,  // ← Must match SPRITE_ROW constant
+                        SlowBallProjectile.SPRITE_ROW * SlowBallProjectile.FRAME_H,
                         SlowBallProjectile.FRAME_W,
-                        SlowBallProjectile.FRAME_H
-                );
+                        SlowBallProjectile.FRAME_H);
             }
-
             slowBallFrames = slowBallFrames_Temp;
+
             System.out.println("✓ [BossFightState] Skill 1 frames loaded: " + shootFramesSkill1.length);
             System.out.println("✓ [BossFightState] Skill 2 frames loaded: " + slowBallFrames.length);
-
-            if (shootFramesSkill1[0] == null) System.out.println("❌ Skill 1 frame 0 is NULL!");
-            if (slowBallFrames[0] == null) System.out.println("❌ Skill 2 frame 0 is NULL!");
             System.out.println("✓ [BossFightState] Loaded assets from: " + atlasPath);
-            System.out.println("  Skill 1 frames: " + shootFramesSkill1.length);
-            System.out.println("  Skill 2 frames: " + slowBallFrames.length);
 
         } catch (Exception e) {
             System.err.println("[BossFightState] Could not load jeepney rows: " + e.getMessage());
@@ -212,11 +163,12 @@ public class RedJeepVsBoss1State extends State implements StateMethods {
             try { if (is != null) is.close(); } catch (Exception ignored) {}
         }
     }
+
     private void buildDeathOverlay() {
         deathScreenImg = LoadSave.getSpriteAtlas(LoadSave.DEATH_SCREEN);
         deathImgW = (int)(500 * Game.SCALE * 0.5f);
         deathImgH = (int)(500 * Game.SCALE * 0.5f);
-        deathImgX = (Game.GAME_WIDTH  - deathImgW) / 2;
+        deathImgX = (Game.GAME_WIDTH - deathImgW) / 2;
         deathImgY = (Game.GAME_HEIGHT - deathImgH) / 2;
 
         int btnX = (int)(374 * Game.SCALE);
@@ -226,16 +178,12 @@ public class RedJeepVsBoss1State extends State implements StateMethods {
 
     private void buildDefeatOverlay() {
         defeatOverlay = new BossDefeatOverlay(
-                this::onNextLevel,                            // Next → advance to next level
-                this::fullReset,                              // Restart → full reset
-                this::onMenuToExit                           // Menu → back to menu
+                this::onNextLevel,
+                this::fullReset,
+                this::onMenuToExit
         );
     }
 
-    /**
-     * Called when Next button clicked on BossDefeatOverlay.
-     * Shows mission screen for next level.
-     */
     private void onNextLevel() {
         game.getPlaying().setBossFightActive(false);
         player.setBossMode(false);
@@ -245,7 +193,7 @@ public class RedJeepVsBoss1State extends State implements StateMethods {
     }
 
     private void onMenuToExit() {
-        player.setBossMode(false);  // Reset boss mode before returning to menu
+        player.setBossMode(false);
         GameStates.state = GameStates.MENU;
     }
 
@@ -256,52 +204,38 @@ public class RedJeepVsBoss1State extends State implements StateMethods {
     }
 
     private String getJeepColor() {
-        // Return the color based on the state class
         return "red";
     }
 
     private void onSkill1() {
-        // Trigger the existing Skill 1 (shoot/projectile) logic
-        // Call the same code that's triggered by E key
         attemptShootRed();
     }
 
     private void onSkill2() {
-        // Trigger the existing Skill 2 logic
-        // Call the same code that's triggered by Q key
         attemptSlowBall();
     }
 
     private boolean isSkill1Ready() {
-        // Ready when bullets available or can reload (not on cooldown)
         return bulletsRemaining > 0 || (bulletsRemaining == 0 && shootCooldown == 0);
     }
 
     private boolean isSkill2Ready() {
-        // Ready when slow ball not on cooldown
         return System.currentTimeMillis() - skill2LastUsed >= SKILL2_COOLDOWN;
     }
 
     private int getSkill1CooldownRemaining() {
-        // Return remaining cooldown in seconds for display
         if (shootCooldown <= 0) return 0;
-        return (shootCooldown + 199) / 200;  // Round up to nearest second
+        return (shootCooldown + 199) / 200;
     }
 
     private int getSkill2CooldownRemaining() {
-        // Return remaining cooldown in seconds for display
         long remaining = SKILL2_COOLDOWN - (System.currentTimeMillis() - skill2LastUsed);
         if (remaining <= 0) return 0;
-        return (int) ((remaining + 999) / 1000);  // Convert ms to seconds, round up
+        return (int) ((remaining + 999) / 1000);
     }
 
-    // ─────────────────────────────────────────────────────────
-    // UPDATE
-    // ─────────────────────────────────────────────────────────
     @Override
     public void update() {
-
-        // ── Boss defeat screen ────────────────────────────────
         if (bossDefeated) {
             defeatOverlay.update();
             return;
@@ -319,57 +253,50 @@ public class RedJeepVsBoss1State extends State implements StateMethods {
 
         skillButtons.update();
 
-        // ── World scroll ──────────────────────────────────────
+        // World scroll
         worldOffset += SCROLL_SPEED * Game.SCALE;
         if (worldOffset >= levelPixelWidth) worldOffset -= levelPixelWidth;
 
-        bigCloudLayer.update(SCROLL_SPEED * Game.SCALE);
-        smallCloudLayer.update(SCROLL_SPEED * Game.SCALE);
+        cloudRenderer.update(SCROLL_SPEED * Game.SCALE);
 
-        // ── Player clamping ───────────────────────────────────
+        // Player clamping
         float leftLimit = 20 * Game.SCALE;
         if (player.getHitBox().x < leftLimit)
             player.getHitBox().x += LEFT_BORDER_PUSH * Game.SCALE;
         if (player.getHitBox().x > playerRightLimit)
             player.getHitBox().x = playerRightLimit;
 
-        // ── Player update ─────────────────────────────────────
         player.setWorldScrolling(false);
         player.setWorldLoopDone(true);
         player.update();
 
-        // ── Cooldowns ─────────────────────────────────────────
+        // Cooldowns
         if (shootCooldown > 0) {
             shootCooldown--;
             if (shootCooldown == 0) canShoot = true;
         }
 
-
-        // ── Player bullets (CopyOnWriteArrayList — thread-safe) ──
-        // ── Player bullets (CopyOnWriteArrayList — thread-safe) ──
+        // Player bullets
         playerBullets.removeIf(pb -> { pb.update(); return !pb.isActive(); });
 
-        // ── Slow balls update & collision ← ADD THIS ────────────
+        // Slow balls
         slowBalls.removeIf(ball -> {
             ball.update();
             return !ball.isActive();
         });
 
-
-
-        // ── Walkers ── NEW from first version ─────────────────────
+        // Walkers
         walkerManager.update(SCROLL_SPEED);
-
-        // ── Boss ──────────────────────────────────────────────
+        obstacleManager.update(true, SCROLL_SPEED * Game.SCALE);  // ← ADD THIS
+        // Boss
         float jeepCentreY = player.getHitBox().y + player.getHitBox().height / 2f;
         boss.update(player.getHitBox().x, jeepCentreY);
 
-        // ── Collisions ────────────────────────────────────────
+        // Collisions
         Rectangle jeepHB = new Rectangle(
-                (int) player.getHitBox().x,     (int) player.getHitBox().y,
+                (int) player.getHitBox().x, (int) player.getHitBox().y,
                 (int) player.getHitBox().width, (int) player.getHitBox().height);
 
-        // Boss bullets → jeep
         for (GarbagePile.BossProjectile bp : boss.getBullets()) {
             if (bp.isActive() && bp.getHitbox().intersects(jeepHB)) {
                 bp.setActive(false);
@@ -377,7 +304,6 @@ public class RedJeepVsBoss1State extends State implements StateMethods {
             }
         }
 
-        // Garbage piles → jeep
         for (GarbagePile pile : boss.getGarbagePiles()) {
             if (pile.isActive() && pile.getHitbox().intersects(jeepHB)) {
                 pile.setActive(false);
@@ -385,32 +311,45 @@ public class RedJeepVsBoss1State extends State implements StateMethods {
             }
         }
 
-        // Check slow ball collision with boss
-        // Check slow ball collision with boss
+// ── ADD OBSTACLE COLLISION ──
+        obstacleManager.checkCollision(jeepHB, this::handleJeepHit);
+// Player bullets → boss AND obstacles
         Rectangle bossHB = boss.getHitbox();
-        for (SlowBallProjectile ball : slowBalls) {
-            if (ball.isActive() && ball.getHitbox().intersects(bossHB)) {
-                ball.setActive(false);
-                boss.applyStun();  // ← This calls the stun on the boss
-                System.out.println("[RedJeep] Slow ball hit boss! Stun effect applied.");
-            }
-        }
-        // Player bullets → boss
-        //Rectangle bossHB = boss.getHitbox();
         for (RedJeepProjectile pb : playerBullets) {
-            if (pb.isActive() && pb.getHitbox().intersects(bossHB)) {
-                System.out.println("[RedJeep] Skill 1 hit boss!");
+            if (!pb.isActive()) continue;
+
+            // Check bullet vs boss
+            if (pb.getHitbox().intersects(bossHB)) {
                 pb.setActive(false);
                 boss.triggerHit();
                 handleBossHit();
+                continue;
+            }
 
+            // Check bullet vs obstacles
+            boolean hitObstacle = false;
+            for (EnemyCar obstacle : obstacleManager.getActiveObstacles()) {
+                if (obstacle.isActive() && pb.getHitbox().intersects(obstacle.getHitBox())) {
+                    obstacle.takeDamage(1);
+                    pb.setActive(false);
+                    hitObstacle = true;
+                    System.out.println("[RedJeep] Bullet hit obstacle!");
+                    break;
+                }
+            }
+            if (hitObstacle) continue;
+        }
+
+// Slow ball collision with boss
+        for (SlowBallProjectile ball : slowBalls) {
+            if (ball.isActive() && ball.getHitbox().intersects(bossHB)) {
+                ball.setActive(false);
+                boss.applyStun();
+                System.out.println("[RedJeep] Slow ball hit boss! Stun effect applied.");
             }
         }
     }
 
-    // ─────────────────────────────────────────────────────────
-    // HIT HANDLING
-    // ─────────────────────────────────────────────────────────
     private void handleJeepHit() {
         player.triggerCarStruck();
         boolean dead = healthBar.takeDamage();
@@ -418,7 +357,6 @@ public class RedJeepVsBoss1State extends State implements StateMethods {
             playerDead = true;
             resetDeathOverlay();
         }
-
     }
 
     private void handleBossHit() {
@@ -429,13 +367,6 @@ public class RedJeepVsBoss1State extends State implements StateMethods {
         }
     }
 
-
-// SHOOT Player (RED JEEP)
-// ─────────────────────────────────────────────────────────
-
-    // ─────────────────────────────────────────────────────────
-// SLOW BALL (RED JEEP SKILL 2)
-// ─────────────────────────────────────────────────────────
     private void attemptSlowBall() {
         if (paused || playerDead) return;
 
@@ -450,53 +381,39 @@ public class RedJeepVsBoss1State extends State implements StateMethods {
     }
 
     private void fireSlowBall() {
-        // ── Spawn from jeep RIGHT EDGE, centered vertically ──────
         float spawnX = player.getHitBox().x + player.getHitBox().width;
         float spawnY = player.getHitBox().y + player.getHitBox().height / 2f
                 - (SlowBallProjectile.FRAME_H * Game.SCALE) / 2f;
 
-        // ── Create slow ball with loaded frames ─────────────────
         SlowBallProjectile ball = new SlowBallProjectile(spawnX, spawnY, slowBallFrames);
         slowBalls.add(ball);
-
-        System.out.println("[RedJeep] Slow ball fired! Frames: "
-                + (slowBallFrames != null ? slowBallFrames.length : "NULL")
-                + " | Position: (" + spawnX + ", " + spawnY + ")");
+        System.out.println("[RedJeep] Slow ball fired!");
     }
+
     private void fireSingleBulletRed() {
         if (!canShoot || shootCooldown > 0 || paused || playerDead) return;
-
         spawnOneBulletRed();
-
         bulletsRemaining--;
-
         if (bulletsRemaining <= 0) {
-            shootCooldown    = SHOOT_FULL_COOLDOWN; // now 4s for RedJeep
-            canShoot         = false;
+            shootCooldown = SHOOT_FULL_COOLDOWN;
+            canShoot = false;
             bulletsRemaining = 0;
         }
     }
 
     private void attemptShootRed() {
         if (shootCooldown > 0 || !canShoot || paused || playerDead) return;
-
         if (bulletsRemaining == 0 && canShoot && shootCooldown == 0)
-            bulletsRemaining = MAX_BULLETS_PER_USE; // still 5 shots
-
-        if (bulletsRemaining > 0)
-            fireSingleBulletRed();
+            bulletsRemaining = MAX_BULLETS_PER_USE;
+        if (bulletsRemaining > 0) fireSingleBulletRed();
     }
 
     private void spawnOneBulletRed() {
         float bx = player.getHitBox().x + player.getHitBox().width;
         float by = player.getHitBox().y;
-
         playerBullets.add(new RedJeepProjectile(bx, by, shootFramesSkill1));
     }
 
-    // ─────────────────────────────────────────────────────────
-    // JEEP DEATH OVERLAY
-    // ─────────────────────────────────────────────────────────
     private void updateDeathOverlay() {
         if (!deathFadeDone) {
             deathAlpha = Math.min(deathAlpha + DEATH_FADE_SPEED, DEATH_FADE_MAX);
@@ -521,45 +438,32 @@ public class RedJeepVsBoss1State extends State implements StateMethods {
     }
 
     private void resetDeathOverlay() {
-        deathAlpha    = 0f;
+        deathAlpha = 0f;
         deathFadeDone = false;
         deathRestartBtn.resetBools();
     }
 
-    // ─────────────────────────────────────────────────────────
-    // DRAW
-    // ─────────────────────────────────────────────────────────
     @Override
     public void draw(Graphics g) {
-        if (backgroundImg != null)
-            g.drawImage(backgroundImg, 0, 0, Game.GAME_WIDTH, Game.GAME_HEIGHT, null);
-        drawClouds(g);
+        cloudRenderer.drawBackground(g);
+        cloudRenderer.drawClouds(g);
+
+        bossBanner.updatePosition(10);  // 10 pixels from top
+        bossBanner.render(g);
 
         game.getPlaying().getLevelManager().draw(g, (int) worldOffset);
-
-        // ── Walkers behind boss ── NEW from first version ─────────
         walkerManager.render(g);
-
+        obstacleManager.render(g);  // ← ADD THIS
         boss.render(g);
 
-        // ── Player skill1 bullets ──
         for (RedJeepProjectile pb : playerBullets) pb.render(g);
-
-        // ── Player skill2 slow balls ← RENDER AFTER BOSS ────
         for (SlowBallProjectile ball : slowBalls) ball.render(g);
-
         player.render(g);
 
-
-
-        // ── UI bars ───────────────────────────────────────────
-        healthBar.render(g);     // jeep life — upper left
-        bossBar.render(g);       // boss life — upper right
-
-        // ── Skill buttons ────────────────────────────────────
+        healthBar.render(g);
+        bossBar.render(g);
         skillButtons.render(g);
 
-        // ── Overlays (on top of everything) ───────────────────
         if (bossDefeated) {
             defeatOverlay.render(g);
             return;
@@ -577,41 +481,32 @@ public class RedJeepVsBoss1State extends State implements StateMethods {
         }
     }
 
-    private void drawClouds(Graphics g) {
-        bigCloudLayer.draw(g);
-        smallCloudLayer.draw(g);
-    }
-
-    // ─────────────────────────────────────────────────────────
-    // INPUT
-    // ─────────────────────────────────────────────────────────
     @Override
     public void keyPressed(KeyEvent e) {
         if (playerDead || bossDefeated) return;
 
         switch (e.getKeyCode()) {
             case KeyEvent.VK_ESCAPE: paused = !paused; break;
-            case KeyEvent.VK_A: player.setLeft(true);  break;
+            case KeyEvent.VK_A: player.setLeft(true); break;
             case KeyEvent.VK_D: player.setRight(true); break;
-            case KeyEvent.VK_W: player.setUp(true);    break;
-            case KeyEvent.VK_S: player.setDown(true);  break;
+            case KeyEvent.VK_W: player.setUp(true); break;
+            case KeyEvent.VK_S: player.setDown(true); break;
             case KeyEvent.VK_Q:
                 if (!paused) attemptSlowBall();
                 break;
             case KeyEvent.VK_E:
                 if (!paused) attemptShootRed();
                 break;
-
         }
     }
 
     @Override
     public void keyReleased(KeyEvent e) {
         switch (e.getKeyCode()) {
-            case KeyEvent.VK_A: player.setLeft(false);  break;
+            case KeyEvent.VK_A: player.setLeft(false); break;
             case KeyEvent.VK_D: player.setRight(false); break;
-            case KeyEvent.VK_W: player.setUp(false);    break;
-            case KeyEvent.VK_S: player.setDown(false);  break;
+            case KeyEvent.VK_W: player.setUp(false); break;
+            case KeyEvent.VK_S: player.setDown(false); break;
         }
     }
 
@@ -657,15 +552,13 @@ public class RedJeepVsBoss1State extends State implements StateMethods {
         }
     }
 
-    @Override public void mouseClicked(MouseEvent e) {}
+    @Override
+    public void mouseClicked(MouseEvent e) {}
 
     public void mouseDragged(MouseEvent e) {
         if (paused) pauseOverlay.mouseDragged(e);
     }
 
-    // ─────────────────────────────────────────────────────────
-    // PUBLIC CONTROL METHODS
-    // ─────────────────────────────────────────────────────────
     public void unpause() { paused = false; }
 
     public void fullReset() {
@@ -677,45 +570,35 @@ public class RedJeepVsBoss1State extends State implements StateMethods {
         player.getHitBox().y = 520;
         player.resetDirBooleans();
         player.setBossMode(false);
-        paused           = false;
-        playerDead       = false;
-        bossDefeated     = false;
+        paused = false;
+        playerDead = false;
+        bossDefeated = false;
 
-        shootCooldown    = 0;
+        shootCooldown = 0;
         bulletsRemaining = 0;
-        canShoot         = true;
+        canShoot = true;
         playerBullets.clear();
 
-        // ── Clear slow balls ← ADD THIS ─────────────────────────
         slowBalls.clear();
         skill2LastUsed = 0;
 
         worldOffset = 0;
-        initCloudLayers();
+        cloudRenderer.reset();
+        obstacleManager.reset();
+        walkerManager.resetAll();
 
-        walkerManager.resetAll();   // NEW from first version
         resetDeathOverlay();
         spawnBoss();
-        player.setBossMode(true);  // Restore boss mode — was cleared above for hitbox reset
+        player.setBossMode(true);
     }
 
     public void resetAll() {
         fullReset();
-        // ✨ Reapply driver assets after reset
         if (game.getSelectedDriver() != null) {
             applyDriverAssets(game.getSelectedDriver());
-        }}
-    private void initCloudLayers() {
-        int bigCloudCount = (Game.GAME_WIDTH / BIG_CLOUD_WIDTH) + 3;
-        int smallCloudCount = (Game.GAME_WIDTH / SMALL_CLOUD_WIDTH) + 3;
-        bigCloudLayer = new ScrollingCloudLayer(
-                bigClouds, BIG_CLOUD_WIDTH, BIG_CLOUD_HEIGHT,
-                BIG_CLOUD_PARALLAX, bigCloudCount, (int)(40 * Game.SCALE));
-        smallCloudLayer = new ScrollingCloudLayer(
-                smallClouds, SMALL_CLOUD_WIDTH, SMALL_CLOUD_HEIGHT,
-                SMALL_CLOUD_PARALLAX, smallCloudCount, (int)(60 * Game.SCALE));
+        }
     }
-    public boolean isPaused() { return paused; }
 
+    public boolean isPaused() { return paused; }
     public Player getPlayer() { return player; }
 }

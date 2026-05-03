@@ -1,19 +1,18 @@
 package BossFight.LevelThree.Green;
 
+import BossFight.BossObstacleManager;
 import BossFight.BossWalkerManager;
+import BossFight.CloudRenderer;
 import BossFight.LevelThree.GravySauce;
-import Ui.BossDefeatOverlay;
-import Ui.BossHealthBar;
-import Ui.HealthBar;
-import Ui.JeepSkillButtons;
-import Ui.UrmButton;
+import Ui.*;
+import entities.EnemyCar;
 import entities.Player;
 import gameStates.GameStates;
 import gameStates.State;
 import gameStates.StateMethods;
 import main.Game;
 import utils.LoadSave;
-import utils.ScrollingCloudLayer;
+
 
 import java.awt.*;
 import java.awt.event.KeyEvent;
@@ -22,7 +21,7 @@ import java.awt.image.BufferedImage;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
-import static utils.Constants.Environment.*;
+
 import static utils.Constants.UI.URMButtons.*;
 
 public class GreenJeepVsBoss3State extends State implements StateMethods {
@@ -30,6 +29,7 @@ public class GreenJeepVsBoss3State extends State implements StateMethods {
     // -------------------------------------------------------
     // BOSS FIGHT SETTINGS
     // -------------------------------------------------------
+    private BossBanner bossBanner;
     private static final float SCROLL_SPEED = BossFight.LevelThree.Green.Boss3.BOSS_SCROLL_SPEED;
     private static final float LEFT_BORDER_PUSH = 0.3f;
     private static final float PLAYER_RIGHT_LIMIT_FRACTION = 0.50f;
@@ -72,11 +72,6 @@ public class GreenJeepVsBoss3State extends State implements StateMethods {
     private final int levelPixelWidth;
 
     // Background
-    private BufferedImage backgroundImg, bigClouds, smallClouds;
-    private ScrollingCloudLayer bigCloudLayer;
-    private ScrollingCloudLayer smallCloudLayer;
-    private static final float BIG_CLOUD_PARALLAX = 0.3f;
-    private static final float SMALL_CLOUD_PARALLAX = 0.5f;
 
     private final float playerRightLimit;
 
@@ -98,13 +93,16 @@ public class GreenJeepVsBoss3State extends State implements StateMethods {
 
     // Skill buttons
     private JeepSkillButtons skillButtons;
-
+    private CloudRenderer cloudRenderer;
+    private BossObstacleManager obstacleManager;
     // -------------------------------------------------------
     public GreenJeepVsBoss3State(Game game, Player player, HealthBar healthBar) {
         super(game);
         this.player = player;
         player.setBossMode(true);
         this.healthBar = healthBar;
+        cloudRenderer = new CloudRenderer();
+        obstacleManager = new BossObstacleManager();
         this.levelPixelWidth = LoadSave.GetLevelData()[0].length * Game.TILES_SIZE;
         this.playerRightLimit = Game.GAME_WIDTH * PLAYER_RIGHT_LIMIT_FRACTION - player.getHitBox().width;
 
@@ -112,6 +110,7 @@ public class GreenJeepVsBoss3State extends State implements StateMethods {
         buildDeathOverlay();
         buildDefeatOverlay();
         bossBar = new BossHealthBar(BossHealthBar.LifeBarType.BOSS3);
+        bossBanner = new BossBanner(3);
         walkerManager = new BossWalkerManager();
         spawnBoss();
 
@@ -136,10 +135,7 @@ public class GreenJeepVsBoss3State extends State implements StateMethods {
     }
 
     private void loadAssets() {
-        backgroundImg = LoadSave.getSpriteAtlas(LoadSave.PLAYING_BACKGROUND_IMG);
-        bigClouds = LoadSave.getSpriteAtlas(LoadSave.BIG_CLOUDS);
-        smallClouds = LoadSave.getSpriteAtlas(LoadSave.SMALL_CLOUDS);
-        initCloudLayers();
+
 
         // Load Skill 1 frames from separate sheet (6 frames)
         java.awt.image.BufferedImage skill1Sheet = LoadSave.getSpriteAtlas(LoadSave.GREEN_JEEP_SKILL1);
@@ -263,9 +259,7 @@ public class GreenJeepVsBoss3State extends State implements StateMethods {
         // World scroll
         worldOffset += SCROLL_SPEED * Game.SCALE;
         if (worldOffset >= levelPixelWidth) worldOffset -= levelPixelWidth;
-
-        bigCloudLayer.update(SCROLL_SPEED * Game.SCALE);
-        smallCloudLayer.update(SCROLL_SPEED * Game.SCALE);
+        cloudRenderer.update(SCROLL_SPEED * Game.SCALE);
 
         // Player clamping
         float leftLimit = 20 * Game.SCALE;
@@ -305,7 +299,7 @@ public class GreenJeepVsBoss3State extends State implements StateMethods {
 
         // Walkers
         walkerManager.update(SCROLL_SPEED);
-
+        obstacleManager.update(true, SCROLL_SPEED * Game.SCALE);
         Rectangle jeepHB = new Rectangle(
                 (int) player.getHitBox().x,
                 (int) player.getHitBox().y,
@@ -318,10 +312,15 @@ public class GreenJeepVsBoss3State extends State implements StateMethods {
         boss.update(jeepHB.x, jeepCentreY, jeepHB.width, jeepHB.height);
 
         // Boss bullets collision
+        // In your update() method, add debug for boss bullets
         for (GravySauce.BossProjectile bullet : boss.getBullets()) {
-            if (bullet.isActive() && bullet.getHitbox().intersects(jeepHB)) {
-                bullet.setActive(false);
-                handleJeepHit();
+            if (bullet.isActive()) {
+                System.out.println("[GreenJeep] Boss bullet active at: " + bullet.getHitbox());
+                if (bullet.getHitbox().intersects(jeepHB)) {
+                    System.out.println("[GreenJeep] HIT by boss bullet!");
+                    bullet.setActive(false);
+                    handleJeepHit();
+                }
             }
         }
 
@@ -332,15 +331,32 @@ public class GreenJeepVsBoss3State extends State implements StateMethods {
                 handleJeepHit();
             }
         }
-
-        // Player bullets to boss
+        obstacleManager.checkCollision(jeepHB, this::handleJeepHit);
+        // Player bullets → boss AND obstacles
         Rectangle bossHB = boss.getHitbox();
         for (GreenJeepProjectile pb : playerBullets) {
-            if (pb.isActive() && pb.getHitbox().intersects(bossHB)) {
+            if (!pb.isActive()) continue;
+
+            // Check bullet vs boss
+            if (pb.getHitbox().intersects(bossHB)) {
                 pb.setActive(false);
                 boss.triggerHit();
                 handleBossHit();
+                continue;
             }
+
+            // Check bullet vs obstacles
+            boolean hitObstacle = false;
+            for (EnemyCar obstacle : obstacleManager.getActiveObstacles()) {
+                if (obstacle.isActive() && pb.getHitbox().intersects(obstacle.getHitBox())) {
+                    obstacle.takeDamage(1);
+                    pb.setActive(false);
+                    hitObstacle = true;
+                    System.out.println("[GreenJeep] Bullet hit obstacle!");
+                    break;
+                }
+            }
+            if (hitObstacle) continue;
         }
     }
 
@@ -453,12 +469,15 @@ public class GreenJeepVsBoss3State extends State implements StateMethods {
 
     @Override
     public void draw(Graphics g) {
-        if (backgroundImg != null)
-            g.drawImage(backgroundImg, 0, 0, Game.GAME_WIDTH, Game.GAME_HEIGHT, null);
-        drawClouds(g);
+        cloudRenderer.drawBackground(g);
+        cloudRenderer.drawClouds(g);
+
+        bossBanner.updatePosition(10);  // 10 pixels from top
+        bossBanner.render(g);
 
         game.getPlaying().getLevelManager().draw(g, (int) worldOffset);
         walkerManager.render(g);
+        obstacleManager.render(g);
         boss.render(g);
 
         for (GreenJeepProjectile pb : playerBullets) pb.render(g);
@@ -513,10 +532,7 @@ public class GreenJeepVsBoss3State extends State implements StateMethods {
         }
     }
 
-    private void drawClouds(Graphics g) {
-        bigCloudLayer.draw(g);
-        smallCloudLayer.draw(g);
-    }
+
 
     @Override
     public void keyPressed(KeyEvent e) {
@@ -664,8 +680,8 @@ public class GreenJeepVsBoss3State extends State implements StateMethods {
         healLastUsed = 0;
 
         worldOffset = 0;
-        initCloudLayers();
-
+        cloudRenderer.reset();
+        obstacleManager.reset();
         walkerManager.resetAll();
         resetDeathOverlay();
         spawnBoss();
@@ -679,14 +695,4 @@ public class GreenJeepVsBoss3State extends State implements StateMethods {
         }
     }
 
-    private void initCloudLayers() {
-        int bigCloudCount = (Game.GAME_WIDTH / BIG_CLOUD_WIDTH) + 3;
-        int smallCloudCount = (Game.GAME_WIDTH / SMALL_CLOUD_WIDTH) + 3;
-        bigCloudLayer = new ScrollingCloudLayer(
-                bigClouds, BIG_CLOUD_WIDTH, BIG_CLOUD_HEIGHT,
-                BIG_CLOUD_PARALLAX, bigCloudCount, (int)(40 * Game.SCALE));
-        smallCloudLayer = new ScrollingCloudLayer(
-                smallClouds, SMALL_CLOUD_WIDTH, SMALL_CLOUD_HEIGHT,
-                SMALL_CLOUD_PARALLAX, smallCloudCount, (int)(60 * Game.SCALE));
-    }
 }

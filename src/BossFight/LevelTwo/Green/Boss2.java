@@ -406,7 +406,7 @@ public class Boss2 {
 
                 nukeSpawnTick++;
                 if (nukeSpawnTick >= S2_PILE_DELAY && nukesDeployed < MAX_NUKES) {
-                    layNukesVertical(nukesDeployed);  // Tweak 2: vertical positioning
+                    spawnNukeWave();  // Tweak 2: vertical positioning
                     nukeSpawnTick = 0;
                 }
 
@@ -508,50 +508,40 @@ public class Boss2 {
      * Piles are equally spaced by PILE_VERTICAL_GAP.
      * The column is centred on the current lane mid-point.
      */
+    private void spawnNukeWave() {
+        // Spawn 3 nukes (pileIndex 0, 1, 2) - same as garbage piles
+        for (int i = 0; i < 3; i++) {
+            layNukesVertical(i);
+        }
+    }
+
+
     private void layNukesVertical(int pileIndex) {
         float nukeH = NukeProjectile.Nuke.FRAME_H * Game.SCALE;
-        float gap = PILE_VERTICAL_GAP * Game.SCALE;
+        float gap = PILE_VERTICAL_GAP * Game.SCALE;  // ← USE SAME GAP as garbage piles
 
-        // ── Centre of jeep hitbox ──────────────────────────────
-        float jeepCentreX = jeepX + jeepWidth / 2f;
-        float jeepCentreY = jeepY + jeepHeight / 2f;
+        // Centre of the 3-nuke column = PLAYER'S vertical centre
+        float colCentreY = jeepY + jeepHeight / 2f;
+        // Offsets: nuke 0 is top, nuke 2 is bottom
+        float offsetY = (pileIndex - 1) * (nukeH + gap);  // -1 → top, 0 → mid, +1 → bot
 
-        // ── Vertical column: pile 0=top, 1=mid, 2=bot ──────────
-        // Base offset: anchored to lane-based stacking
-        float baseOffsetY = (pileIndex - 1) * (nukeH + gap);
+        // ── Spawn to the RIGHT of player (matching garbage pile logic) ──
+        float px = jeepX + jeepWidth + (int)(100 * Game.SCALE);  // ← SAME as garbage pile offset
+        float py = colCentreY + offsetY - nukeH / 2f;
 
-        // ── Add controlled randomness to nearby lanes only ─────
-        // Random offset: ±50% of lane gap
-        float randomOffset = (rng.nextFloat() - 0.5f) * gap;
-        float offsetY = baseOffsetY + randomOffset;
-
-        // ── Spawn X: left of jeep ──────────────────────────────
-        float px = jeepCentreX + SKILL2_SPAWN_OFFSET_X;
-
-        // ── Spawn Y: CRITICAL FIX ──────────────────────────────
-        // jeepCentreY is the CENTER of the jeep hitbox.
-        // To align nuke CENTRE with jeep CENTRE, subtract half nuke height.
-        // Then add the lane offset.
-
-        float py = jeepCentreY - nukeH / 2f + offsetY * 0.7f + SKILL2_SPAWN_OFFSET_Y;
-
-        // ── Clamp to lane boundaries (ensure stays in road) ────
+        // Clamp so nukes never land outside the road
         float nukeTop = laneTopY;
-        float nukeBot = Game.GAME_HEIGHT - nukeH;
-
+        float nukeBot = LANE_BOTTOM_PRE_SCALE * Game.TILES_SIZE - nukeH;
         if (py < nukeTop) py = nukeTop;
         if (py > nukeBot) py = nukeBot;
 
-        System.out.println("[Boss2] Nuke " + (pileIndex + 1)
-                + " | jeepCentre=(" + jeepCentreX + ", " + jeepCentreY + ")"
-                + " | topLeftY=" + py
-                + " | baseOffset=" + baseOffsetY
-                + " | randomOffset=" + randomOffset);
-
         nukes.add(new NukeProjectile.Nuke(px, py, nukeFrames));
         nukesDeployed++;
-    }
 
+        System.out.println("[Boss] Nuke " + (pileIndex + 1) +
+                " | Offset Y: " + offsetY +
+                " | Position: (" + px + ", " + py + ")");
+    }
     private void updateBullets() {
         bullets.removeIf(b -> { b.update(); return !b.isActive(); });
     }

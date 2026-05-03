@@ -1,11 +1,10 @@
 package BossFight.LevelOne.Green;
 
+import BossFight.BossObstacleManager;
 import BossFight.BossWalkerManager;
-import Ui.BossDefeatOverlay;
-import Ui.BossHealthBar;
-import Ui.HealthBar;
-import Ui.JeepSkillButtons;
-import Ui.UrmButton;
+import BossFight.CloudRenderer;
+import Ui.*;
+import entities.EnemyCar;
 import entities.Player;
 import gameStates.GameStates;
 import gameStates.State;
@@ -26,7 +25,9 @@ import static utils.Constants.UI.URMButtons.*;
 
 
 public class GreenJeepVsBoss1State extends State implements StateMethods {
-
+    private BossBanner bossBanner;
+    private CloudRenderer cloudRenderer;
+    private BossObstacleManager obstacleManager;
     // -------------------------------------------------------
     // BOSS FIGHT SETTINGS  ← ADJUST
     // -------------------------------------------------------
@@ -69,12 +70,6 @@ public class GreenJeepVsBoss1State extends State implements StateMethods {
     private final int levelPixelWidth;
 
     // ── Background ───────────────────────────────────────────
-    private BufferedImage backgroundImg, bigClouds, smallClouds;
-    private ScrollingCloudLayer bigCloudLayer;
-    private ScrollingCloudLayer smallCloudLayer;
-    private static final float BIG_CLOUD_PARALLAX   = 0.3f;
-    private static final float SMALL_CLOUD_PARALLAX = 0.5f;
-
     private final float playerRightLimit;
 
     // ── Pause ─────────────────────────────────────────────────
@@ -115,6 +110,8 @@ public class GreenJeepVsBoss1State extends State implements StateMethods {
         this.player    = player;
         player.setBossMode(false);
         this.healthBar = healthBar;
+        cloudRenderer = new CloudRenderer();
+        obstacleManager = new BossObstacleManager();  // ← ADD THIS LINE
         this.levelPixelWidth =
                 LoadSave.GetLevelData()[0].length * Game.TILES_SIZE;
 
@@ -129,6 +126,7 @@ public class GreenJeepVsBoss1State extends State implements StateMethods {
         buildDeathOverlay();
         buildDefeatOverlay();
         bossBar = new BossHealthBar(BossHealthBar.LifeBarType.BOSS1);
+        bossBanner = new BossBanner(1);
         walkerManager = new BossWalkerManager();
         spawnBoss();
 
@@ -158,15 +156,8 @@ public class GreenJeepVsBoss1State extends State implements StateMethods {
     // ─────────────────────────────────────────────────────────
 // Change loadAssets() signature to accept a parameter
     private void loadAssets(String atlasPath) {
-        backgroundImg = LoadSave.getSpriteAtlas(LoadSave.PLAYING_BACKGROUND_IMG);
-        bigClouds     = LoadSave.getSpriteAtlas(LoadSave.BIG_CLOUDS);
-        smallClouds   = LoadSave.getSpriteAtlas(LoadSave.SMALL_CLOUDS);
-        initCloudLayers();
-
         // ── Load shield from main atlas ───────────────────────────
         java.awt.image.BufferedImage mainSheet = LoadSave.getSpriteAtlas(LoadSave.PLAYER_ATLAS_2);
-
-
         // ── Load Skill 1 frames (6 frames from separate skill1 sprite sheet) ──
         java.awt.image.BufferedImage skill1Sheet = LoadSave.getSpriteAtlas(LoadSave.GREEN_JEEP_SKILL1);
         if (skill1Sheet != null) {
@@ -315,8 +306,7 @@ public class GreenJeepVsBoss1State extends State implements StateMethods {
         worldOffset += SCROLL_SPEED * Game.SCALE;
         if (worldOffset >= levelPixelWidth) worldOffset -= levelPixelWidth;
 
-        bigCloudLayer.update(SCROLL_SPEED * Game.SCALE);
-        smallCloudLayer.update(SCROLL_SPEED * Game.SCALE);
+        cloudRenderer.update(SCROLL_SPEED * Game.SCALE);
 
         // ── Player clamping ───────────────────────────────────
         float leftLimit = 20 * Game.SCALE;
@@ -355,6 +345,7 @@ public class GreenJeepVsBoss1State extends State implements StateMethods {
         // ── Walkers ── NEW from first version ─────────────────────
         walkerManager.update(SCROLL_SPEED);
 
+        obstacleManager.update(true, SCROLL_SPEED * Game.SCALE);  // ← ADD THIS
         // ── Boss ──────────────────────────────────────────────
         float jeepCentreY = player.getHitBox().y + player.getHitBox().height / 2f;
         boss.update(player.getHitBox().x, jeepCentreY);
@@ -379,15 +370,33 @@ public class GreenJeepVsBoss1State extends State implements StateMethods {
                 handleJeepHit();
             }
         }
+        obstacleManager.checkCollision(jeepHB, this::handleJeepHit);
 
         // Player bullets → boss
+        // Player bullets → boss AND obstacles
         Rectangle bossHB = boss.getHitbox();
         for (GreenJeepProjectile pb : playerBullets) {
-            if (pb.isActive() && pb.getHitbox().intersects(bossHB)) {
+            if (!pb.isActive()) continue;
+
+            // Check bullet vs boss
+            if (pb.getHitbox().intersects(bossHB)) {
                 pb.setActive(false);
                 boss.triggerHit();
                 handleBossHit();
+                continue;
             }
+
+            // Check bullet vs obstacles
+            boolean hitObstacle = false;
+            for (EnemyCar obstacle : obstacleManager.getActiveObstacles()) {
+                if (obstacle.isActive() && pb.getHitbox().intersects(obstacle.getHitBox())) {
+                    obstacle.takeDamage(1);
+                    pb.setActive(false);
+                    hitObstacle = true;
+                    break;
+                }
+            }
+            if (hitObstacle) continue;
         }
     }
 
@@ -522,65 +531,49 @@ public class GreenJeepVsBoss1State extends State implements StateMethods {
     // ─────────────────────────────────────────────────────────
     // DRAW
     // ─────────────────────────────────────────────────────────
+
     @Override
     public void draw(Graphics g) {
-        if (backgroundImg != null)
-            g.drawImage(backgroundImg, 0, 0, Game.GAME_WIDTH, Game.GAME_HEIGHT, null);
-        drawClouds(g);
-
+        // Draw clouds using CloudRenderer
+        cloudRenderer.drawBackground(g);
+        cloudRenderer.drawClouds(g);
+        bossBanner.updatePosition(10);  // 10 pixels from top
+        bossBanner.render(g);
         game.getPlaying().getLevelManager().draw(g, (int) worldOffset);
-
-        // ── Walkers behind boss ── NEW from first version ─────────
         walkerManager.render(g);
-
+        obstacleManager.render(g);  // ← ADD THIS
         boss.render(g);
 
         for (GreenJeepProjectile pb : playerBullets) pb.render(g);
-
         player.render(g);
 
+        // Heal animation
         if (isHealing && healAnimationFrames != null && healAnimIndex < healAnimationFrames.length) {
-
             BufferedImage healFrame = healAnimationFrames[healAnimIndex];
-
             if (healFrame != null) {
-
                 float healScale = 2.5f;
-
                 int healW = (int)(healAnimationFrames[0].getWidth() * Game.SCALE * healScale);
                 int healH = (int)(healAnimationFrames[0].getHeight() * Game.SCALE * healScale);
-
-                // Center of player hitbox
                 float centerX = player.getHitBox().x + player.getHitBox().width / 2f;
                 float centerY = player.getHitBox().y + player.getHitBox().height / 2f;
-
-                // Center animation on player
                 int healX = (int)(centerX - healW / 2f);
                 int healY = (int)(centerY - healH / 2f);
-
                 g.drawImage(healFrame, healX, healY, healW, healH, null);
             }
         }
 
-
-        // ── UI bars ───────────────────────────────────────────
-        healthBar.render(g);     // jeep life — upper left
-        bossBar.render(g);       // boss life — upper right
-
-        // ── Skill buttons ────────────────────────────────────
+        healthBar.render(g);
+        bossBar.render(g);
         skillButtons.render(g);
 
-        // ── Overlays (on top of everything) ───────────────────
         if (bossDefeated) {
             defeatOverlay.render(g);
             return;
         }
-
         if (playerDead) {
             renderDeathOverlay(g);
             return;
         }
-
         if (paused) {
             g.setColor(new Color(0, 0, 0, 150));
             g.fillRect(0, 0, Game.GAME_WIDTH, Game.GAME_HEIGHT);
@@ -588,10 +581,7 @@ public class GreenJeepVsBoss1State extends State implements StateMethods {
         }
     }
 
-    private void drawClouds(Graphics g) {
-        bigCloudLayer.draw(g);
-        smallCloudLayer.draw(g);
-    }
+
 
     // ─────────────────────────────────────────────────────────
     // INPUT
@@ -705,9 +695,10 @@ public class GreenJeepVsBoss1State extends State implements StateMethods {
         healLastUsed = 0;
 
         worldOffset = 0;
-        initCloudLayers();
+        cloudRenderer.reset();
 
         walkerManager.resetAll();   // NEW from first version
+        obstacleManager.reset();  // ← ADD THIS
         resetDeathOverlay();
         spawnBoss();
         player.setBossMode(true);  // Restore boss mode — was cleared above for hitbox reset
@@ -719,16 +710,7 @@ public class GreenJeepVsBoss1State extends State implements StateMethods {
         if (game.getSelectedDriver() != null) {
             applyDriverAssets(game.getSelectedDriver());
         }}
-    private void initCloudLayers() {
-        int bigCloudCount = (Game.GAME_WIDTH / BIG_CLOUD_WIDTH) + 3;
-        int smallCloudCount = (Game.GAME_WIDTH / SMALL_CLOUD_WIDTH) + 3;
-        bigCloudLayer = new ScrollingCloudLayer(
-                bigClouds, BIG_CLOUD_WIDTH, BIG_CLOUD_HEIGHT,
-                BIG_CLOUD_PARALLAX, bigCloudCount, (int)(40 * Game.SCALE));
-        smallCloudLayer = new ScrollingCloudLayer(
-                smallClouds, SMALL_CLOUD_WIDTH, SMALL_CLOUD_HEIGHT,
-                SMALL_CLOUD_PARALLAX, smallCloudCount, (int)(60 * Game.SCALE));
-    }
+
     public boolean isPaused() { return paused; }
 
     public Player getPlayer() { return player; }

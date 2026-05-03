@@ -469,27 +469,27 @@ public class Boss1 {
      * Piles are equally spaced by PILE_VERTICAL_GAP.
      * The column is centred on the current lane mid-point.
      */
-    private void layGarbagePileVertical(int pileIndex) {
-        float pileH   = GarbagePile.PILE_H * Game.SCALE;
-        float gap     = PILE_VERTICAL_GAP * Game.SCALE;
+        private void layGarbagePileVertical(int pileIndex) {
+            float pileH   = GarbagePile.PILE_H * Game.SCALE;
+            float gap     = PILE_VERTICAL_GAP * Game.SCALE;
 
-        // Centre of the 3-pile column = boss's current vertical centre
-        float colCentreY = y + height / 2f;
-        // Offsets: pile 0 is top, pile 2 is bottom
-        float offsetY = (pileIndex - 1) * (pileH + gap); // -1 → top, 0 → mid, +1 → bot
+            // Centre of the 3-pile column = boss's current vertical centre
+            float colCentreY = y + height / 2f;
+            // Offsets: pile 0 is top, pile 2 is bottom
+            float offsetY = (pileIndex - 1) * (pileH + gap); // -1 → top, 0 → mid, +1 → bot
 
-        float px = x + width * 0.25f;          // slightly left of boss centre
-        float py = colCentreY + offsetY - pileH / 2f;
+            float px = x + width * 0.25f;          // slightly left of boss centre
+            float py = colCentreY + offsetY - pileH / 2f;
 
-        // Clamp so piles never land outside the road
-        float pileTop = laneTopY;
-        float pileBot = LANE_BOTTOM_PRE_SCALE * Game.TILES_SIZE - pileH;
-        if (py < pileTop) py = pileTop;
-        if (py > pileBot) py = pileBot;
+            // Clamp so piles never land outside the road
+            float pileTop = laneTopY;
+            float pileBot = LANE_BOTTOM_PRE_SCALE * Game.TILES_SIZE - pileH;
+            if (py < pileTop) py = pileTop;
+            if (py > pileBot) py = pileBot;
 
-        piles.add(new GarbagePile(px, py, pileImage));
-        pilesLaid++;
-    }
+            piles.add(new GarbagePile(px, py, pileImage));
+            pilesLaid++;
+        }
 
     private void updateBullets() {
         bullets.removeIf(b -> { b.update(); return !b.isActive(); });

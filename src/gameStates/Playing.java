@@ -74,6 +74,8 @@ public class Playing extends State implements StateMethods {
     private HealthBar            healthBar;
     private DeathOverlay         deathOverlay;
     private ProgressBar          progressBar;
+    // Add with other UI fields (around line 100)
+    private LevelBanner levelBanner;
     private AcceptPassengerOverlay acceptPassengerOverlay;
     private PassengerListOverlay   passengerListOverlay;
     private IntroOverlay           introOverlay;
@@ -170,6 +172,12 @@ public class Playing extends State implements StateMethods {
 
     public entities.DriverProfile getCurrentDriver() { return currentDriver; }
 
+    // Add this method in Playing class
+    public void refreshLevelBanner() {
+        int currentLevel = levelManager.getCurrentLevelId();
+        levelBanner = new LevelBanner(currentLevel);
+        System.out.println("[Playing] Banner refreshed to Level " + currentLevel);
+    }
     public void resumeFromInteraction() {
         if (!interactionPaused) return;  // Already resumed — nothing to do
         System.out.println("[Playing] resumeFromInteraction() - clearing interactionPaused");
@@ -204,7 +212,10 @@ public class Playing extends State implements StateMethods {
         healthBar        = new HealthBar();
         passengerCounter = new PassengerCounter();
         deathOverlay     = new DeathOverlay(this);
+
         progressBar      = new ProgressBar(levelManager.getCurrentLevelId());
+        levelBanner = new LevelBanner(levelManager.getCurrentLevelId());
+
         stopHereIndicator = new StopHereIndicator();
         acceptPassengerOverlay = new AcceptPassengerOverlay(this, passengerCounter);
         acceptPassengerOverlay.setPassengerManager(passengerManager);
@@ -579,7 +590,13 @@ public class Playing extends State implements StateMethods {
         stopHereIndicator.render(g, player.getHitBox().x, player.getHitBox().y);
         healthBar.render(g);
         passengerCounter.render(g);
+
+        // Update banner position based on progress bar position
+        levelBanner.updatePosition(progressBar.getDrawY(), progressBar.getDrawHeight());
         progressBar.render(g);
+
+        levelBanner.render(g);  // ← RENDER BANNER AFTER PROGRESS BAR
+
         gameClock.render(g);
 
         List<RidingPassenger> seats = passengerManager.getSeatList();
@@ -867,6 +884,7 @@ public class Playing extends State implements StateMethods {
 
         // Recreate progress bar for new level
         progressBar = new ProgressBar(levelManager.getCurrentLevelId());
+        levelBanner = new LevelBanner(levelManager.getCurrentLevelId());  // ← RECREATE BANNER
 
         gameClock.reset();
         gameClock.setCurrentLevel(levelManager.getCurrentLevelId());

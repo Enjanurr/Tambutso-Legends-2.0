@@ -28,7 +28,7 @@ public class Boss3 {
     public static final int ROW_STUN = 6;
 
     // ── Frame counts per row ──────────────────────────────────
-    private static final int[] FRAME_COUNTS = { 5, 5, 1, 5, 4, 2, 4 };
+    private static final int[] FRAME_COUNTS = { 5, 5, 5, 5, 4, 2, 4 };
 
     // -------------------------------------------------------
     // BOSS SETTINGS
@@ -44,12 +44,12 @@ public class Boss3 {
 
     // Timing constants
     private static final int FOLLOW_TICKS = 4 * 200;
-    private static final int SHOOT_TICKS = 5 * 200;
+    private static final int SHOOT_TICKS = 8 * 200;       // 8 seconds shooting
     private static final int SHIELD_DURATION = 6 * 200;
     private static final int SHIELD_COOLDOWN = 4 * 200;
     private static final int GRAVY_TICKS = 6 * 200;
     private static final int HIT_ANIM_TICKS = 90;
-    private static final int STUN_DURATION = 3 * 200; // 3 seconds
+    private static final int STUN_DURATION = 3 * 200;
 
     private static final int BULLET_DELAY = 200;
     private static final int MAX_BULLETS = 10;
@@ -59,6 +59,9 @@ public class Boss3 {
     // Animation speeds
     public static final int ANI_SPEED_RUNNING = 20;
     public static final int ANI_SPEED_SHOOT = 10;
+    public static final int ANI_SPEED_SHIELD_FORM = 30;
+    public static final int ANI_SPEED_SHIELD_FORMED = 30;
+    public static final int ANI_SPEED_GRAVY = 12;
     public static final int ANI_SPEED_STUN = 15;
     public static final int ANI_SPEED_HIT = 20;
 
@@ -70,7 +73,7 @@ public class Boss3 {
 
     // Shield formation animation
     private static final int SHIELD_FORM_COL0_TICKS = 30;
-    private static final int SHIELD_FORM_LOOP_SPEED = 15;
+    private static final int SHIELD_FORM_LOOP_SPEED = 30;  // Slower forming
     private static final int SHIELD_FORM_DURATION = 90;
 
     // Vertical spacing
@@ -100,6 +103,7 @@ public class Boss3 {
     private BossState state = BossState.FOLLOW;
     private BossState stateAfterHit = BossState.FOLLOW;
     private int stateTick = 0;
+    private BossState lastSkillUsed = BossState.FOLLOW;  // Track skill rotation
 
     // ── Stun variables ────────────────────────────────────────
     private boolean stunned = false;
@@ -120,6 +124,7 @@ public class Boss3 {
     private int shieldFormLoopIndex = 1;
     private int shieldFormPhase = 0;
     private int shieldAniIndex = 0;
+    private int shieldAniTick = 0;
 
     // ── Gravy variables ───────────────────────────────────────
     private int gravyLaid = 0;
@@ -150,9 +155,9 @@ public class Boss3 {
     private boolean comboShieldTriggered = false;
     private int comboShieldCheckTick = 0;
     private static final int COMBO_SHIELD_CHECK_DELAY = 100;
+    private boolean isComboShieldForming = false;
 
     private final Random rng = new Random();
-    private boolean isComboShieldForming = false;
 
     public Boss3(float startX, float startY) {
         this.width = (int)(FRAME_W * Game.SCALE);
@@ -228,6 +233,13 @@ public class Boss3 {
 
         stunTick++;
 
+        if (shieldActive) {
+            shieldTick++;
+            if (shieldTick >= SHIELD_DURATION) {
+                deactivateShield();
+            }
+        }
+
         if (stunTick >= STUN_DURATION) {
             stunned = false;
             stunTick = 0;
@@ -235,7 +247,7 @@ public class Boss3 {
             stateTick = 0;
             aniIndex = 0;
             currentRow = ROW_RUNNING;
-            System.out.println("[Boss3] Stun ended");
+            System.out.println("[Boss3 Red] Stun ended");
         }
     }
 
@@ -253,10 +265,18 @@ public class Boss3 {
                 currentRow = ROW_RUNNING;
                 wanderY();
                 if (stateTick >= FOLLOW_TICKS) {
-                    int choice = rng.nextInt(3);
-                    if (choice == 0) enterShoot();
-                    else if (choice == 1) enterShieldForming();
-                    else enterGravyDump();
+                    if (lastSkillUsed != BossState.SHOOT) {
+                        enterShoot();
+                        lastSkillUsed = BossState.SHOOT;
+                    } else {
+                        if (rng.nextBoolean()) {
+                            enterShieldForming();
+                            lastSkillUsed = BossState.SHIELD_FORMING;
+                        } else {
+                            enterGravyDump();
+                            lastSkillUsed = BossState.GRAVY_DUMP;
+                        }
+                    }
                 }
                 break;
 
@@ -287,11 +307,11 @@ public class Boss3 {
                     }
 
                     // Combo: Activate shield while shooting
-                    if (!comboShieldTriggered && !shieldActive) {
+                    if (!comboShieldTriggered && !shieldActive && !isComboShieldForming) {
                         comboShieldCheckTick++;
                         if (comboShieldCheckTick >= COMBO_SHIELD_CHECK_DELAY) {
                             if (rng.nextFloat() < SHIELD_COMBO_CHANCE) {
-                                System.out.println("[Boss3] 🛡️ COMBO: Activating shield while shooting!");
+                                System.out.println("[Boss3 Red] 🛡️ COMBO: Activating shield while shooting!");
                                 activateComboShield();
                                 comboShieldTriggered = true;
                             }
@@ -299,15 +319,29 @@ public class Boss3 {
                         }
                     }
 
+                    // Update shield formation during combo
                     if (isComboShieldForming) {
                         updateShieldFormSequence();
-                    }
-
-                    if (shieldActive) {
-                        shieldTick++;
-                        if (shieldTick >= SHIELD_DURATION) {
-                            deactivateShield();
+                        if (shieldFormPhase >= 2) {
+                            isComboShieldForming = false;
+                            shieldActive = true;
+                            shieldAniIndex = 0;
+                            shieldAniTick = 0;
+                            System.out.println("[Boss3 Red] Combo shield now ACTIVE!");
                         }
+                    }
+                }
+
+                // Animate shield every frame
+                if (shieldActive) {
+                    shieldAniTick++;
+                    if (shieldAniTick >= ANI_SPEED_SHIELD_FORMED) {
+                        shieldAniTick = 0;
+                        shieldAniIndex = (shieldAniIndex + 1) % FRAME_COUNTS[ROW_SHIELD_FORMED];
+                    }
+                    shieldTick++;
+                    if (shieldTick >= SHIELD_DURATION) {
+                        deactivateShield();
                     }
                 }
 
@@ -326,6 +360,13 @@ public class Boss3 {
             case SHIELD_ACTIVE:
                 currentRow = ROW_RUNNING;
                 wanderY();
+
+                shieldAniTick++;
+                if (shieldAniTick >= ANI_SPEED_SHIELD_FORMED) {
+                    shieldAniTick = 0;
+                    shieldAniIndex = (shieldAniIndex + 1) % FRAME_COUNTS[ROW_SHIELD_FORMED];
+                }
+
                 shieldTick++;
                 if (shieldTick >= SHIELD_DURATION) {
                     enterShieldCooldown();
@@ -358,7 +399,6 @@ public class Boss3 {
                 break;
 
             case STUN:
-                // Stun handled in updateStunState() called before switch
                 break;
         }
     }
@@ -393,10 +433,16 @@ public class Boss3 {
                 shieldHitsRemaining = SHIELD_MAX_HITS;
                 shieldFormPhase = 3;
                 isComboShieldForming = false;
+                shieldAniIndex = 0;
+                shieldAniTick = 0;
                 break;
 
             case 3:
-                shieldAniIndex = 0;
+                shieldAniTick++;
+                if (shieldAniTick >= ANI_SPEED_SHIELD_FORMED) {
+                    shieldAniTick = 0;
+                    shieldAniIndex = (shieldAniIndex + 1) % FRAME_COUNTS[ROW_SHIELD_FORMED];
+                }
                 break;
         }
     }
@@ -406,16 +452,18 @@ public class Boss3 {
         shieldFormPhase = 0;
         shieldFormTick = 0;
         shieldAniIndex = 0;
+        shieldAniTick = 0;
         shieldTick = 0;
         isComboShieldForming = true;
-        System.out.println("[Boss3] Shield forming during SHOOT combo!");
+        shieldActive = false;
+        System.out.println("[Boss3 Red] Shield forming during SHOOT combo!");
     }
 
     private void deactivateShield() {
         shieldActive = false;
         shieldFormPhase = 0;
         shieldTick = 0;
-        System.out.println("[Boss3] Shield deactivated (time expired)");
+        System.out.println("[Boss3 Red] Shield deactivated (time expired)");
     }
 
     private void updateGravySequence() {
@@ -576,6 +624,7 @@ public class Boss3 {
         shieldFormLoopIndex = 1;
         shieldFormPhase = 0;
         shieldAniIndex = 0;
+        shieldAniTick = 0;
         currentRow = ROW_RUNNING;
         System.out.println("[Boss3 Red] 🛡️ Forming Shield...");
     }
@@ -587,6 +636,8 @@ public class Boss3 {
         shieldActive = true;
         shieldHitsRemaining = SHIELD_MAX_HITS;
         currentRow = ROW_RUNNING;
+        shieldAniIndex = 0;
+        shieldAniTick = 0;
         System.out.println("[Boss3 Red] 🛡️ Shield Active! (" + SHIELD_MAX_HITS + " hits to break)");
     }
 
@@ -609,6 +660,8 @@ public class Boss3 {
         gravySpawnTick = 0;
         gravyPhase = 0;
         currentRow = ROW_GRAVY;
+        aniIndex = 0;
+        aniTick = 0;
         System.out.println("[Boss3 Red] 💧 Dumping Gravy!");
     }
 
@@ -619,21 +672,28 @@ public class Boss3 {
         bulletsFired = 0;
         bulletTick = 0;
         currentRow = ROW_RUNNING;
+        aniIndex = 0;
+        aniTick = 0;
         System.out.println("[Boss3 Red] 🏃 Back to FOLLOW state");
     }
 
     public void triggerHit() {
-        if (state == BossState.HIT || state == BossState.STUN) return;
+        if (state == BossState.HIT) return;
 
         if (shieldActive) {
             shieldHitsRemaining--;
             System.out.println("[Boss3 Red] 🛡️ Shield hit! Remaining: " + shieldHitsRemaining);
+
+            shieldAniTick = 0;
+
             if (shieldHitsRemaining <= 0) {
                 shieldActive = false;
                 System.out.println("[Boss3 Red] 💥 Shield broken!");
             }
             return;
         }
+
+        if (state == BossState.STUN) return;
 
         stateAfterHit = state;
         state = BossState.HIT;
@@ -651,7 +711,7 @@ public class Boss3 {
         aniIndex = 0;
         aniTick = 0;
         currentRow = ROW_STUN;
-        System.out.println("[Boss3] ⚡ Stunned! Duration: 3 seconds.");
+        System.out.println("[Boss3 Red] ⚡ Stunned! Duration: 3 seconds.");
     }
 
     // ── RENDER ─────────────────────────────────────────────────
@@ -672,8 +732,8 @@ public class Boss3 {
                 int shieldY = (int)y;
                 g.drawImage(shieldFrame, shieldX, shieldY, shieldW, shieldH, null);
             }
-        } else if (shieldActive && shieldFormedFrames != null) {
-            BufferedImage shieldFrame = shieldFormedFrames[0];
+        } else if ((shieldActive || isComboShieldForming) && shieldFormedFrames != null) {
+            BufferedImage shieldFrame = shieldFormedFrames[shieldAniIndex];
             if (shieldFrame != null) {
                 int shieldW = (int)(FRAME_W * Game.SCALE);
                 int shieldH = (int)(FRAME_H * Game.SCALE);

@@ -1,19 +1,18 @@
 package BossFight.LevelTwo.Blue;
 
+import BossFight.BossObstacleManager;
 import BossFight.BossWalkerManager;
+import BossFight.CloudRenderer;
 import BossFight.LevelTwo.NukeProjectile;
-import Ui.BossDefeatOverlay;
-import Ui.BossHealthBar;
-import Ui.HealthBar;
-import Ui.JeepSkillButtons;
-import Ui.UrmButton;
+import Ui.*;
+import entities.EnemyCar;
 import entities.Player;
 import gameStates.GameStates;
 import gameStates.State;
 import gameStates.StateMethods;
 import main.Game;
 import utils.LoadSave;
-import utils.ScrollingCloudLayer;
+
 
 import java.awt.*;
 import java.awt.event.KeyEvent;
@@ -22,12 +21,12 @@ import java.awt.image.BufferedImage;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
-import static utils.Constants.Environment.*;
 import static utils.Constants.UI.URMButtons.*;
 
 
 public class BlueJeepVsBoss2State extends State implements StateMethods {
-
+    private BossBanner bossBanner;
+    private CloudRenderer cloudRenderer;
     // -------------------------------------------------------
     // BOSS FIGHT SETTINGS  ← ADJUST
     // -------------------------------------------------------
@@ -75,11 +74,6 @@ public class BlueJeepVsBoss2State extends State implements StateMethods {
     private final int levelPixelWidth;
 
     // ── Background ───────────────────────────────────────────
-    private BufferedImage backgroundImg, bigClouds, smallClouds;
-    private ScrollingCloudLayer bigCloudLayer;
-    private ScrollingCloudLayer smallCloudLayer;
-    private static final float BIG_CLOUD_PARALLAX   = 0.3f;
-    private static final float SMALL_CLOUD_PARALLAX = 0.5f;
 
     private final float playerRightLimit;
 
@@ -101,6 +95,7 @@ public class BlueJeepVsBoss2State extends State implements StateMethods {
 
     // ── Skill buttons ────────────────────────────────────────
     private JeepSkillButtons skillButtons;
+    private BossObstacleManager obstacleManager;
 
     // ─────────────────────────────────────────────────────────
     public BlueJeepVsBoss2State(Game game, Player player, HealthBar healthBar) {
@@ -108,6 +103,8 @@ public class BlueJeepVsBoss2State extends State implements StateMethods {
         this.player    = player;
         this.player.setBossMode(true);
         this.healthBar = healthBar;
+        cloudRenderer = new CloudRenderer();  // ← ADD THIS LINE
+        obstacleManager = new BossObstacleManager();
         this.levelPixelWidth =
                 LoadSave.GetLevelData()[0].length * Game.TILES_SIZE;
 
@@ -122,6 +119,7 @@ public class BlueJeepVsBoss2State extends State implements StateMethods {
         buildDeathOverlay();
         buildDefeatOverlay();
         bossBar = new BossHealthBar(BossHealthBar.LifeBarType.BOSS2);
+        bossBanner = new BossBanner(2);
         walkerManager = new BossWalkerManager();
         spawnBoss();
 
@@ -151,10 +149,6 @@ public class BlueJeepVsBoss2State extends State implements StateMethods {
     // ─────────────────────────────────────────────────────────
 // Change loadAssets() signature to accept a parameter
     private void loadAssets(String atlasPath) {
-        backgroundImg = LoadSave.getSpriteAtlas(LoadSave.PLAYING_BACKGROUND_IMG);
-        bigClouds     = LoadSave.getSpriteAtlas(LoadSave.BIG_CLOUDS);
-        smallClouds   = LoadSave.getSpriteAtlas(LoadSave.SMALL_CLOUDS);
-        initCloudLayers();
 
         // ✨ Add leading slash if missing
         if (!atlasPath.startsWith("/")) {
@@ -302,8 +296,7 @@ public class BlueJeepVsBoss2State extends State implements StateMethods {
         worldOffset += SCROLL_SPEED * Game.SCALE;
         if (worldOffset >= levelPixelWidth) worldOffset -= levelPixelWidth;
 
-        bigCloudLayer.update(SCROLL_SPEED * Game.SCALE);
-        smallCloudLayer.update(SCROLL_SPEED * Game.SCALE);
+        cloudRenderer.update(SCROLL_SPEED * Game.SCALE);
 
         // ── Player clamping ───────────────────────────────────
         float leftLimit = 20 * Game.SCALE;
@@ -329,7 +322,7 @@ public class BlueJeepVsBoss2State extends State implements StateMethods {
 
         // ── Walkers ── NEW from first version ─────────────────────
         walkerManager.update(SCROLL_SPEED);
-
+        obstacleManager.update(true, SCROLL_SPEED * Game.SCALE);
         Rectangle jeepHB = new Rectangle(
                 (int) player.getHitBox().x,
                 (int) player.getHitBox().y,
@@ -361,15 +354,33 @@ public class BlueJeepVsBoss2State extends State implements StateMethods {
                 handleJeepHit();
             }
         }
-
+        obstacleManager.checkCollision(jeepHB, this::handleJeepHit);
         // Player bullets → boss
+        // Player bullets → boss AND obstacles
         Rectangle bossHB = boss.getHitbox();
         for (BlueJeepProjectile pb : playerBullets) {
-            if (pb.isActive() && pb.getHitbox().intersects(bossHB)) {
+            if (!pb.isActive()) continue;
+
+            // Check bullet vs boss
+            if (pb.getHitbox().intersects(bossHB)) {
                 pb.setActive(false);
                 boss.triggerHit();
                 handleBossHit();
+                continue;
             }
+
+            // Check bullet vs obstacles
+            boolean hitObstacle = false;
+            for (EnemyCar obstacle : obstacleManager.getActiveObstacles()) {
+                if (obstacle.isActive() && pb.getHitbox().intersects(obstacle.getHitBox())) {
+                    obstacle.takeDamage(1);
+                    pb.setActive(false);
+                    hitObstacle = true;
+                    System.out.println("[BlueJeep] Bullet hit obstacle!");
+                    break;
+                }
+            }
+            if (hitObstacle) continue;
         }
     }
 
@@ -464,15 +475,17 @@ public class BlueJeepVsBoss2State extends State implements StateMethods {
     // ─────────────────────────────────────────────────────────
     @Override
     public void draw(Graphics g) {
-        if (backgroundImg != null)
-            g.drawImage(backgroundImg, 0, 0, Game.GAME_WIDTH, Game.GAME_HEIGHT, null);
-        drawClouds(g);
+        cloudRenderer.drawBackground(g);
+        cloudRenderer.drawClouds(g);
+
+        bossBanner.updatePosition(10);  // 10 pixels from top
+        bossBanner.render(g);
 
         game.getPlaying().getLevelManager().draw(g, (int) worldOffset);
 
         // ── Walkers behind boss ── NEW from first version ─────────
         walkerManager.render(g);
-
+        obstacleManager.render(g);
         boss.render(g);
 
         for (BlueJeepProjectile pb : playerBullets) pb.render(g);
@@ -516,10 +529,6 @@ public class BlueJeepVsBoss2State extends State implements StateMethods {
         }
     }
 
-    private void drawClouds(Graphics g) {
-        bigCloudLayer.draw(g);
-        smallCloudLayer.draw(g);
-    }
 
     // ─────────────────────────────────────────────────────────
     // INPUT
@@ -627,9 +636,9 @@ public class BlueJeepVsBoss2State extends State implements StateMethods {
         playerBullets.clear();
 
         worldOffset = 0;
-        initCloudLayers();
-
+        cloudRenderer.reset();  // ← ADD THIS LINE
         walkerManager.resetAll();   // NEW from first version
+        obstacleManager.reset();
         resetDeathOverlay();
         spawnBoss();
         player.setBossMode(true);  // Restore boss mode — was cleared above for hitbox reset
@@ -641,16 +650,7 @@ public class BlueJeepVsBoss2State extends State implements StateMethods {
         if (game.getSelectedDriver() != null) {
             applyDriverAssets(game.getSelectedDriver());
         }}
-    private void initCloudLayers() {
-        int bigCloudCount = (Game.GAME_WIDTH / BIG_CLOUD_WIDTH) + 3;
-        int smallCloudCount = (Game.GAME_WIDTH / SMALL_CLOUD_WIDTH) + 3;
-        bigCloudLayer = new ScrollingCloudLayer(
-                bigClouds, BIG_CLOUD_WIDTH, BIG_CLOUD_HEIGHT,
-                BIG_CLOUD_PARALLAX, bigCloudCount, (int)(40 * Game.SCALE));
-        smallCloudLayer = new ScrollingCloudLayer(
-                smallClouds, SMALL_CLOUD_WIDTH, SMALL_CLOUD_HEIGHT,
-                SMALL_CLOUD_PARALLAX, smallCloudCount, (int)(60 * Game.SCALE));
-    }
+
     public boolean isPaused() { return paused; }
 
     public Player getPlayer() { return player; }
