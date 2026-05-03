@@ -440,16 +440,14 @@ public class Game implements Runnable {
         if (desiredTrack.equals(activeMusicTrack))
             return;
 
-        switch (desiredTrack) {
-            case "menu":
-                audioPlayer.playMenuTheme();
-                break;
-            case "main":
-                audioPlayer.playMainTheme();
-                break;
-            default:
-                audioPlayer.stop();
-                break;
+        if ("menu".equals(desiredTrack)) {
+            audioPlayer.playMenuTheme();
+        } else if (desiredTrack.startsWith("main:")) {
+            audioPlayer.playMainTheme(parseTrackLevel(desiredTrack));
+        } else if (desiredTrack.startsWith("boss:")) {
+            audioPlayer.playBossTheme(parseTrackLevel(desiredTrack));
+        } else {
+            audioPlayer.stop();
         }
 
         activeMusicTrack = desiredTrack;
@@ -466,28 +464,45 @@ public class Game implements Runnable {
             case OPTIONS:
                 return "menu";
             case PLAYING:
-                return playing.isPaused() ? "menu" : "main";
+                return playing.isPaused() ? "menu" : "main:" + getCurrentLevelMusicIndex();
             case BLUE_JEEP_VS_BOSS1:
-                return blueJeepVsBoss1State.isPaused() ? "menu" : "main";
+                return blueJeepVsBoss1State.isPaused() ? "menu" : "boss:1";
             case RED_JEEP_VS_BOSS1:
-                return redJeepVsBoss1State.isPaused() ? "menu" : "main";
+                return redJeepVsBoss1State.isPaused() ? "menu" : "boss:1";
             case GREEN_JEEP_VS_BOSS1:
-                return greenJeepVsBoss1State.isPaused() ? "menu" : "main";
+                return greenJeepVsBoss1State.isPaused() ? "menu" : "boss:1";
             case BLUE_JEEP_VS_BOSS2:
-                return blueJeepVsBoss2State.isPaused() ? "menu" : "main";
+                return blueJeepVsBoss2State.isPaused() ? "menu" : "boss:2";
             case RED_JEEP_VS_BOSS2:
-                return redJeepVsBoss2State.isPaused() ? "menu" : "main";
+                return redJeepVsBoss2State.isPaused() ? "menu" : "boss:2";
             case GREEN_JEEP_VS_BOSS2:
-                return greenJeepVsBoss2State.isPaused() ? "menu" : "main";
+                return greenJeepVsBoss2State.isPaused() ? "menu" : "boss:2";
             case BLUE_JEEP_VS_BOSS3:
-                return blueJeepVsBoss3State.isPaused() ? "menu" : "main";
+                return blueJeepVsBoss3State.isPaused() ? "menu" : "boss:3";
             case RED_JEEP_VS_BOSS3:
-                return redJeepVsBoss3State.isPaused() ? "menu" : "main";
+                return redJeepVsBoss3State.isPaused() ? "menu" : "boss:3";
             case GREEN_JEEP_VS_BOSS3:
-                return greenJeepVsBoss3State.isPaused() ? "menu" : "main";
+                return greenJeepVsBoss3State.isPaused() ? "menu" : "boss:3";
             case QUIT:
             default:
                 return "none";
+        }
+    }
+
+    private int getCurrentLevelMusicIndex() {
+        return playing.getLevelManager().getCurrentLevelId();
+    }
+
+    private int parseTrackLevel(String trackKey) {
+        int separatorIndex = trackKey.indexOf(':');
+        if (separatorIndex < 0 || separatorIndex == trackKey.length() - 1) {
+            return 1;
+        }
+
+        try {
+            return Integer.parseInt(trackKey.substring(separatorIndex + 1));
+        } catch (NumberFormatException ignored) {
+            return 1;
         }
     }
 

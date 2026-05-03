@@ -137,7 +137,7 @@ public class Playing extends State implements StateMethods {
     private WorldObjectManager worldObjectManager;
 
     // ── Current route position ────────────────────────────────
-    private RouteMap currentMap = RouteMap.MAP_2;
+    private RouteMap currentMap = RouteMap.MAP_1;
     @SuppressWarnings("unused")
     private int currentStopIndex = 0;
 
@@ -562,7 +562,7 @@ public class Playing extends State implements StateMethods {
     private void checkPassengerInteractions() {
         Rectangle2D.Float jeepHB = player.getHitBox();
         if (jeepHB == null) return;
-        for (Person p : personManager.getPersons()) {
+        for (Person p : personManager.getPersonsSnapshot()) {
             if (p.getType() != Person.PersonType.PASSENGER) continue;
             if (!p.isActive()) continue;
             Rectangle2D.Float pHB = p.getHitBox();
@@ -652,7 +652,7 @@ public class Playing extends State implements StateMethods {
                 System.out.println("[Playing] Cannot accept passenger while jeep is moving");
                 return;
             }
-            for (Person p : personManager.getPersons()) {
+            for (Person p : personManager.getPersonsSnapshot()) {
                 if (!p.isInteractable()) continue;
                 Rectangle2D.Float pHB = p.getHitBox();
                 if (pHB != null && pHB.contains(e.getX(), e.getY())) {

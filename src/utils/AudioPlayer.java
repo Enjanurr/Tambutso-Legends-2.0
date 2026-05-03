@@ -20,8 +20,10 @@ import java.util.Map;
 
 public class AudioPlayer {
 
-    private static final String MENU_THEME = "/audio/music/theme_menu.wav";
-    private static final String MAIN_THEME = "/audio/music/theme_playing.wav";
+    private static final String MENU_THEME = "/audio/music/menu.wav";
+    private static final String MAIN_THEME_PREFIX = "/audio/music/main/main_";
+    private static final String BOSS_THEME_PREFIX = "/audio/music/boss/boss_";
+    private static final String TRACK_EXTENSION = ".wav";
 
     private Clip musicClip;
     private String currentTrack;
@@ -44,8 +46,12 @@ public class AudioPlayer {
         playLoop(MENU_THEME);
     }
 
-    public void playMainTheme() {
-        playLoop(MAIN_THEME);
+    public void playMainTheme(int level) {
+        playLoop(getMainThemePath(level));
+    }
+
+    public void playBossTheme(int level) {
+        playLoop(getBossThemePath(level));
     }
 
     public void playIntroExplosionSfx() {
@@ -253,6 +259,18 @@ public class AudioPlayer {
 
     private float clamp(float value) {
         return Math.max(0f, Math.min(1f, value));
+    }
+
+    private String getMainThemePath(int level) {
+        return MAIN_THEME_PREFIX + clampLevel(level) + TRACK_EXTENSION;
+    }
+
+    private String getBossThemePath(int level) {
+        return BOSS_THEME_PREFIX + clampLevel(level) + TRACK_EXTENSION;
+    }
+
+    private int clampLevel(int level) {
+        return Math.max(1, Math.min(3, level));
     }
 
     private void rememberCurrentTrackPosition() {

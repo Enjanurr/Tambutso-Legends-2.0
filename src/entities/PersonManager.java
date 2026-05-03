@@ -74,6 +74,10 @@ public class PersonManager {
         return persons;
     }
 
+    public List<Person> getPersonsSnapshot() {
+        return new ArrayList<>(persons);
+    }
+
     public void update() {
         boolean scrolling = playing.isScrolling();
         float speed = playing.getScrollSpeed();

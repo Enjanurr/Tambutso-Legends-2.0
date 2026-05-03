@@ -43,7 +43,7 @@ public class WorldObjectManager {
             stopSpawnDefinitions.put(map, new HashMap<>());
         }
 
-        boolean debug = true;
+        boolean debug = false;
         int stopIndex2 = !debug ? 3 : 1,
             stopIndex3 = !debug ? 6 : 2,
             stopIndex4 = !debug ? 9 : 3,

@@ -15,7 +15,7 @@ import java.util.Map;
 
 public class AudioPlayer {
 
-    private static final String MENU_THEME = "/audio/music/theme_menu.wav";
+    private static final String MENU_THEME = "/audio/music/menu.wav";
     private static final String MAIN_THEME = "/audio/music/theme_playing.wav";
 
     private Clip clip;

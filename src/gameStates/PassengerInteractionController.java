@@ -58,7 +58,7 @@ public class PassengerInteractionController {
         Rectangle2D.Float jeepHB = player.getHitBox();
         if (jeepHB == null) return;
 
-        for (Person p : personManager.getPersons()) {
+        for (Person p : personManager.getPersonsSnapshot()) {
             if (p.getType() != Person.PersonType.PASSENGER) continue;
             if (!p.isActive()) continue;
 
@@ -79,7 +79,7 @@ public class PassengerInteractionController {
             return false;
         }
 
-        for (Person p : personManager.getPersons()) {
+        for (Person p : personManager.getPersonsSnapshot()) {
             if (!p.isInteractable()) continue;
 
             Rectangle2D.Float pHB = p.getHitBox();
