@@ -361,35 +361,59 @@ public class RedJeepVsBoss2State extends State implements StateMethods {
                 jeepHB.height
         );
 
-        // Boss bullets → jeep
+        // ── DEBUG: Print bullet count occasionally ─────────────────
+        if (System.currentTimeMillis() % 60 == 0) {
+            System.out.println("[RedJeep] Active boss bullets: " + boss.getBullets().size());
+        }
+
+        // ── BOSS BULLETS → JEEP (FIXED) ───────────────────────────
         for (NukeProjectile.BossProjectile bp : boss.getBullets()) {
-            if (bp.isActive() && bp.getHitbox().intersects(jeepHB)) {
+            if (!bp.isActive()) continue;
+
+            Rectangle bulletHB = bp.getHitbox();
+            if (bulletHB == null) {
+                System.out.println("[RedJeep] Bullet hitbox is NULL!");
+                continue;
+            }
+
+            if (bulletHB.intersects(jeepHB)) {
+                System.out.println("[RedJeep] 💥 BOSS BULLET HIT JEEP!");
                 bp.setActive(false);
                 handleJeepHit();
             }
         }
 
-        // Nukes → jeep (animated, scrolling projectiles)
+        // ── NUKES → JEEP ──────────────────────────────────────────
         for (NukeProjectile.Nuke nuke : boss.getNukes()) {
-            if (nuke.isActive() && nuke.getHitbox().intersects(jeepHB)) {
+            if (!nuke.isActive()) continue;
+
+            Rectangle nukeHB = nuke.getHitbox();
+            if (nukeHB == null) {
+                System.out.println("[RedJeep] Nuke hitbox is NULL!");
+                continue;
+            }
+
+            if (nukeHB.intersects(jeepHB)) {
+                System.out.println("[RedJeep] 💥 NUKE HIT JEEP!");
                 nuke.setActive(false);
                 handleJeepHit();
             }
         }
 
+        // ── OBSTACLE COLLISION ────────────────────────────────────
         obstacleManager.checkCollision(jeepHB, this::handleJeepHit);
 
-        // ── CHECK SLOW BALL COLLISION WITH BOSS ─────────────────────
+        // ── SLOW BALL COLLISION WITH BOSS ─────────────────────────
         Rectangle bossHB = boss.getHitbox();
         for (SlowBallProjectile ball : slowBalls) {
             if (ball.isActive() && ball.getHitbox().intersects(bossHB)) {
                 ball.setActive(false);
-                boss.applyStun();  // ← THIS CALLS THE STUN
+                boss.applyStun();
                 System.out.println("[RedJeep] Slow ball hit boss! Stun effect applied.");
             }
         }
 
-        // Player bullets → boss AND obstacles
+        // ── PLAYER BULLETS → BOSS & OBSTACLES ─────────────────────
         for (RedJeepProjectile pb : playerBullets) {
             if (!pb.isActive()) continue;
 
@@ -420,13 +444,21 @@ public class RedJeepVsBoss2State extends State implements StateMethods {
     // HIT HANDLING
     // ─────────────────────────────────────────────────────────
     private void handleJeepHit() {
+        System.out.println("[RedJeep] 💥 JEEP HIT! Taking damage...");
+
+        // Trigger player stun effect
         player.triggerCarStruck();
+
+        // Apply damage to health bar
         boolean dead = healthBar.takeDamage();
+
+       // System.out.println("[RedJeep] Health after hit: " + healthBar.getCurrentHealth());
+
         if (dead) {
             playerDead = true;
             resetDeathOverlay();
+            System.out.println("[RedJeep] Player died!");
         }
-
     }
 
     private void handleBossHit() {

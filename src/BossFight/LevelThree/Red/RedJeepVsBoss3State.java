@@ -385,8 +385,14 @@ public class RedJeepVsBoss3State extends State implements StateMethods {
 
     private void handleBossHit() {
         boolean defeated = bossBar.takeDamage();
-        if (defeated) {
+        if (defeated && !bossDefeated) {
             bossDefeated = true;
+
+            // STOP THE TIMER AND SAVE TO LEADERBOARD
+            game.getLeaderboardManager().completeGame();
+            System.out.println("🎉 RED JEEP BEAT BOSS 3! Time: " +
+                    game.getLeaderboardManager().getCurrentPlayer().getFormattedBestTime());
+
             defeatOverlay.reset();
         }
     }

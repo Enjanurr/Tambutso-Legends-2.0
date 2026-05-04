@@ -13,7 +13,7 @@ public class NukeProjectile {
         public static final int ANI_SPEED = 8;
         public static final int FRAME_COUNT = 18;
 
-        private float x, y;  // x, y are TOP-LEFT corner
+        private float x, y;
         private final int width, height;
         private boolean active = true;
 
@@ -23,21 +23,19 @@ public class NukeProjectile {
 
         public Nuke(float x, float y, BufferedImage[] frames) {
             this.x = x;
-            this.y = y;  // y is already the top-left Y, no adjustment needed
+            this.y = y;
             this.frames = frames;
             this.width = (int)(FRAME_W * Game.SCALE);
             this.height = (int)(FRAME_H * Game.SCALE);
         }
 
         public void update(float scrollSpeed) {
-            // ── Animate in place ──
             aniTick++;
             if (aniTick >= ANI_SPEED) {
                 aniTick = 0;
                 aniIndex = (aniIndex + 1) % FRAME_COUNT;
             }
 
-            // ── Scroll left with world ──
             x -= scrollSpeed;
             if (x + width < 0) active = false;
         }
@@ -50,20 +48,13 @@ public class NukeProjectile {
         }
 
         public Rectangle getHitbox() {
-            // Standard hitbox: centered inset, not offset
-            int insetX = (int)(width * 0.25f);   // 25% inset each side
-            int insetY = (int)(height * 0.25f);  // 25% inset each side
-            return new Rectangle(
-                    (int)x + insetX,
-                    (int)y + insetY,
-                    width - (insetX * 2),
-                    height - (insetY * 2));
+            // Simple hitbox - full size for better collision detection
+            return new Rectangle((int)x, (int)y, width, height);
         }
 
         public boolean isActive() { return active; }
         public void setActive(boolean v) { active = v; }
     }
-
 
     // ── SKILL 1 PROJECTILE (travels left, animated) ────────────
     public static class BossProjectile {
@@ -87,6 +78,7 @@ public class NukeProjectile {
             this.width = (int)(FRAME_W * Game.SCALE);
             this.height = (int)(FRAME_H * Game.SCALE);
             this.frames = frames;
+            System.out.println("[BossProjectile] Created at: x=" + startX + ", y=" + startY + ", size=" + width + "x" + height);
         }
 
         public void update() {
@@ -107,18 +99,9 @@ public class NukeProjectile {
             }
         }
 
-        private static final float HB_INSET_PERCENT = 0.8f;
-        private static final int X_OFFSET = 0;  // Negative = left, Positive = right
-        private static final int Y_OFFSET = 30; // Negative = up, Positive = down
-
+        // FIXED: Simple hitbox with no offset
         public Rectangle getHitbox() {
-            int insetX = (int)(width * HB_INSET_PERCENT / 2);
-            int insetY = (int)(height * HB_INSET_PERCENT / 2);
-            return new Rectangle(
-                    (int) x + insetX + X_OFFSET,  // ← Add X_OFFSET here
-                    (int) y + insetY + Y_OFFSET,  // ← Add Y_OFFSET here
-                    width - (insetX * 2),
-                    height - (insetY * 2));
+            return new Rectangle((int)x, (int)y, width, height);
         }
 
         public boolean isActive() { return active; }

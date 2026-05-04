@@ -115,6 +115,7 @@ public class LoadSave {
 
     // ── Passenger system UI ───────────────────────────────────
     public static final String ACCEPT_PASSENGER_BACKGROUND = "ui/overlays/accept_passenger.png";
+    public static final String PLAYERNAME = "ui/overlays/PlayerName.png";
     public static final String ACCEPT_PASSENGER_BUTTONS    = "ui/buttons/accept_passenger_buttons.png";
     public static final String PASSENGER_COUNTER           = "ui/hud/passenger_counter.png";
 

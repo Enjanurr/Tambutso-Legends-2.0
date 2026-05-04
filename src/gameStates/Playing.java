@@ -393,10 +393,17 @@ public class Playing extends State implements StateMethods {
 
     public void onIntroDone() {
         introPaused = false;
-        setBossFightActive(false);  // ← ADD THIS
+        setBossFightActive(false);
         player.setBossMode(false);
         gameClock.setCurrentLevel(levelManager.getCurrentLevelId());
         gameClock.start();
+
+        // START THE TIMER WHEN GAMEPLAY BEGINS
+        game.getLeaderboardManager().startSession();
+        System.out.println("[Leaderboard] Timer started for: " +
+                (game.getLeaderboardManager().getCurrentPlayer() != null ?
+                        game.getLeaderboardManager().getCurrentPlayer().getPlayerName() : "Unknown"));
+
         System.out.println("[Playing] onIntroDone() — introPaused=false, clock started, notifying Game");
         game.onIntroComplete();
     }
