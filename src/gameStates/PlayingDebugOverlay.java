@@ -15,6 +15,7 @@ public class PlayingDebugOverlay {
 
     private boolean showLandmarkDebug = false;
     private boolean showAlignmentGrid = false;
+    private boolean debugStopSpawnSequenceEnabled = false;
 
     public void toggleLandmarkDebug() {
         showLandmarkDebug = !showLandmarkDebug;
@@ -30,6 +31,11 @@ public class PlayingDebugOverlay {
 
     public boolean shouldHandleAlignmentGrid() {
         return showAlignmentGrid;
+    }
+
+    public boolean toggleDebugStopSpawnSequence(WorldObjectManager worldObjectManager) {
+        debugStopSpawnSequenceEnabled = worldObjectManager.toggleDebugStopSpawnSequence();
+        return debugStopSpawnSequenceEnabled;
     }
 
     public void draw(Graphics g, WorldObjectManager worldObjectManager, RouteMap currentMap, int worldLoopCount) {
@@ -49,7 +55,7 @@ public class PlayingDebugOverlay {
         int panelX = 12;
         int panelY = 12;
         int lineHeight = 18;
-        int lineCount = worldObjectManager.getActiveLandmarkDebugEntries().size() + 2;
+        int lineCount = worldObjectManager.getActiveLandmarkDebugEntries().size() + 5;
         int panelHeight = 16 + (lineCount * lineHeight);
 
         g2.setColor(new Color(0, 0, 0, 170));
@@ -57,8 +63,16 @@ public class PlayingDebugOverlay {
         g2.setColor(Color.WHITE);
         g2.drawString("Landmark Debug [F3]", panelX + 12, panelY + 20);
         g2.drawString("Map: " + currentMap + " | Stop: " + worldLoopCount, panelX + 12, panelY + 38);
+        g2.drawString("F5 toggles sequential spawn debug", panelX + 12, panelY + 56);
+        g2.drawString("Sequence debug: " + (debugStopSpawnSequenceEnabled ? "ON" : "OFF"), panelX + 12, panelY + 74);
 
-        int textY = panelY + 56;
+        if (debugStopSpawnSequenceEnabled) {
+            g2.setColor(new Color(255, 220, 90));
+            g2.drawString("Buildings now spawn stop-by-stop in sequence.", panelX + 12, panelY + 92);
+            g2.setColor(Color.WHITE);
+        }
+
+        int textY = panelY + 110;
         for (WorldObjectManager.LandmarkDebugEntry entry : worldObjectManager.getActiveLandmarkDebugEntries()) {
             String line = String.format(
                     "%s x=%.0f drawY=%d baseY=%d w=%d h=%d scale=%.2f offset=%.0f",

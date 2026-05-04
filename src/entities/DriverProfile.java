@@ -46,23 +46,23 @@ public class DriverProfile {
     // ── Built-in roster ───────────────────────────────────────
     public static final DriverProfile[] ALL = {
             new DriverProfile(
-                    "driver_1", "Kuya Ben",
+                    "driver_1", "Manong Ricky",
                     utils.LoadSave.PLAYER_ATLAS_1,
-                    1.5f, "Steady. Balanced speed.",
+                    1.5f, "Hot Headed Racer. Can trap enemies.",
                     List.of("Smooth Brake", "Steady Wheel"),
                     110,40
             ),
             new DriverProfile(
-                    "driver_2", "Manong Ricky",
+                    "driver_2", "Manong Benny",
                     utils.LoadSave.PLAYER_ATLAS_2,
-                    1.8f, "Fast but risky.",
+                    1.8f, "Kind and Beloved. Healer of itself and others",
                     List.of("Turbo Boost", "Near Miss"),
                     110,40
             ),
             new DriverProfile(
-                    "driver_3", "Ate Gloria",
+                    "driver_3", "Manong Carlo",
                     utils.LoadSave.PLAYER_ATLAS_3,
-                    1.2f, "Careful. Easy handling.",
+                    1.2f, "Calm and Protective. Raises shields for hits.",
                     List.of("Safe Stop", "Fare Sense"),
                     110,40
             ),

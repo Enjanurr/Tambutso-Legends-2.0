@@ -54,15 +54,15 @@ public class Constants {
                 new LandmarkTuning(0.60f, 0, -6f);  // 968x377
 
         public static final LandmarkTuning MAP3_CATHEDRAL =
-                new LandmarkTuning(0.16f, 0, -18f);  // 1181x837
+                new LandmarkTuning(0.40f, 0, -18f);  // 1181x837
         public static final LandmarkTuning MAP3_CITYHALL =
-                new LandmarkTuning(0.28f, 0, -10f);  // 1096x399
+                new LandmarkTuning(0.60f, 20, -10f);  // 1096x399
         public static final LandmarkTuning MAP3_SMCITY =
-                new LandmarkTuning(0.18f, 0, -10f); // 1734x530
+                new LandmarkTuning(0.50f, 0, -10f); // 1734x530
         public static final LandmarkTuning MAP3_AYALA_TERRACES =
-                new LandmarkTuning(0.20f, 0, -12f); // 1230x645
+                new LandmarkTuning(0.50f, 0, -12f); // 1230x645
         public static final LandmarkTuning MAP3_AYALA_CENTRAL =
-                new LandmarkTuning(0.20f, 0, -12f); // 1241x675
+                new LandmarkTuning(0.50f, 0, -12f); // 1241x675
     }
 
     // ── Person sprites ───────────────────────────────────────

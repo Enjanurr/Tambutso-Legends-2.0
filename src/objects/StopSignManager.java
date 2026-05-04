@@ -37,8 +37,9 @@ public class StopSignManager {
 
 
         int currentLoop = playing.getWorldLoopCount();
+        int maxLoops = playing.getLevelManager().getMaxWorldLoops();
         if (currentLoop > lastSpawnedLoop
-                && currentLoop <= Playing.MAX_WORLD_LOOPS
+                && currentLoop <= maxLoops
                 && currentLoop > 0) {
             spawnSign();
             lastSpawnedLoop = currentLoop;

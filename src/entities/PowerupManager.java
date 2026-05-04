@@ -18,7 +18,6 @@ public class PowerupManager {
 
     // ── Spawn settings ────────────────────────────────────────
     private static final float SPAWN_CHANCE    = 0.20f;
-    private static final int   MAX_WORLD_LOOPS = 15;
 
     // ── Lane Y positions ──────────────────────────────────────
     private static final float[] LANE_Y_POSITIONS = {
@@ -96,7 +95,7 @@ public class PowerupManager {
     }
 
     private int getSpawnCooldown() {
-        return MAX_WORLD_LOOPS * 2;
+        return playing.getLevelManager().getMaxWorldLoops() * 2;
     }
 
     // ─────────────────────────────────────────────────────────

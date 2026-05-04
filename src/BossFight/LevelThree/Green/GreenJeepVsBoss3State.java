@@ -647,8 +647,7 @@ public class GreenJeepVsBoss3State extends State implements StateMethods {
     public boolean isPaused() { return paused; }
 
     private void onNextLevel() {
-        GameStates.state = GameStates.MENU;
-        game.setHasActiveGame(false);
+        game.getPlaying().handleBossVictoryNext();
     }
 
     private void onMenuToExit() {

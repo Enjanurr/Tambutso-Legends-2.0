@@ -223,11 +223,7 @@ public class GreenJeepVsBoss2State extends State implements StateMethods {
      * Advances to next level.
      */
     private void onNextLevel() {
-        game.getPlaying().setBossFightActive(false);
-        player.setBossMode(false);
-        game.getPlaying().advanceToNextLevel();
-        game.getPlaying().showMissionForCurrentLevel();
-        GameStates.state = GameStates.PLAYING;
+        game.getPlaying().handleBossVictoryNext();
     }
 
     private void onMenuToExit() {

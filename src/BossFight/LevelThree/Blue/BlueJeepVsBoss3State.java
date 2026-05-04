@@ -641,8 +641,7 @@ public class BlueJeepVsBoss3State extends State implements StateMethods {
     // BOSS DEFEAT CALLBACKS
     // ─────────────────────────────────────────────────────────
     private void onNextLevel() {
-        GameStates.state = GameStates.MENU;
-        game.setHasActiveGame(false);
+        game.getPlaying().handleBossVictoryNext();
     }
 
     private void onMenuToExit() {

@@ -28,6 +28,7 @@ public class WorldObjectManager {
     private final List<WorldObject> worldObjects = new ArrayList<>();
     private final Map<RouteMap, Map<Integer, StopSpawnDefinition>> stopSpawnDefinitions = new EnumMap<>(RouteMap.class);
     private final BufferedImage busStopImage;
+    private boolean debugStopSpawnSequence = false;
     private RouteMap currentMap;
     private int cleanupCounter = 0;
 
@@ -43,7 +44,7 @@ public class WorldObjectManager {
             stopSpawnDefinitions.put(map, new HashMap<>());
         }
 
-        boolean debug = false;
+        boolean debug = debugStopSpawnSequence;
         int stopIndex2 = !debug ? 3 : 1,
             stopIndex3 = !debug ? 6 : 2,
             stopIndex4 = !debug ? 9 : 3,
@@ -75,6 +76,21 @@ public class WorldObjectManager {
 
     public RouteMap getCurrentMap() {
         return currentMap;
+    }
+
+    public void reloadStopSpawnDefinitions() {
+        stopSpawnDefinitions.clear();
+        loadStopSpawnDefinitions();
+    }
+
+    public boolean toggleDebugStopSpawnSequence() {
+        debugStopSpawnSequence = !debugStopSpawnSequence;
+        reloadStopSpawnDefinitions();
+        return debugStopSpawnSequence;
+    }
+
+    public boolean isDebugStopSpawnSequenceEnabled() {
+        return debugStopSpawnSequence;
     }
 
     public void onStopSignSpawned(int stopIndex) {

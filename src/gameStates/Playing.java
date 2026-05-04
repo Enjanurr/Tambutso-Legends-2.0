@@ -90,19 +90,11 @@ public class Playing extends State implements StateMethods {
     private boolean paused            = false;
     private boolean playerDead        = false;
     private final PlayingDebugOverlay debugOverlay = new PlayingDebugOverlay();
-    private PassengerInteractionController passengerInteractionController;
-    private final PlayingWorldController worldController = new PlayingWorldController();
-    private boolean interactionPaused = false;
     private boolean listPopupPaused   = false;
     private boolean introPaused       = false;
     private boolean statusCheckPaused = false;
     private boolean paymentPaused     = false;
     private boolean missionShowing    = false;
-
-    // ── Interaction safety timeout ────────────────────────────
-    // Counts frames while interactionPaused == true.
-    // Auto-recovers if the flag is stuck for more than 2 seconds (400 frames @ 200 UPS).
-    private int interactionStuckTimer = 0;
 
     // ── Driver reference backup ───────────────────────────────
     private entities.DriverProfile currentDriver = null;
@@ -111,10 +103,6 @@ public class Playing extends State implements StateMethods {
     private float worldOffset    = 0;
     private final int levelPixelWidth =
             LoadSave.GetLevelData()[0].length * Game.TILES_SIZE;
-
-    public static final int MAX_WORLD_LOOPS = 15;
-    // -------------------------------------------------------
-    public int getMaxWorldLoops() { return MAX_WORLD_LOOPS; }
 
     private static final float CENTER_TOLERANCE = 10f * Game.SCALE;
 
@@ -138,20 +126,10 @@ public class Playing extends State implements StateMethods {
 
     // ── Current route position ────────────────────────────────
     private RouteMap currentMap = RouteMap.MAP_1;
-    @SuppressWarnings("unused")
-    private int currentStopIndex = 0;
-
-    // ── Boss fight state ──────────────────────────────────────
-    private boolean bossFightActive = false;
 
     public void setBossFightActive(boolean active) {
-        this.bossFightActive = active;
-        if (!active) {
-            player.setBossMode(false);
-        }
+        player.setBossMode(active);
     }
-
-    public boolean isBossFightActive() { return bossFightActive; }
 
     // ─────────────────────────────────────────────────────────
     public Playing(Game game) {
@@ -178,17 +156,26 @@ public class Playing extends State implements StateMethods {
         levelBanner = new LevelBanner(currentLevel);
         System.out.println("[Playing] Banner refreshed to Level " + currentLevel);
     }
-    public void resumeFromInteraction() {
-        if (!interactionPaused) return;  // Already resumed — nothing to do
-        System.out.println("[Playing] resumeFromInteraction() - clearing interactionPaused");
-        // Overlay is already closed by handleYes/handleNo before this is called;
-        // call close() defensively in case we got here via a direct ESC path.
-        acceptPassengerOverlay.close();
-        interactionPaused = false;
-        System.out.println("[Playing] interactionPaused=" + interactionPaused + ", activeOverlay=" + activeOverlay());
+
+    private RouteMap routeMapForLevel(int levelId) {
+        return switch (levelId) {
+            case 2 -> RouteMap.MAP_2;
+            case 3 -> RouteMap.MAP_3;
+            default -> RouteMap.MAP_1;
+        };
     }
 
-    public boolean isInteractionPaused() { return interactionPaused; }
+    private void syncRouteForCurrentLevel() {
+        RouteMap targetMap = routeMapForLevel(levelManager.getCurrentLevelId());
+        if (currentMap == targetMap) {
+            return;
+        }
+
+        currentMap = targetMap;
+        worldObjectManager.setCurrentMap(targetMap);
+        System.out.println("[Playing] Route map switched to " + targetMap
+                + " for Level " + levelManager.getCurrentLevelId());
+    }
 
     private void initClasses() {
         System.out.println("[Playing] initClasses() started");
@@ -238,7 +225,6 @@ public class Playing extends State implements StateMethods {
         skipOverlay = new SkipOverlay(game, this);
         missionOverlay = null;  // Created on-demand for current level
         System.out.println("[Playing] initClasses() complete - Level " + levelManager.getCurrentLevelId() + " loaded");
-        passengerInteractionController = new PassengerInteractionController(this, passengerCounter);
     }
 
     private void loadBackgroundAssets() {
@@ -407,7 +393,6 @@ public class Playing extends State implements StateMethods {
     public void restartGame() {
         worldOffset      = 0;
         worldLoopCount   = 0;
-        currentStopIndex = 0;
         worldLoopDone    = false;
         dKeyHeld         = false;
         playerDead       = false;
@@ -454,8 +439,9 @@ public class Playing extends State implements StateMethods {
         passengersDroppedCount = 0;
         paused = false;
 
+        gameClock.reset();
         gameClock.setCurrentLevel(levelManager.getCurrentLevelId());
-        // Clock keeps running - no reset on restart, only on level advance
+        gameClock.start();
     }
 
     public void resetGame() {
@@ -615,6 +601,7 @@ public class Playing extends State implements StateMethods {
         }
 
         skipOverlay.render(g);
+        debugOverlay.draw(g, worldObjectManager, currentMap, worldLoopCount);
     }
 
     private void drawClouds(Graphics g) {
@@ -749,6 +736,24 @@ public class Playing extends State implements StateMethods {
         }
 
         if (skipOverlay.isEnabled()) {
+            if (e.getKeyCode() == KeyEvent.VK_F3) {
+                debugOverlay.toggleLandmarkDebug();
+                return;
+            }
+
+            if (e.getKeyCode() == KeyEvent.VK_F4) {
+                debugOverlay.toggleAlignmentGrid();
+                return;
+            }
+
+            if (e.getKeyCode() == KeyEvent.VK_F5) {
+                boolean enabled = debugOverlay.toggleDebugStopSpawnSequence(worldObjectManager);
+                System.out.println("[Playing] Sequential building spawn debug " + (enabled ? "ENABLED" : "DISABLED")
+                        + " - forcing restart");
+                restartGame();
+                return;
+            }
+
             skipOverlay.keyPressed(e);
             if (skipOverlay.isVisible()) return;
         }
@@ -842,11 +847,6 @@ public class Playing extends State implements StateMethods {
         worldObjectManager.reset();
     }
 
-    public void setCurrentMap(RouteMap map) {
-        currentMap = map;
-        worldObjectManager.setCurrentMap(map);
-    }
-
     public void windowFocusLost() {
         player.resetDirBooleans();
         dKeyHeld = false;
@@ -881,6 +881,8 @@ public class Playing extends State implements StateMethods {
         System.out.println("[Playing] Level " + currentLevel + " completed in " + gameClock.getFormattedTime());
 
         levelManager.advanceToNextLevel();
+        game.setCurrentGameLevel(levelManager.getCurrentLevelId());
+        syncRouteForCurrentLevel();
 
         // Recreate progress bar for new level
         progressBar = new ProgressBar(levelManager.getCurrentLevelId());
@@ -897,8 +899,19 @@ public class Playing extends State implements StateMethods {
         return true;
     }
 
-    public void restartCurrentLevel() {
-        restartGame();
+    public void handleBossVictoryNext() {
+        setBossFightActive(false);
+        player.setBossMode(false);
+
+        if (advanceToNextLevel()) {
+            showMissionForCurrentLevel();
+            GameStates.state = GameStates.PLAYING;
+            game.setLastActiveGameState(GameStates.PLAYING);
+            return;
+        }
+
+        GameStates.state = GameStates.MENU;
+        game.setHasActiveGame(false);
     }
 
     public void completeLevelForDebug() {
@@ -962,4 +975,10 @@ public class Playing extends State implements StateMethods {
 
     // ── Setters ──────────────────────────────────────────────
     public void setProgressBar(ProgressBar bar) { this.progressBar = bar; }
+
+    public void syncLevelPresentation() {
+        syncRouteForCurrentLevel();
+        refreshLevelBanner();
+        progressBar = new ProgressBar(levelManager.getCurrentLevelId());
+    }
 }

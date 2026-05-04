@@ -20,6 +20,9 @@ public class SkipOverlay {
     // -------------------------------------------------------
     private static final int OVERLAY_W = 300;
     private static final int OVERLAY_H = 330;
+    private static final int GUIDE_W = 250;
+    private static final int GUIDE_H = 150;
+    private static final int GUIDE_GAP = 16;
     private static final int BUTTON_H = 40;
     private static final int BUTTON_GAP = 10;
     private static final Color BG_COLOR = new Color(0, 0, 0, 200);
@@ -111,6 +114,28 @@ public class SkipOverlay {
         drawButton(g2, nextLevelBtn, "Next Level");
         drawButton(g2, nextBossBtn, "Next Boss");
         drawButton(g2, closeBtn, "Close");
+        drawDebugKeyGuide(g2);
+    }
+
+    private void drawDebugKeyGuide(Graphics2D g2) {
+        int guideX = overlayX + OVERLAY_W + GUIDE_GAP;
+        int guideY = overlayY;
+
+        g2.setColor(BG_COLOR);
+        g2.fillRoundRect(guideX, guideY, GUIDE_W, GUIDE_H, 10, 10);
+
+        g2.setFont(new Font("SansSerif", Font.BOLD, 16));
+        g2.setColor(TEXT_COLOR);
+        g2.drawString("DEBUG KEYS", guideX + 16, guideY + 28);
+
+        g2.setFont(new Font("SansSerif", Font.PLAIN, 14));
+        g2.drawString("F3  Landmark debug", guideX + 16, guideY + 58);
+        g2.drawString("F4  Alignment grid", guideX + 16, guideY + 82);
+        g2.drawString("F5  Toggle seq. spawns", guideX + 16, guideY + 106);
+
+        g2.setColor(new Color(255, 220, 90));
+        g2.drawString("F5 forces a restart to apply.", guideX + 16, guideY + 132);
+        g2.setColor(TEXT_COLOR);
     }
 
     private void drawButton(Graphics2D g2, Rectangle rect, String text) {
@@ -228,13 +253,9 @@ public class SkipOverlay {
         }
 
         game.getPlaying().getLevelManager().advanceToNextLevel();
+        game.setCurrentGameLevel(game.getPlaying().getLevelManager().getCurrentLevelId());
         int newLevelId = game.getPlaying().getLevelManager().getCurrentLevelId();
-        ProgressBar newProgressBar = new ProgressBar(newLevelId);
-        newProgressBar.setProgress(0);
-        game.getPlaying().setProgressBar(newProgressBar);
-
-        // ── REFRESH THE BANNER IN PLAYING ─────────────────────────
-        game.getPlaying().refreshLevelBanner();
+        game.getPlaying().syncLevelPresentation();
 
         System.out.println("[SkipOverlay] Advanced to Level " + newLevelId);
         game.getPlaying().showMissionForCurrentLevel();
@@ -261,13 +282,7 @@ public class SkipOverlay {
 
         if (nextLevel <= 3) {
             game.getPlaying().getLevelManager().advanceToNextLevel();
-            ProgressBar newProgressBar = new ProgressBar(nextLevel);
-            newProgressBar.setProgress(0);
-            game.getPlaying().setProgressBar(newProgressBar);
-
-            // ── REFRESH THE BANNER IN PLAYING ─────────────────────────
-            game.getPlaying().refreshLevelBanner();
-
+            game.getPlaying().syncLevelPresentation();
             game.setCurrentGameLevel(nextLevel);
             game.startBossFightWithLevel(nextLevel);
         } else {
