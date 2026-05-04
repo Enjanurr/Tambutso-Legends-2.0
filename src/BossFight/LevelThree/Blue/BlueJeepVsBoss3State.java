@@ -213,6 +213,8 @@ public class BlueJeepVsBoss3State extends State implements StateMethods {
             creditsOverlay = null;
             GameStates.state = GameStates.MENU;
             game.setHasActiveGame(false);
+            game.markNeedsFullReset();  // Next PLAY starts fresh from Level 1
+            System.out.println("[BlueJeepVsBoss3] Credits closed — returning to MENU, full reset flagged");
         });
     }
 

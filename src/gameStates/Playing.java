@@ -462,6 +462,31 @@ public class Playing extends State implements StateMethods {
         restartGame();
     }
 
+    /**
+     * Full reset to Level 1 for a brand-new game after game completion.
+     * Resets the level manager, all gameplay systems, progress bars, clock, and intro state.
+     */
+    public void resetToLevel1() {
+        // Reset level progression back to Level 1
+        levelManager.resetToLevel1();
+
+        // Recreate progress bar and banner for Level 1
+        progressBar = new ProgressBar(1);
+        levelBanner = new LevelBanner(1);
+
+        // Reset clock to Level 1
+        gameClock.reset();
+        gameClock.setCurrentLevel(1);
+
+        // Reset all gameplay state
+        restartGame();
+
+        // Reset intro so it plays again on next game start
+        introOverlay.resetShown();
+
+        System.out.println("[Playing] Reset to Level 1 — fresh game ready");
+    }
+
     // ── Health callbacks ─────────────────────────────────────
     public void onPlayerHit() {
         boolean dead = healthBar.takeDamage();
