@@ -2,6 +2,7 @@
     
     import BossFight.BossObstacleManager;
     import BossFight.BossWalkerManager;
+    import BossFight.BuildingRenderer;
     import BossFight.CloudRenderer;
     import BossFight.LevelOne.GarbagePile;
     import Ui.*;
@@ -24,6 +25,7 @@
     public class BlueJeepVsBoss1State extends State implements StateMethods {
         private BossBanner bossBanner;
         private CloudRenderer cloudRenderer;
+        private BuildingRenderer buildingRenderer;
         // -------------------------------------------------------
         // BOSS FIGHT SETTINGS  ← ADJUST
         // -------------------------------------------------------
@@ -102,7 +104,8 @@
             this.player.setBossMode(true);
             this.healthBar = healthBar;
             cloudRenderer = new CloudRenderer();
-            obstacleManager = new BossObstacleManager();
+            buildingRenderer = new BuildingRenderer();
+            obstacleManager = new BossObstacleManager(game);
             this.levelPixelWidth =
                     LoadSave.GetLevelData()[0].length * Game.TILES_SIZE;
     
@@ -293,7 +296,7 @@
             if (worldOffset >= levelPixelWidth) worldOffset -= levelPixelWidth;
     
             cloudRenderer.update(SCROLL_SPEED);
-    
+            buildingRenderer.update(true, SCROLL_SPEED * Game.SCALE);
             // ── Player clamping ───────────────────────────────────
             float leftLimit = 20 * Game.SCALE;
             if (player.getHitBox().x < leftLimit)
@@ -469,19 +472,16 @@
         // ─────────────────────────────────────────────────────────
         @Override
         public void draw(Graphics g) {
-            // Draw background and clouds using CloudRenderer
             cloudRenderer.drawBackground(g);
             cloudRenderer.drawClouds(g);
-            bossBanner.updatePosition(10);  // 10 pixels from top
+            buildingRenderer.render(g);
+            bossBanner.updatePosition(10);
             bossBanner.render(g);
             game.getPlaying().getLevelManager().draw(g, (int) worldOffset);
-    
-            // ── Walkers behind boss ── NEW from first version ─────────
-    
-            walkerManager.render(g);
-            obstacleManager.render(g);  // ← Add this
-            boss.render(g);
 
+            walkerManager.render(g);
+            obstacleManager.render(g);
+            boss.render(g);
     
             for (BlueJeepProjectile pb : playerBullets) pb.render(g);
     
@@ -631,6 +631,7 @@
             canShoot         = true;
             playerBullets.clear();
             cloudRenderer.reset();
+            buildingRenderer.reset();
             worldOffset = 0;
             walkerManager.resetAll();   // NEW from first version
             obstacleManager.reset();  // ← ADD THIS

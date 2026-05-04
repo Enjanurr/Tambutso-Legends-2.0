@@ -115,6 +115,7 @@ public class LoadSave {
 
     // ── Passenger system UI ───────────────────────────────────
     public static final String ACCEPT_PASSENGER_BACKGROUND = "ui/overlays/accept_passenger.png";
+    public static final String PLAYERNAME = "ui/overlays/PlayerName.png";
     public static final String ACCEPT_PASSENGER_BUTTONS    = "ui/buttons/accept_passenger_buttons.png";
     public static final String PASSENGER_COUNTER           = "ui/hud/passenger_counter.png";
 
@@ -133,6 +134,10 @@ public class LoadSave {
     public static final String PAYMENT_OVERLAY = "ui/overlays/popupfare.png";
     /** 426 × 56 — Change button sprite sheet */
     public static final String CHANGE_BUTTON = "ui/buttons/change_button.png";
+
+    public static final String LEADERBOADS_BUTTON = "ui/buttons/leaderboards_button.png";
+    public static final String ENTERNAME_BUTTON = "ui/buttons/enter_button.png";
+
 
     // ─────────────────────────────────────────────────────────
 
