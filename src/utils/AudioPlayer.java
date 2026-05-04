@@ -24,6 +24,7 @@ public class AudioPlayer {
     private static final String MAIN_THEME_PREFIX = "/audio/music/main/main_";
     private static final String BOSS_THEME_PREFIX = "/audio/music/boss/boss_";
     private static final String TRACK_EXTENSION = ".wav";
+    private static final String CART_SPAWN_SOUND_PATH = "/audio/sfx/MPAudio.wav";
 
     private Clip musicClip;
     private String currentTrack;
@@ -88,6 +89,73 @@ public class AudioPlayer {
                 newClip.close();
             }
             e.printStackTrace();
+        }
+    }
+
+    public void playCartSpawnSound() {
+        playRawSfx(CART_SPAWN_SOUND_PATH, "cart_spawn");
+    }
+
+    /**
+     * Play a raw sound effect from a direct file path (for CART spawn, etc.)
+     */
+    private void playRawSfx(String resourcePath, String soundName) {
+        cleanupFinishedSfxClips();
+
+        Clip newClip = null;
+        try (InputStream rawStream = AudioPlayer.class.getResourceAsStream(resourcePath)) {
+            if (rawStream == null) {
+                System.err.println("[AudioPlayer] Missing audio resource: " + resourcePath);
+                return;
+            }
+
+            try (BufferedInputStream bufferedStream = new BufferedInputStream(rawStream);
+                 AudioInputStream audioStream = AudioSystem.getAudioInputStream(bufferedStream)) {
+                newClip = AudioSystem.getClip();
+                newClip.open(audioStream);
+
+                // Apply SFX settings without SoundEffect enum
+                applyRawSfxPlaybackSettings(newClip);
+                registerSfxLifecycle(newClip);
+
+                synchronized (activeSfxClips) {
+                    activeSfxClips.add(newClip);
+                }
+                newClip.setFramePosition(0);
+                newClip.start();
+                System.out.println("[AudioPlayer] Playing cart spawn sound: " + soundName);
+            }
+        } catch (UnsupportedAudioFileException e) {
+            System.err.println("[AudioPlayer] Unsupported audio format: " + resourcePath);
+        } catch (IOException | LineUnavailableException e) {
+            if (newClip != null) {
+                newClip.close();
+            }
+            e.printStackTrace();
+        }
+    }
+
+    private void applyRawSfxPlaybackSettings(Clip targetClip) {
+        if (targetClip == null) return;
+
+        if (targetClip.isControlSupported(BooleanControl.Type.MUTE)) {
+            BooleanControl muteControl = (BooleanControl) targetClip.getControl(BooleanControl.Type.MUTE);
+            muteControl.setValue(sfxMuted);
+        }
+
+        if (targetClip.isControlSupported(FloatControl.Type.MASTER_GAIN)) {
+            FloatControl gainControl = (FloatControl) targetClip.getControl(FloatControl.Type.MASTER_GAIN);
+            float min = gainControl.getMinimum();
+            float max = gainControl.getMaximum();
+
+            if (sfxMuted || sfxMasterVolume <= 0f) {
+                gainControl.setValue(min);
+                return;
+            }
+
+            float gain = (float) (20f * Math.log10(Math.max(sfxMasterVolume, 0.0001f)));
+            gain = Math.min(gain, max);
+            gainControl.setValue(Math.max(min, Math.min(max, gain)));
         }
     }
 

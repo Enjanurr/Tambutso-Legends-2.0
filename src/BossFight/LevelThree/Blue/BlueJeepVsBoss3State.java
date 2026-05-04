@@ -2,6 +2,7 @@ package BossFight.LevelThree.Blue;
 
 import BossFight.BossObstacleManager;
 import BossFight.BossWalkerManager;
+import BossFight.BuildingRenderer;
 import BossFight.CloudRenderer;
 import BossFight.LevelThree.GravySauce;
 import Ui.*;
@@ -12,7 +13,6 @@ import gameStates.State;
 import gameStates.StateMethods;
 import main.Game;
 import utils.LoadSave;
-import utils.ScrollingCloudLayer;
 
 import java.awt.*;
 import java.awt.event.KeyEvent;
@@ -24,115 +24,107 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import static utils.Constants.Environment.*;
 import static utils.Constants.UI.URMButtons.*;
 
-
 public class BlueJeepVsBoss3State extends State implements StateMethods {
     private BossBanner bossBanner;
     private CloudRenderer cloudRenderer;
+    private BuildingRenderer buildingRenderer;
+
     // -------------------------------------------------------
-    // BOSS FIGHT SETTINGS  ← ADJUST
+    // BOSS FIGHT SETTINGS
     // -------------------------------------------------------
-    private static final float SCROLL_SPEED                = BossFight.LevelThree.Blue.Boss3.BOSS_SCROLL_SPEED;
-    private static final float LEFT_BORDER_PUSH            = 0.3f;
+    private static final float SCROLL_SPEED = BossFight.LevelThree.Blue.Boss3.BOSS_SCROLL_SPEED;
+    private static final float LEFT_BORDER_PUSH = 0.3f;
     private static final float PLAYER_RIGHT_LIMIT_FRACTION = 0.50f;
 
-    // ── Shoot settings ← ADJUST ──────────────────────────────
-    private static final int MAX_BULLETS_PER_USE = 5;        // bullets per E press
-    private static final int SHOOT_FULL_COOLDOWN = 3 * 200;  // 3 s at 200 UPS
+    // Shoot settings
+    private static final int MAX_BULLETS_PER_USE = 5;
+    private static final int SHOOT_FULL_COOLDOWN = 3 * 200;
 
-    // ── Shield cooldown ← ADJUST ─────────────────────────────
-    private static final int SHIELD_DESTROYED_COOLDOWN = 3 * 200; // 3 s after shield destroyed
+    // Shield cooldown
+    private static final int SHIELD_DESTROYED_COOLDOWN = 3 * 200;
 
-    // ── Death overlay fade ← ADJUST ──────────────────────────
+    // Death overlay fade
     private static final float DEATH_FADE_SPEED = 0.03f;
-    private static final float DEATH_FADE_MAX   = 0.85f;
-    // -------------------------------------------------------
+    private static final float DEATH_FADE_MAX = 0.85f;
 
-    private final Player       player;
-    private final HealthBar    healthBar;    // jeepney life bar (shared with Playing)
-    private       BossHealthBar bossBar;     // boss life bar (new)
+    private final Player player;
+    private final HealthBar healthBar;
+    private BossHealthBar bossBar;
     private BossFight.LevelThree.Blue.Boss3 boss;
 
-    // ── Walkers during boss fight ─────────────────────────────
-    private BossWalkerManager walkerManager;              // NEW from first version
+    private BossWalkerManager walkerManager;
 
-    // ── Shield state: 0=none, 1=full, 2=half ─────────────────
-    private int  shieldState    = 0;
-    private int  shieldCooldown = 0;
+    // Shield state
+    private int shieldState = 0;
+    private int shieldCooldown = 0;
 
-    // ── Shoot state ───────────────────────────────────────────
-    // Thread-safe list — safe to iterate during concurrent updates
-    private final List<BlueJeepProjectile> playerBullets =
-            new CopyOnWriteArrayList<>();
+    // Shoot state
+    private final List<BlueJeepProjectile> playerBullets = new CopyOnWriteArrayList<>();
     private BufferedImage[] shootFrames;
-    private int     shootCooldown   = 0;
-    private int     bulletsRemaining = 0;
-    private boolean canShoot        = true;
+    private int shootCooldown = 0;
+    private int bulletsRemaining = 0;
+    private boolean canShoot = true;
 
     private BufferedImage shieldFull, shieldHalf;
 
-    // ── World scroll ─────────────────────────────────────────
+    // World scroll
     private float worldOffset = 0;
     private final int levelPixelWidth;
-
-    // ── Background ───────────────────────────────────────────
-
     private final float playerRightLimit;
 
-    // ── Pause ─────────────────────────────────────────────────
-    private boolean          paused      = false;
+    // Pause
+    private boolean paused = false;
     private BossPauseOverlay pauseOverlay;
-    private PauseOverlayButton pauseButton;  // Bottom-right pause button
+    private PauseOverlayButton pauseButton;
 
-    // ── Jeep death overlay ────────────────────────────────────
-    private boolean       playerDead    = false;
-    private float         deathAlpha    = 0f;
-    private boolean       deathFadeDone = false;
-    private UrmButton     deathRestartBtn;
+    // Jeep death overlay
+    private boolean playerDead = false;
+    private float deathAlpha = 0f;
+    private boolean deathFadeDone = false;
+    private UrmButton deathRestartBtn;
     private BufferedImage deathScreenImg;
     private int deathImgW, deathImgH, deathImgX, deathImgY;
 
-    // ── Boss defeat overlay ───────────────────────────────────
-    private BossDefeatOverlay defeatOverlay;
+    // ADD THIS MISSING FIELD
+    private boolean bossDefeated = false;
 
-    // ── Game completion overlay (Boss 3 only) ─────────────────
+    // Game completion overlay (Boss 3 only)
     private GameCompletionOverlay completionOverlay;
     private boolean showCompletionOverlay = false;
 
-    // ── Credits overlay (Boss 3 only) ─────────────────────────
+    // Credits overlay (Boss 3 only)
     private CreditsOverlay creditsOverlay;
 
-    // ── Skill buttons ────────────────────────────────────────
+    // Skill buttons
     private JeepSkillButtons skillButtons;
     private BossObstacleManager obstacleManager;
-    // ─────────────────────────────────────────────────────────
+
     public BlueJeepVsBoss3State(Game game, Player player, HealthBar healthBar) {
         super(game);
-        this.player    = player;
+        this.player = player;
         this.player.setBossMode(true);
         this.healthBar = healthBar;
+
         cloudRenderer = new CloudRenderer();
-        obstacleManager = new BossObstacleManager();
-        this.levelPixelWidth =
-                LoadSave.GetLevelData()[0].length * Game.TILES_SIZE;
+        buildingRenderer = new BuildingRenderer();
+        obstacleManager = new BossObstacleManager(game);
 
-        this.playerRightLimit =
-                Game.GAME_WIDTH * PLAYER_RIGHT_LIMIT_FRACTION
-                        - player.getHitBox().width;
-
-        // ✨ Load assets with default first (in case boss fight starts without selection)
-        // loadAssets(LoadSave.PLAYER_ATLAS_1);
+        this.levelPixelWidth = LoadSave.GetLevelData()[0].length * Game.TILES_SIZE;
+        this.playerRightLimit = Game.GAME_WIDTH * PLAYER_RIGHT_LIMIT_FRACTION - player.getHitBox().width;
 
         pauseOverlay = new BossPauseOverlay(this);
-        // ── Pause button: bottom-right corner ── ADJUST X/Y/scale as needed ──
-        float pauseBtnScale = 0.8f;  // ← ADJUST: button size multiplier
-        int   pauseBtnW = (int)(126 * Game.SCALE * pauseBtnScale);
-        int   pauseBtnH = (int)( 42 * Game.SCALE * pauseBtnScale);
+
+        // Pause button: bottom-right corner
+        float pauseBtnScale = 0.8f;
+        int pauseBtnW = (int)(126 * Game.SCALE * pauseBtnScale);
+        int pauseBtnH = (int)(42 * Game.SCALE * pauseBtnScale);
         int   pauseBtnX = Game.GAME_WIDTH  - pauseBtnW - (int)(-62 * Game.SCALE);  // ← ADJUST: right margin
         int   pauseBtnY = Game.GAME_HEIGHT - pauseBtnH - (int)(2 * Game.SCALE);  // ← ADJUST: bottom margin
         pauseButton = new PauseOverlayButton(pauseBtnX, pauseBtnY, pauseBtnScale, () -> {
             paused = true;
             System.out.println("[BlueJeepVsBoss3] Pause button clicked");
         });
+
         buildDeathOverlay();
         buildCompletionOverlay();
         bossBar = new BossHealthBar(BossHealthBar.LifeBarType.BOSS3);
@@ -140,35 +132,22 @@ public class BlueJeepVsBoss3State extends State implements StateMethods {
         walkerManager = new BossWalkerManager();
         spawnBoss();
 
-        // Initialize skill buttons based on jeep color
         String jeepColor = getJeepColor();
         skillButtons = new JeepSkillButtons(jeepColor,
                 this::isSkill1Ready, this::onSkill1, this::getSkill1CooldownRemaining,
                 this::isSkill2Ready, this::onSkill2, this::getSkill2CooldownRemaining);
     }
 
-    /**
-     * Reload shield and shoot sprites from selected driver.
-     * Called by Game when transitioning to boss fight.
-     */
     public void applyDriverAssets(entities.DriverProfile profile) {
         if (profile == null) {
             System.out.println("⚠️ [BossFightState] No driver profile - keeping default assets");
             return;
         }
-
         System.out.println("🎮 [BossFightState] Applying driver assets: " + profile.displayName);
         loadAssets(profile.atlasPath);
     }
 
-    // ─────────────────────────────────────────────────────────
-    // ASSET LOADING
-    // ─────────────────────────────────────────────────────────
-// Change loadAssets() signature to accept a parameter
     private void loadAssets(String atlasPath) {
-
-
-        // ✨ Add leading slash if missing
         if (!atlasPath.startsWith("/")) {
             atlasPath = "/" + atlasPath;
         }
@@ -177,7 +156,6 @@ public class BlueJeepVsBoss3State extends State implements StateMethods {
 
         if (is == null) {
             System.out.println("❌ [BossFightState] Failed to load atlas: " + atlasPath);
-            // Fall back to default
             is = getClass().getResourceAsStream("/" + LoadSave.PLAYER_ATLAS_3);
         }
 
@@ -196,18 +174,18 @@ public class BlueJeepVsBoss3State extends State implements StateMethods {
                         BlueJeepProjectile.FRAME_H);
 
             System.out.println("✓ [BossFightState] Loaded assets from: " + atlasPath);
-
         } catch (Exception e) {
             System.err.println("[BossFightState] Could not load jeepney rows: " + e.getMessage());
         } finally {
             try { if (is != null) is.close(); } catch (Exception ignored) {}
         }
     }
+
     private void buildDeathOverlay() {
         deathScreenImg = LoadSave.getSpriteAtlas(LoadSave.DEATH_SCREEN);
         deathImgW = (int)(500 * Game.SCALE * 0.5f);
         deathImgH = (int)(500 * Game.SCALE * 0.5f);
-        deathImgX = (Game.GAME_WIDTH  - deathImgW) / 2;
+        deathImgX = (Game.GAME_WIDTH - deathImgW) / 2;
         deathImgY = (Game.GAME_HEIGHT - deathImgH) / 2;
 
         int btnX = (int)(374 * Game.SCALE);
@@ -224,7 +202,7 @@ public class BlueJeepVsBoss3State extends State implements StateMethods {
             creditsOverlay = null;
             GameStates.state = GameStates.MENU;
             game.setHasActiveGame(false);
-            game.markNeedsFullReset();  // Next PLAY starts fresh from Level 1
+            game.markNeedsFullReset();
             System.out.println("[BlueJeepVsBoss3] Credits closed — returning to MENU, full reset flagged");
         });
     }
@@ -234,11 +212,11 @@ public class BlueJeepVsBoss3State extends State implements StateMethods {
             initCreditsOverlay();
         }
         creditsOverlay.open();
-        // FIX: close the overlay cleanly instead of nulling it
         if (completionOverlay != null) completionOverlay.close();
         showCompletionOverlay = false;
         System.out.println("[BlueJeepVsBoss3] Completion overlay closed, credits overlay opened");
     }
+
 
     private void spawnBoss() {
         float bx = Game.GAME_WIDTH + BossFight.LevelThree.Blue.Boss3.FRAME_W * Game.SCALE;
@@ -246,9 +224,6 @@ public class BlueJeepVsBoss3State extends State implements StateMethods {
         boss = new BossFight.LevelThree.Blue.Boss3(bx, by);
     }
 
-    // ─────────────────────────────────────────────────────────
-    // SKILL BUTTONS
-    // ─────────────────────────────────────────────────────────
     private String getJeepColor() {
         return "blue";
     }
@@ -280,19 +255,15 @@ public class BlueJeepVsBoss3State extends State implements StateMethods {
         return (shieldCooldown + 199) / 200;
     }
 
-    // ─────────────────────────────────────────────────────────
-    // UPDATE
-    // ─────────────────────────────────────────────────────────
     @Override
     public void update() {
-
-        // ── Credits overlay (Boss 3) ───────────────────────────
+        // Credits overlay
         if (creditsOverlay != null && creditsOverlay.isOpen()) {
             creditsOverlay.update();
             return;
         }
 
-        // ── Game completion overlay (Boss 3) ───────────────────
+        // Game completion overlay
         if (showCompletionOverlay && completionOverlay != null) {
             completionOverlay.update();
             return;
@@ -312,39 +283,36 @@ public class BlueJeepVsBoss3State extends State implements StateMethods {
             return;
         }
 
-        // ── Skill buttons update ─────────────────────────────
         skillButtons.update();
         if (pauseButton != null) pauseButton.update();
 
-        // ── World scroll ──────────────────────────────────────
+        // World scroll
         worldOffset += SCROLL_SPEED * Game.SCALE;
         if (worldOffset >= levelPixelWidth) worldOffset -= levelPixelWidth;
 
         cloudRenderer.update(SCROLL_SPEED * Game.SCALE);
+        buildingRenderer.update(true, SCROLL_SPEED * Game.SCALE);
 
-        // ── Player clamping ───────────────────────────────────
+        // Player clamping
         float leftLimit = 20 * Game.SCALE;
         if (player.getHitBox().x < leftLimit)
             player.getHitBox().x += LEFT_BORDER_PUSH * Game.SCALE;
         if (player.getHitBox().x > playerRightLimit)
             player.getHitBox().x = playerRightLimit;
 
-        // ── Player update ─────────────────────────────────────
         player.setWorldScrolling(false);
         player.setWorldLoopDone(true);
         player.update();
 
-        // ── Cooldowns ─────────────────────────────────────────
+        // Cooldowns
         if (shootCooldown > 0) {
             shootCooldown--;
             if (shootCooldown == 0) canShoot = true;
         }
         if (shieldCooldown > 0) shieldCooldown--;
 
-        // ── Player bullets (CopyOnWriteArrayList — thread-safe) ──
         playerBullets.removeIf(pb -> { pb.update(); return !pb.isActive(); });
 
-        // ── Walkers ── NEW from first version ─────────────────────
         walkerManager.update(SCROLL_SPEED);
         obstacleManager.update(true, SCROLL_SPEED * Game.SCALE);
 
@@ -352,29 +320,20 @@ public class BlueJeepVsBoss3State extends State implements StateMethods {
                 (int) player.getHitBox().x,
                 (int) player.getHitBox().y,
                 (int) player.getHitBox().width,
-                (int) player.getHitBox().height
-        );
+                (int) player.getHitBox().height);
 
         float jeepCentreY = jeepHB.y + jeepHB.height / 2f;
+        boss.update(jeepHB.x, jeepCentreY, jeepHB.width, jeepHB.height);
 
-        boss.update(
-                jeepHB.x,
-                jeepCentreY,
-                jeepHB.width,
-                jeepHB.height
-        );
-
-// ← ADD BULLET COLLISION HERE
-// Check boss bullets collision with player
+        // Boss bullets collision
         for (GravySauce.BossProjectile bullet : boss.getBullets()) {
             if (bullet.isActive() && bullet.getHitbox().intersects(jeepHB)) {
                 bullet.setActive(false);
                 handleJeepHit();
-                System.out.println("[BossFightState] Player hit by boss bullet!");
             }
         }
 
-// Check gravy collisions
+        // Gravy collision
         for (GravySauce car : boss.getGravySauces()) {
             if (car.isActive() && car.getHitbox().intersects(jeepHB)) {
                 car.setActive(false);
@@ -382,12 +341,11 @@ public class BlueJeepVsBoss3State extends State implements StateMethods {
             }
         }
         obstacleManager.checkCollision(jeepHB, this::handleJeepHit);
-        // Player bullets → boss AND obstacles
+
         Rectangle bossHB = boss.getHitbox();
         for (BlueJeepProjectile pb : playerBullets) {
             if (!pb.isActive()) continue;
 
-            // Check bullet vs boss
             if (pb.getHitbox().intersects(bossHB)) {
                 pb.setActive(false);
                 boss.triggerHit();
@@ -397,30 +355,21 @@ public class BlueJeepVsBoss3State extends State implements StateMethods {
                 continue;
             }
 
-            // Check bullet vs obstacles
-            boolean hitObstacle = false;
             for (EnemyCar obstacle : obstacleManager.getActiveObstacles()) {
                 if (obstacle.isActive() && pb.getHitbox().intersects(obstacle.getHitBox())) {
                     obstacle.takeDamage(1);
                     pb.setActive(false);
-                    hitObstacle = true;
-                    System.out.println("[BlueJeep] Bullet hit obstacle!");
                     break;
                 }
             }
-            if (hitObstacle) continue;
         }
-
     }
 
-    // ─────────────────────────────────────────────────────────
-    // HIT HANDLING
-    // ─────────────────────────────────────────────────────────
     private void handleJeepHit() {
         if (shieldState == 1) {
-            shieldState = 2;                         // full → half
+            shieldState = 2;
         } else if (shieldState == 2) {
-            shieldState    = 0;                      // half → destroyed
+            shieldState = 0;
             shieldCooldown = SHIELD_DESTROYED_COOLDOWN;
         } else {
             player.triggerCarStruck();
@@ -437,24 +386,19 @@ public class BlueJeepVsBoss3State extends State implements StateMethods {
         if (defeated) {
             System.out.println("[BlueJeepVsBoss3] Boss defeated! Showing completion overlay...");
             showCompletionOverlay = true;
-            // FIX: recreate overlay if it was nulled out by fullReset()
-            if (completionOverlay == null) {
-                buildCompletionOverlay();
+            if (completionOverlay != null) {
+                completionOverlay.reset();
             }
-            completionOverlay.reset();
         }
     }
 
-    // ─────────────────────────────────────────────────────────
-    // SHOOT Player
-    // ─────────────────────────────────────────────────────────
     private void fireSingleBulletBlue() {
         if (!canShoot || shootCooldown > 0 || paused || playerDead) return;
         spawnOneBulletBlue();
         bulletsRemaining--;
         if (bulletsRemaining <= 0) {
-            shootCooldown    = SHOOT_FULL_COOLDOWN;
-            canShoot         = false;
+            shootCooldown = SHOOT_FULL_COOLDOWN;
+            canShoot = false;
             bulletsRemaining = 0;
         }
     }
@@ -472,9 +416,6 @@ public class BlueJeepVsBoss3State extends State implements StateMethods {
         playerBullets.add(new BlueJeepProjectile(bx, by, shootFrames));
     }
 
-    // ─────────────────────────────────────────────────────────
-    // JEEP DEATH OVERLAY
-    // ─────────────────────────────────────────────────────────
     private void updateDeathOverlay() {
         if (!deathFadeDone) {
             deathAlpha = Math.min(deathAlpha + DEATH_FADE_SPEED, DEATH_FADE_MAX);
@@ -499,51 +440,44 @@ public class BlueJeepVsBoss3State extends State implements StateMethods {
     }
 
     private void resetDeathOverlay() {
-        deathAlpha    = 0f;
+        deathAlpha = 0f;
         deathFadeDone = false;
         deathRestartBtn.resetBools();
     }
 
-    // ─────────────────────────────────────────────────────────
-    // DRAW
-    // ─────────────────────────────────────────────────────────
     @Override
     public void draw(Graphics g) {
-
         cloudRenderer.drawBackground(g);
         cloudRenderer.drawClouds(g);
+        buildingRenderer.render(g);
 
-        bossBanner.updatePosition(10);  // 10 pixels from top
+        bossBanner.updatePosition(10);
         bossBanner.render(g);
+
         game.getPlaying().getLevelManager().draw(g, (int) worldOffset);
 
-        // ── Walkers behind boss ── NEW from first version ─────────
         walkerManager.render(g);
         obstacleManager.render(g);
         boss.render(g);
 
         for (BlueJeepProjectile pb : playerBullets) pb.render(g);
-
         player.render(g);
 
-        // Shield overlay
         if (shieldState > 0) {
             BufferedImage shieldImg = (shieldState == 1) ? shieldFull : shieldHalf;
             if (shieldImg != null) {
                 int sw = (int)(110 * Game.SCALE);
-                int sh = (int)(40  * Game.SCALE);
+                int sh = (int)(40 * Game.SCALE);
                 int sx = (int)(player.getHitBox().x - 21 * Game.SCALE);
-                int sy = (int)(player.getHitBox().y - 4  * Game.SCALE);
+                int sy = (int)(player.getHitBox().y - 4 * Game.SCALE);
                 g.drawImage(shieldImg, sx, sy, sw, sh, null);
             }
         }
 
-        // ── UI bars ───────────────────────────────────────────
-        healthBar.render(g);     // jeep life — upper left
-        bossBar.render(g);       // boss life — upper right
-        skillButtons.render(g);  // skill buttons
+        healthBar.render(g);
+        bossBar.render(g);
+        skillButtons.render(g);
 
-        // ── Overlays (on top of everything) ───────────────────
         if (creditsOverlay != null && creditsOverlay.isOpen()) {
             creditsOverlay.draw(g);
             return;
@@ -559,7 +493,6 @@ public class BlueJeepVsBoss3State extends State implements StateMethods {
             return;
         }
 
-        // Pause button — visible only when game is actively running
         if (pauseButton != null && !paused && !playerDead) {
             pauseButton.draw(g);
         }
@@ -571,20 +504,16 @@ public class BlueJeepVsBoss3State extends State implements StateMethods {
         }
     }
 
-
-    // ─────────────────────────────────────────────────────────
-    // INPUT
-    // ─────────────────────────────────────────────────────────
     @Override
     public void keyPressed(KeyEvent e) {
         if (playerDead || showCompletionOverlay) return;
 
         switch (e.getKeyCode()) {
             case KeyEvent.VK_ESCAPE: paused = !paused; break;
-            case KeyEvent.VK_A: player.setLeft(true);  break;
+            case KeyEvent.VK_A: player.setLeft(true); break;
             case KeyEvent.VK_D: player.setRight(true); break;
-            case KeyEvent.VK_W: player.setUp(true);    break;
-            case KeyEvent.VK_S: player.setDown(true);  break;
+            case KeyEvent.VK_W: player.setUp(true); break;
+            case KeyEvent.VK_S: player.setDown(true); break;
             case KeyEvent.VK_Q:
                 if (!paused && shieldCooldown == 0 && shieldState == 0)
                     shieldState = 1;
@@ -598,10 +527,10 @@ public class BlueJeepVsBoss3State extends State implements StateMethods {
     @Override
     public void keyReleased(KeyEvent e) {
         switch (e.getKeyCode()) {
-            case KeyEvent.VK_A: player.setLeft(false);  break;
+            case KeyEvent.VK_A: player.setLeft(false); break;
             case KeyEvent.VK_D: player.setRight(false); break;
-            case KeyEvent.VK_W: player.setUp(false);    break;
-            case KeyEvent.VK_S: player.setDown(false);  break;
+            case KeyEvent.VK_W: player.setUp(false); break;
+            case KeyEvent.VK_S: player.setDown(false); break;
         }
     }
 
@@ -621,7 +550,6 @@ public class BlueJeepVsBoss3State extends State implements StateMethods {
         } else if (paused) {
             pauseOverlay.mousePressed(e);
         } else {
-            // Pause button takes priority during active play
             if (pauseButton != null && pauseButton.getBounds().contains(e.getX(), e.getY())) {
                 pauseButton.mousePressed(e);
             } else {
@@ -642,8 +570,7 @@ public class BlueJeepVsBoss3State extends State implements StateMethods {
         }
         if (playerDead) {
             if (!deathFadeDone) return;
-            if (deathRestartBtn.isMousePressed() &&
-                    deathRestartBtn.getBounds().contains(e.getX(), e.getY()))
+            if (deathRestartBtn.isMousePressed() && deathRestartBtn.getBounds().contains(e.getX(), e.getY()))
                 fullReset();
             deathRestartBtn.resetBools();
         } else if (paused) {
@@ -668,8 +595,7 @@ public class BlueJeepVsBoss3State extends State implements StateMethods {
             return;
         }
         if (playerDead && deathFadeDone) {
-            deathRestartBtn.setMouseOver(
-                    deathRestartBtn.getBounds().contains(e.getX(), e.getY()));
+            deathRestartBtn.setMouseOver(deathRestartBtn.getBounds().contains(e.getX(), e.getY()));
         } else if (paused) {
             pauseOverlay.mouseMoved(e);
         } else {
@@ -678,15 +604,13 @@ public class BlueJeepVsBoss3State extends State implements StateMethods {
         }
     }
 
-    @Override public void mouseClicked(MouseEvent e) {}
+    @Override
+    public void mouseClicked(MouseEvent e) {}
 
     public void mouseDragged(MouseEvent e) {
         if (paused) pauseOverlay.mouseDragged(e);
     }
 
-    // ─────────────────────────────────────────────────────────
-    // PUBLIC CONTROL METHODS
-    // ─────────────────────────────────────────────────────────
     public void unpause() { paused = false; }
 
     public void fullReset() {
@@ -698,27 +622,27 @@ public class BlueJeepVsBoss3State extends State implements StateMethods {
         player.getHitBox().y = 520;
         player.resetDirBooleans();
 
-        paused           = false;
-        playerDead       = false;
+        paused = false;
+        playerDead = false;
+        bossDefeated = false;
         showCompletionOverlay = false;
-        shieldState      = 0;
-        shieldCooldown   = 0;
-        shootCooldown    = 0;
+        shieldState = 0;
+        shieldCooldown = 0;
+        shootCooldown = 0;
         bulletsRemaining = 0;
-        canShoot         = true;
+        canShoot = true;
         playerBullets.clear();
 
         worldOffset = 0;
         cloudRenderer.reset();
+        buildingRenderer.reset();
         obstacleManager.reset();
         walkerManager.resetAll();
         resetDeathOverlay();
         spawnBoss();
         player.setBossMode(true);
 
-        // Reset credits overlay (for Boss 3 restart)
         creditsOverlay = null;
-        // FIX: close the overlay instead of nulling it, so it can be reused
         if (completionOverlay != null) completionOverlay.close();
     }
 
@@ -732,11 +656,9 @@ public class BlueJeepVsBoss3State extends State implements StateMethods {
 
     public boolean isPaused() { return paused; }
 
-    // ─────────────────────────────────────────────────────────
-    // BOSS DEFEAT CALLBACKS
-    // ─────────────────────────────────────────────────────────
+
+
     private void onNextLevel() {
-        // Boss 3: Show credits instead of going directly to MENU
         if (creditsOverlay == null) {
             initCreditsOverlay();
         }

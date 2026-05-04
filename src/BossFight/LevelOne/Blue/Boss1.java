@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 import BossFight.LevelOne.GarbagePile;
+
 public class Boss1 {
 
     // ── Sprite sheet dimensions ───────────────────────────────
@@ -66,7 +67,7 @@ public class Boss1 {
     private static final int S2_PILE_DELAY  = 60;  // ticks between pile spawns
     // ─────────────────────────────────────────────────────────
 
-    // ── Tweak 2: vertical pile spacing ← ADJUST ──────────────    
+    // ── Tweak 2: vertical pile spacing ← ADJUST ──────────────
     // -------------------------------------------------------
     /** Vertical gap between the 3 garbage piles (pre-scale pixels). */
     private static final float PILE_VERTICAL_GAP = 50f;

@@ -13,6 +13,7 @@ public class BossObstacleManager {
 
     private final Random rng = new Random();
     private final List<EnemyCar> obstacles = new ArrayList<>();
+    private final Game game;
 
     // Spawn settings (adjust as needed)
     private static final float SPAWN_CHANCE = 0.35f;
@@ -26,8 +27,16 @@ public class BossObstacleManager {
     private int spawnTimer;
     private static final int BULLET_DAMAGE = 1;
 
+    // Constructor with Game parameter (FIXED)
+    public BossObstacleManager(Game game) {
+        this.game = game;
+        this.spawnTimer = nextSpawnInterval();
+    }
+
+    // No-arg constructor for compatibility (FIXED)
     public BossObstacleManager() {
-        spawnTimer = nextSpawnInterval();
+        this.game = null;
+        this.spawnTimer = nextSpawnInterval();
     }
 
     public void update(boolean scrolling, float scrollSpeed) {
@@ -60,8 +69,14 @@ public class BossObstacleManager {
         float spawnX = Game.GAME_WIDTH + (type.frameW * Game.SCALE * type.scale);
         float spawnY = LANES_Y[rng.nextInt(LANES_Y.length)];
 
-        EnemyCar newObstacle = new EnemyCar(spawnX, spawnY, type);
-        newObstacle.setShowHealthBar(true);  // ← ENABLE HEALTH BAR FOR BOSS FIGHTS
+        // Create obstacle with or without Game reference
+        EnemyCar newObstacle;
+        if (game != null) {
+            newObstacle = new EnemyCar(spawnX, spawnY, type, game);
+        } else {
+            newObstacle = new EnemyCar(spawnX, spawnY, type);
+        }
+        newObstacle.setShowHealthBar(true);
         obstacles.add(newObstacle);
         System.out.println("[BossObstacleManager] Spawned: " + type.name() + " (Health: " + type.maxHealth + ")");
     }
@@ -85,14 +100,14 @@ public class BossObstacleManager {
         for (EnemyCar obstacle : obstacles) {
             if (obstacle.isActive() && obstacle.getHitBox().intersects(bulletHitbox)) {
                 boolean destroyed = obstacle.takeDamage(BULLET_DAMAGE);
-                onBulletHit.run();  // This should set bullet to inactive
+                onBulletHit.run();
 
                 if (destroyed) {
                     System.out.println("[BossObstacleManager] Obstacle destroyed! Remaining obstacles: " + (obstacles.size() - 1));
                 } else {
                     System.out.println("[BossObstacleManager] Obstacle hit! Remaining health: " + obstacle.getCurrentHealth() + "/" + obstacle.getMaxHealth());
                 }
-                break;  // One bullet hits only one obstacle
+                break;
             }
         }
     }

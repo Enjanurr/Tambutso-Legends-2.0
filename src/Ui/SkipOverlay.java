@@ -227,6 +227,21 @@ public class SkipOverlay {
             return;
         }
 
+        // ── RESET PASSENGERS BEFORE ADVANCING ─────────────────────────
+        // Clear all seated passengers
+        game.getPlaying().getPassengerManager().resetAll();
+        // Reset passenger counter display
+        game.getPlaying().getPassengerCounter().reset();
+        // Reset fare total in passenger list overlay
+        game.getPlaying().getPassengerListOverlay().resetFare();
+        // Close passenger list popup if open
+        if (game.getPlaying().getPassengerListOverlay().isPopupOpen()) {
+            game.getPlaying().getPassengerListOverlay().closePopup();
+        }
+        // Reset passengers dropped count
+        game.getPlaying().resetPassengersDroppedCount();
+        System.out.println("[SkipOverlay] Passengers reset for level transition");
+
         game.getPlaying().getLevelManager().advanceToNextLevel();
         int newLevelId = game.getPlaying().getLevelManager().getCurrentLevelId();
         ProgressBar newProgressBar = new ProgressBar(newLevelId);
@@ -260,6 +275,16 @@ public class SkipOverlay {
         }
 
         if (nextLevel <= 3) {
+            // ── RESET PASSENGERS BEFORE ADVANCING ─────────────────────────
+            game.getPlaying().getPassengerManager().resetAll();
+            game.getPlaying().getPassengerCounter().reset();
+            game.getPlaying().getPassengerListOverlay().resetFare();
+            if (game.getPlaying().getPassengerListOverlay().isPopupOpen()) {
+                game.getPlaying().getPassengerListOverlay().closePopup();
+            }
+            game.getPlaying().resetPassengersDroppedCount();
+            System.out.println("[SkipOverlay] Passengers reset for boss skip");
+
             game.getPlaying().getLevelManager().advanceToNextLevel();
             ProgressBar newProgressBar = new ProgressBar(nextLevel);
             newProgressBar.setProgress(0);

@@ -9,8 +9,9 @@ import java.awt.image.BufferedImage;
 public class LevelBanner {
 
     // ── Banner settings ───────────────────────────────────────
-    private static final float RENDER_SCALE = 0.060f;  // Reduced from 0.6f to 0.35f (35% of original)
-    private static final float POS_Y_OFFSET = -8f;     // Pixels below progress bar
+    private static final float RENDER_SCALE = 0.10f;  // Reduced from 0.6f to 0.35f (35% of original)
+    private static final float POS_Y_OFFSET = 10f;     // Pixels below progress bar
+      // Pixels below progress bar
 
     private BufferedImage bannerImage;
     private int drawW, drawH, drawX, drawY;

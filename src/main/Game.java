@@ -7,6 +7,8 @@ import BossFight.LevelThree.Green.GreenJeepVsBoss3State;
 import BossFight.LevelThree.Red.RedJeepVsBoss3State;
 import BossFight.LevelTwo.Blue.BlueJeepVsBoss2State;
 import BossFight.LevelTwo.Green.GreenJeepVsBoss2State;
+import LeaderBoards.LeaderboardManager;
+import LeaderBoards.NameEntryOverlay;
 import entities.DriverProfile;
 import gameStates.*;
 import Ui.IntroOverlay;
@@ -38,6 +40,8 @@ public class Game implements Runnable {
     private CharSelectState charSelectState;
 
     private String activeMusicTrack;
+    private LeaderboardManager leaderboardManager;
+    private NameEntryOverlay nameEntryOverlay;
 
     // ── Level 1 Boss States ───────────────────────────────────
     private BlueJeepVsBoss1State blueJeepVsBoss1State;
@@ -78,6 +82,8 @@ public class Game implements Runnable {
 
 
     public Game() {
+        leaderboardManager = new LeaderboardManager();
+        nameEntryOverlay = new NameEntryOverlay(this, leaderboardManager);
         audioPlayer = new AudioPlayer();
         gamePanel    = new GamePanel(this);
         initClasses();
@@ -85,6 +91,10 @@ public class Game implements Runnable {
         reclaimInputFocus();
         syncMusicToState();
         startGameLoop();
+    }
+
+    public LeaderboardManager getLeaderboardManager() {
+        return leaderboardManager;
     }
 
 
@@ -689,3 +699,4 @@ public class Game implements Runnable {
         }
     }
 }
+

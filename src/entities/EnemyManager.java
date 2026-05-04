@@ -96,7 +96,8 @@ public class EnemyManager {
         float spawnX = Game.GAME_WIDTH + type.frameW * Game.SCALE;
         float spawnY = LANES_Y[rng.nextInt(LANES_Y.length)];
 
-        enemies.add(new EnemyCar(spawnX, spawnY, type));
+        // Pass the Game instance to EnemyCar for audio playback
+        enemies.add(new EnemyCar(spawnX, spawnY, type, playing.getGame()));
     }
 
     // ─────────────────────────────────────────────────────────

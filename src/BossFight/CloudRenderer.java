@@ -30,23 +30,31 @@ public class CloudRenderer {
         BufferedImage smallClouds = LoadSave.getSpriteAtlas(LoadSave.SMALL_CLOUDS);
 
         smallCloudsPos = new int[8];
-        randomizeSmallClouds();
+
+        // Make small clouds higher (reduced Y values)
+        for (int i = 0; i < smallCloudsPos.length; i++) {
+            smallCloudsPos[i] = (int)(5 * Game.SCALE) + rnd.nextInt((int)(50 * Game.SCALE));
+        }
 
         int bigCloudCount = (Game.GAME_WIDTH / BIG_CLOUD_WIDTH) + 3;
         int smallCloudCount = (Game.GAME_WIDTH / SMALL_CLOUD_WIDTH) + 3;
 
+        // Big clouds - higher position (reduced from 40 to 15)
+        int bigCloudY = (int)(15 * Game.SCALE);
+
         bigCloudLayer = new ScrollingCloudLayer(
                 bigClouds, BIG_CLOUD_WIDTH, BIG_CLOUD_HEIGHT,
-                BIG_CLOUD_PARALLAX, bigCloudCount, (int)(40 * Game.SCALE));
+                BIG_CLOUD_PARALLAX, bigCloudCount, bigCloudY);  // FIXED: removed duplicate line
 
+        // Small clouds - using the adjusted positions array
         smallCloudLayer = new ScrollingCloudLayer(
                 smallClouds, SMALL_CLOUD_WIDTH, SMALL_CLOUD_HEIGHT,
                 SMALL_CLOUD_PARALLAX, smallCloudCount, smallCloudsPos);
     }
 
     public void update(float scrollSpeed) {
-        bigCloudLayer.update(scrollSpeed);
-        smallCloudLayer.update(scrollSpeed);
+        if (bigCloudLayer != null) bigCloudLayer.update(scrollSpeed);
+        if (smallCloudLayer != null) smallCloudLayer.update(scrollSpeed);
     }
 
     public void drawBackground(Graphics g) {
@@ -56,18 +64,12 @@ public class CloudRenderer {
     }
 
     public void drawClouds(Graphics g) {
-        bigCloudLayer.draw(g);
-        smallCloudLayer.draw(g);
+        if (bigCloudLayer != null) bigCloudLayer.draw(g);
+        if (smallCloudLayer != null) smallCloudLayer.draw(g);
     }
 
     public void reset() {
         // Re-initialize layers to reset offsets
         loadAssets();
-    }
-
-    private void randomizeSmallClouds() {
-        for (int i = 0; i < smallCloudsPos.length; i++) {
-            smallCloudsPos[i] = (int) (20 * Game.SCALE) + rnd.nextInt((int) (100 * Game.SCALE));
-        }
     }
 }

@@ -2,6 +2,7 @@ package entities;
 
 import main.Game;
 import utils.LoadSave;
+import utils.AudioPlayer;
 
 import java.awt.*;
 import java.awt.image.BufferedImage;
@@ -48,13 +49,25 @@ public class EnemyCar extends Enemy {
     // ── ADD THIS FLAG ─────────────────────────────────────────
     private boolean showHealthBar = false;  // Only true for boss fights
 
+    // Reference to Game to access AudioPlayer
+    private Game game;
+
+    // ── STATIC COOLDOWN FOR CART SPAWN SOUND (prevents multiple plays) ──
+    private static long lastCartSpawnSoundTime = 0;
+    private static final int CART_SOUND_COOLDOWN_MS = 1000;  // 1 second cooldown
+
     public EnemyCar(float x, float y, EnemyType type) {
+        this(x, y, type, null);
+    }
+
+    public EnemyCar(float x, float y, EnemyType type, Game game) {
         super(x, y,
                 (int)(type.frameW * Game.SCALE * type.scale),
                 (int)(type.frameH * Game.SCALE * type.scale),
                 0);
         this.type = type;
         this.currentHealth = type.maxHealth;
+        this.game = game;
         loadFrames();
 
         float scaledW = type.frameW * Game.SCALE * type.scale;
@@ -69,6 +82,36 @@ public class EnemyCar extends Enemy {
     // ── ADD SETTER FOR HEALTH BAR ─────────────────────────────
     public void setShowHealthBar(boolean show) {
         this.showHealthBar = show;
+
+        float scaledW = type.frameW * Game.SCALE * type.scale;
+        float scaledH = type.frameH * Game.SCALE * type.scale;
+
+        initHitbox(x + 4 * Game.SCALE * type.scale,
+                y + 2 * Game.SCALE * type.scale,
+                scaledW - 20 * Game.SCALE * type.scale,
+                scaledH - 8 * Game.SCALE * type.scale);
+
+        // ── PLAY SOUND WHEN CART IS SPAWNED (WITH COOLDOWN) ──
+        if (type == EnemyType.CART) {
+            playCartSpawnSoundOnce();
+        }
+    }
+
+    // ── PLAY CART SPAWN SOUND ONLY ONCE WITH COOLDOWN ──
+    private void playCartSpawnSoundOnce() {
+        long currentTime = System.currentTimeMillis();
+
+        // Only play if enough time has passed since last cart spawn sound
+        if (currentTime - lastCartSpawnSoundTime >= CART_SOUND_COOLDOWN_MS) {
+            if (game != null && game.getAudioPlayer() != null) {
+                game.getAudioPlayer().playCartSpawnSound();
+                lastCartSpawnSoundTime = currentTime;
+                System.out.println("[EnemyCar] 🔊 CART spawned! Playing sound (cooldown: " + CART_SOUND_COOLDOWN_MS + "ms)");
+            }
+        } else {
+            long remainingCooldown = CART_SOUND_COOLDOWN_MS - (currentTime - lastCartSpawnSoundTime);
+            System.out.println("[EnemyCar] 🚫 CART spawned but sound on cooldown (" + remainingCooldown + "ms remaining)");
+        }
     }
 
     public boolean takeDamage(int damage) {

@@ -19,7 +19,7 @@ public class LevelConfig {
 
     // Level 1: Naga to Upper Linao (existing stops)
     private static final List<String> LEVEL_1_STOPS = Arrays.asList(
-            "Naga City Jeepney Terminal",           // Stop 1
+            "Jeepney Terminal",           // Stop 1
             "KEPCO",                                 // Stop 2
             "Inoburan Stop",                         // Stop 3
             "Tinaan Crossing",                       // Stop 4
@@ -28,7 +28,7 @@ public class LevelConfig {
             "Tunghaan Stop ",         // Stop 7
             "Calajo-an Stop",                        // Stop 8
             "Tulic Stop",                            // Stop 9
-            "Minglanilla Public Market", // Stop 10
+            "Mingla Market", // Stop 10
             "Poblacion Ward",                        // Stop 11
             "Tubod Crossing",                        // Stop 12
             "Pakigne Junction",                      // Stop 13
@@ -39,7 +39,7 @@ public class LevelConfig {
     // Level 2: Extended route (20 stops)
     private static final List<String> LEVEL_2_STOPS = Arrays.asList(
             "Lawaan",                                // Stop 1
-            "Tabunok Public Market",                 // Stop 2
+            "Tabunok  Market",                 // Stop 2
             "Bulacao",                               // Stop 3
             "Pardo Church",                          // Stop 4
             "Mambaling",                             // Stop 5
@@ -47,11 +47,11 @@ public class LevelConfig {
             "Shopwise",                              // Stop 7
             "CIT-University",                        // Stop 8
             "USJR",                                  // Stop 9
-            "E-Mall (Elizabeth Mall)",               // Stop 10
+            "E-Mall ",               // Stop 10
             "Mango Avenue",                          // Stop 11
-            "Fuente Osmeña Circle",                  // Stop 12
+            "Fuente Osmeña ",                  // Stop 12
             "Robinsons Fuente",                      // Stop 13
-            "Cebu Doctor’s University",              // Stop 14
+            "CDU",              // Stop 14
             "Ayala Center Cebu",                     // Stop 15
             "SM City Cebu",                          // Stop 16
             "North Bus Terminal",                    // Stop 17
@@ -65,22 +65,22 @@ public class LevelConfig {
             "Fort San Pedro",                        // Stop 2
             "Lapu-Lapu Monument",                    // Stop 3
             "Magellan’s Cross",                      // Stop 4
-            "Basilica Minore del Santo Niño",        // Stop 5
-            "Cebu Metropolitan Cathedral",           // Stop 6
-            "Santo Rosario Parish Church",           // Stop 7
-            "University of San Carlos",              // Stop 8
-            "University of the Visayas",             // Stop 9
+            "Santo Niño",        // Stop 5
+            "Cebu Cathedral",           // Stop 6
+            "Rosario Church",           // Stop 7
+            "USC",              // Stop 8
+            "UV",             // Stop 9
             "Cebu City Hall",                        // Stop 10
             "Pier 1",                                // Stop 11 (replaces Colon Street)
             "Pier 3",                                // Stop 12
             "Osmeña Boulevard",                      // Stop 13 (replaces Fuente)
             "Ramos Street",                          // Stop 14 (replaces Robinsons)
-            "Cebu Provincial Capitol",               // Stop 15 (replaces Cebu Doctor's)
+            "Cebu  Capitol",               // Stop 15 (replaces Cebu Doctor's)
             "N. Escario Street",                     // Stop 16
             "Camputhaw",                             // Stop 17
             "Gorordo Avenue",                        // Stop 18 (replaces Ayala)
             "Mabolo Church",                         // Stop 19
-            "Archbishop Reyes Avenue",               // Stop 20
+            "Archbishop Avenue",               // Stop 20
             "Cebu Business Park",                    // Stop 21
             "JY Square Mall",                        // Stop 22
             "Waterfront Hotel",                      // Stop 23
