@@ -86,6 +86,9 @@ public class Playing extends State implements StateMethods {
     private PaymentOverlay         paymentOverlay;
     private MissionOverlay         missionOverlay;
 
+    // ── Pause button (top-right corner during normal play) ────
+    private PauseOverlayButton pauseButton;
+
     // ── Overlay-state flags ───────────────────────────────────
     private boolean paused            = false;
     private boolean playerDead        = false;
@@ -237,6 +240,17 @@ public class Playing extends State implements StateMethods {
         gameClock = new GameClock();
         skipOverlay = new SkipOverlay(game, this);
         missionOverlay = null;  // Created on-demand for current level
+
+        // ── Pause button: top-right corner ── ADJUST X/Y offsets as needed ──
+        float pauseBtnScale = 0.8f;  // ← ADJUST: button size multiplier
+        int   pauseBtnW = (int)(126 * Game.SCALE * pauseBtnScale);
+        int   pauseBtnH = (int)( 42 * Game.SCALE * pauseBtnScale);
+        int   pauseBtnX = Game.GAME_WIDTH  - pauseBtnW - (int)(-62 * Game.SCALE);  // ← ADJUST: right margin
+        int   pauseBtnY = (int)(6 * Game.SCALE);                                  // ← ADJUST: top margin
+        pauseButton = new PauseOverlayButton(pauseBtnX, pauseBtnY, pauseBtnScale, () -> {
+            paused = true;
+            System.out.println("[Playing] Pause button clicked");
+        });
         System.out.println("[Playing] initClasses() complete - Level " + levelManager.getCurrentLevelId() + " loaded");
         passengerInteractionController = new PassengerInteractionController(this, passengerCounter);
     }
@@ -579,6 +593,9 @@ public class Playing extends State implements StateMethods {
         } else {
             pauseOverlay.update();
         }
+
+        // Pause button always updates so hover/press state stays current
+        if (pauseButton != null) pauseButton.update();
     }
 
     // ─────────────────────────────────────────────────────────
@@ -633,6 +650,12 @@ public class Playing extends State implements StateMethods {
         if (missionOverlay != null && missionOverlay.isOpen()) { missionOverlay.render(g); return; }
         acceptPassengerOverlay.render(g);
         if (playerDead)        { deathOverlay.render(g);         return; }
+
+        // Pause button — visible only when nothing else is blocking input
+        if (pauseButton != null && !paused && !listPopupPaused) {
+            pauseButton.draw(g);
+        }
+
         if (paused) {
             g.setColor(new Color(0, 0, 0, 150));
             g.fillRect(0, 0, Game.GAME_WIDTH, Game.GAME_HEIGHT);
@@ -715,6 +738,11 @@ public class Playing extends State implements StateMethods {
             case LIST_POPUP: passengerListOverlay.mousePressed(e, passengerManager.getSeatList()); return;
             case PAUSE:      pauseOverlay.mousePressed(e);                            return;
             case NONE:
+                // Pause button takes priority over passenger list clicks
+                if (pauseButton != null && pauseButton.getBounds().contains(e.getX(), e.getY())) {
+                    pauseButton.mousePressed(e);
+                    return;
+                }
                 passengerListOverlay.mousePressed(e, passengerManager.getSeatList());
                 break;
         }
@@ -736,6 +764,10 @@ public class Playing extends State implements StateMethods {
             case LIST_POPUP: passengerListOverlay.mouseReleased(e);          return;
             case PAUSE:      pauseOverlay.mouseReleased(e);                  return;
             case NONE:
+                if (pauseButton != null && pauseButton.getBounds().contains(e.getX(), e.getY())) {
+                    pauseButton.mouseReleased(e);
+                    return;
+                }
                 passengerListOverlay.mouseReleased(e);
                 break;
         }
@@ -753,6 +785,7 @@ public class Playing extends State implements StateMethods {
             case LIST_POPUP: passengerListOverlay.mouseMoved(e);      return;
             case PAUSE:      pauseOverlay.mouseMoved(e);              return;
             case NONE:
+                if (pauseButton != null) pauseButton.mouseMoved(e);
                 passengerListOverlay.mouseMoved(e);
                 break;
         }

@@ -75,6 +75,7 @@ public class RedJeepVsBoss2State extends State implements StateMethods {
     // ── Pause ─────────────────────────────────────────────────
     private boolean          paused      = false;
     private BossPauseOverlay pauseOverlay;
+    private PauseOverlayButton pauseButton;  // Bottom-right pause button
 
     // ── Jeep death overlay ────────────────────────────────────
     private boolean       playerDead    = false;
@@ -119,6 +120,16 @@ public class RedJeepVsBoss2State extends State implements StateMethods {
         // loadAssets(LoadSave.PLAYER_ATLAS_1);
 
         pauseOverlay = new BossPauseOverlay(this);
+        // ── Pause button: bottom-right corner ── ADJUST X/Y/scale as needed ──
+        float pauseBtnScale = 0.8f;  // ← ADJUST: button size multiplier
+        int   pauseBtnW = (int)(126 * Game.SCALE * pauseBtnScale);
+        int   pauseBtnH = (int)( 42 * Game.SCALE * pauseBtnScale);
+        int   pauseBtnX = Game.GAME_WIDTH  - pauseBtnW - (int)(-62 * Game.SCALE);  // ← ADJUST: right margin
+        int   pauseBtnY = Game.GAME_HEIGHT - pauseBtnH - (int)(2 * Game.SCALE);  // ← ADJUST: bottom margin
+        pauseButton = new PauseOverlayButton(pauseBtnX, pauseBtnY, pauseBtnScale, () -> {
+            paused = true;
+            System.out.println("[RedJeepVsBoss2] Pause button clicked");
+        });
         buildDeathOverlay();
         buildDefeatOverlay();
         bossBar = new BossHealthBar(BossHealthBar.LifeBarType.BOSS2);
@@ -308,6 +319,7 @@ public class RedJeepVsBoss2State extends State implements StateMethods {
         }
 
         skillButtons.update();
+        if (pauseButton != null) pauseButton.update();
 
         // ── World scroll ──────────────────────────────────────
         worldOffset += SCROLL_SPEED * Game.SCALE;
@@ -580,6 +592,11 @@ public class RedJeepVsBoss2State extends State implements StateMethods {
             return;
         }
 
+        // Pause button — visible only when game is actively running
+        if (pauseButton != null && !paused && !playerDead) {
+            pauseButton.draw(g);
+        }
+
         if (paused) {
             g.setColor(new Color(0, 0, 0, 150));
             g.fillRect(0, 0, Game.GAME_WIDTH, Game.GAME_HEIGHT);
@@ -630,7 +647,12 @@ public class RedJeepVsBoss2State extends State implements StateMethods {
         } else if (paused) {
             pauseOverlay.mousePressed(e);
         } else {
-            skillButtons.mousePressed(e);
+            // Pause button takes priority during active play
+            if (pauseButton != null && pauseButton.getBounds().contains(e.getX(), e.getY())) {
+                pauseButton.mousePressed(e);
+            } else {
+                skillButtons.mousePressed(e);
+            }
         }
     }
 
@@ -646,7 +668,11 @@ public class RedJeepVsBoss2State extends State implements StateMethods {
         } else if (paused) {
             pauseOverlay.mouseReleased(e);
         } else {
-            skillButtons.mouseReleased(e);
+            if (pauseButton != null && pauseButton.getBounds().contains(e.getX(), e.getY())) {
+                pauseButton.mouseReleased(e);
+            } else {
+                skillButtons.mouseReleased(e);
+            }
         }
     }
 
@@ -659,6 +685,7 @@ public class RedJeepVsBoss2State extends State implements StateMethods {
         } else if (paused) {
             pauseOverlay.mouseMoved(e);
         } else {
+            if (pauseButton != null) pauseButton.mouseMoved(e);
             skillButtons.mouseMoved(e);
         }
     }

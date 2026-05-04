@@ -100,6 +100,7 @@ public class LoadSave {
     public static final String ABOUT_BUTTONS = "ui/buttons/about_buttons.png";
     public static final String ABOUT_GAME_IMG = "ui/overlays/about_game.png";
     public static final String CREDITS_IMG = "ui/overlays/credits.png";
+    public static final String PAUSE_OVERLAY_BUTTON = "ui/buttons/pause_overlay_button.png";
     // ── Game completion overlay ───────────────────────────────────
     public static final String GAME_COMPLETED = "ui/overlays/game_completed.png";
     // ── Pause UI atlases ─────────────────────────────────────
