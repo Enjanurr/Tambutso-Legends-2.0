@@ -75,16 +75,16 @@ public class PassengerListOverlay {
     // =========================================================
     // TOTAL FARE DISPLAY  ← ADJUST
     // =========================================================
-    private static final int   fareDisplayX  = 410  ;
-    private static final int   fareDisplayY  = -44;
+    private static final int   fareDisplayX  = 405  ;
+    private static final int   fareDisplayY  = -61;
     private static final Color fareTextColor = new Color(100, 220, 100);
     private static final int   fareFontSize  = 20;
 
     // =========================================================
     // SELECTED PASSENGER FARE STATUS LINE  ← ADJUST
     // =========================================================
-    private static final int   selectedFareX    = 180;
-    private static final int   selectedFareY    = -27;
+    private static final int   selectedFareX    = 150;
+    private static final int   selectedFareY    = -37;
     private static final Color selectedFareOk   = new Color(100, 220, 100);
     private static final Color selectedFareLate = new Color(255, 160,  50);
     private static final Color selectedFareWait = new Color(180, 180, 180);
@@ -129,6 +129,12 @@ public class PassengerListOverlay {
     private BufferedImage[][] btnFrames;
 
     // =========================================================
+    // CHARACTER CONVERTERS (Different sizes for different elements)
+    // =========================================================
+    private CharacterConverter fareConverter;      // For total fare earned
+    private CharacterConverter statusConverter;    // For selected passenger status messages
+
+    // =========================================================
     // STATE
     // =========================================================
     private boolean popupOpen    = false;
@@ -161,6 +167,9 @@ public class PassengerListOverlay {
         this.onOpenPayment = onOpenPayment;
         loadAssets();
         buildLayout();
+        // Different converters for different text elements
+        fareConverter   = new CharacterConverter(1.9f, 1);  // 200% size, 3px spacing for fare display
+        statusConverter = new CharacterConverter(1.3f, 1);  // 130% size, 1px spacing for status messages
     }
 
     // ─────────────────────────────────────────────────────────
@@ -309,26 +318,22 @@ public class PassengerListOverlay {
     // ─────────────────────────────────────────────────────────
     // SELECTED PASSENGER FARE STATUS
     // ─────────────────────────────────────────────────────────
+    // In PassengerListOverlay.java, replace the drawSelectedFareInfo method with:
+
     private void drawSelectedFareInfo(Graphics2D g2, RidingPassenger rp, int currentLoop) {
-        Font font = new Font("SansSerif", Font.BOLD, (int)(selectedFontSize * Game.SCALE));
-        g2.setFont(font);
         int tx = bgX + (int)(selectedFareX * Game.SCALE);
         int ty = bgY + bgH + (int)(selectedFareY * Game.SCALE);
 
         if (currentLoop < rp.getAssignedStop()) {
-            g2.setColor(selectedFareWait);
             int stopsLeft = rp.getAssignedStop() - currentLoop;
-            g2.drawString( "  (" + stopsLeft + " stop" + (stopsLeft == 1 ? "" : "s") + " away)",
-                    tx, ty);
+            String msg = "(" + stopsLeft + " STOP" + (stopsLeft == 1 ? "" : "S") + " AWAY)";
+            statusConverter.drawString(g2, msg, tx, ty);
         } else if (currentLoop == rp.getAssignedStop()) {
-            g2.setColor(selectedFareOk);
-            g2.drawString( "(Drop now!)", tx, ty);
+            statusConverter.drawString(g2, "(DROP NOW!)", tx, ty);
         } else {
             int missed = currentLoop - rp.getAssignedStop();
-            int fare   = rp.calculateFare(currentLoop);
-            g2.setColor(selectedFareLate);
-            g2.drawString(  "  (-\u20B1" + (missed * RidingPassenger.MISSED_STOP_PENALTY) + " late penalty)",
-                    tx, ty);
+            String msg = "(-" + (missed * RidingPassenger.MISSED_STOP_PENALTY) + " LATE PENALTY)";
+            statusConverter.drawString(g2, msg, tx, ty);
         }
     }
 
@@ -361,12 +366,9 @@ public class PassengerListOverlay {
     }
 
     private void drawFare(Graphics2D g2) {
-        Font font = new Font("SansSerif", Font.BOLD, (int)(fareFontSize * Game.SCALE));
-        g2.setFont(font);
-        g2.setColor(fareTextColor);
         int tx = bgX + (int)(fareDisplayX * Game.SCALE);
         int ty = bgY + bgH + (int)(fareDisplayY * Game.SCALE);
-        g2.drawString("" + totalFareEarned, tx, ty);
+        fareConverter.drawNumber(g2, totalFareEarned, tx, ty);
     }
 
     private void drawBtn(Graphics g, int row, Rectangle bounds, boolean over, boolean pressed) {
