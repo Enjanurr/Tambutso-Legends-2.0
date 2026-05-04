@@ -2,6 +2,7 @@ package BossFight.LevelThree.Red;
 
 import BossFight.BossObstacleManager;
 import BossFight.BossWalkerManager;
+import BossFight.BuildingRenderer;
 import BossFight.CloudRenderer;
 import BossFight.LevelThree.GravySauce;
 import Ui.*;
@@ -31,6 +32,7 @@ public class RedJeepVsBoss3State extends State implements StateMethods {
     // -------------------------------------------------------
 
     private BossBanner bossBanner;
+    private BuildingRenderer buildingRenderer;
     private static final float SCROLL_SPEED                = BossFight.LevelThree.Red.Boss3.BOSS_SCROLL_SPEED;
     private static final float LEFT_BORDER_PUSH            = 0.3f;
     private static final float PLAYER_RIGHT_LIMIT_FRACTION = 0.50f;
@@ -109,7 +111,8 @@ public class RedJeepVsBoss3State extends State implements StateMethods {
         player.setBossMode(true);
         this.healthBar = healthBar;
         cloudRenderer = new CloudRenderer();
-        obstacleManager = new BossObstacleManager();
+        buildingRenderer = new BuildingRenderer();
+        obstacleManager = new BossObstacleManager(game);
         this.levelPixelWidth = LoadSave.GetLevelData()[0].length * Game.TILES_SIZE;
         this.playerRightLimit = Game.GAME_WIDTH * PLAYER_RIGHT_LIMIT_FRACTION - player.getHitBox().width;
 
@@ -271,7 +274,7 @@ public class RedJeepVsBoss3State extends State implements StateMethods {
         worldOffset += SCROLL_SPEED * Game.SCALE;
         if (worldOffset >= levelPixelWidth) worldOffset -= levelPixelWidth;
         cloudRenderer.update(SCROLL_SPEED * Game.SCALE);
-
+        buildingRenderer.update(true, SCROLL_SPEED * Game.SCALE);
         // Player clamping
         float leftLimit = 20 * Game.SCALE;
         if (player.getHitBox().x < leftLimit)
@@ -486,10 +489,11 @@ public class RedJeepVsBoss3State extends State implements StateMethods {
     public void draw(Graphics g) {
         cloudRenderer.drawBackground(g);
         cloudRenderer.drawClouds(g);
-
-        bossBanner.updatePosition(10);  // 10 pixels from top
+        buildingRenderer.render(g);
+        bossBanner.updatePosition(10);
         bossBanner.render(g);
         game.getPlaying().getLevelManager().draw(g, (int) worldOffset);
+
         walkerManager.render(g);
         obstacleManager.render(g);
         boss.render(g);
@@ -639,6 +643,7 @@ public class RedJeepVsBoss3State extends State implements StateMethods {
         worldOffset = 0;
         cloudRenderer.reset();
         obstacleManager.reset();
+        buildingRenderer.reset();
         walkerManager.resetAll();
         resetDeathOverlay();
         spawnBoss();

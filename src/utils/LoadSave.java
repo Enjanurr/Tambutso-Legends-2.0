@@ -135,6 +135,10 @@ public class LoadSave {
     /** 426 × 56 — Change button sprite sheet */
     public static final String CHANGE_BUTTON = "ui/buttons/change_button.png";
 
+    public static final String LEADERBOADS_BUTTON = "ui/buttons/leaderboards_button.png";
+    public static final String ENTERNAME_BUTTON = "ui/buttons/enter_button.png";
+
+
     // ─────────────────────────────────────────────────────────
 
 

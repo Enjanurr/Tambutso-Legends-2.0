@@ -274,9 +274,27 @@ public class Boss1 {
         if (stunTick >= STUN_DURATION) {
             stunned = false;
             stunTick = 0;
+
+            // Restore the previous state
             state = stateAfterHit;
             stateTick = 0;
             aniIndex = 0;
+            aniTick = 0;
+
+            // Reset skill2 phase if we were in SKILL2
+            if (state == BossState.SKILL2) {
+                // Reset skill2 animation to a safe state
+                if (skill2Phase >= 2) {
+                    skill2Phase = 3;  // Go to running phase
+                    currentRow = ROW_RUNNING;
+                } else if (skill2Phase == 1) {
+                    // If we were spawning piles, stop spawning
+                    skill2Phase = 3;
+                    currentRow = ROW_RUNNING;
+                }
+                System.out.println("[Boss1 Red] Stun ended - Resuming SKILL2 at phase " + skill2Phase);
+            }
+
             currentRow = ROW_RUNNING;
             System.out.println("[Boss1 Red] Stun ended");
         }
@@ -304,6 +322,9 @@ public class Boss1 {
     }
 
     private void updateSkill2Sequence() {
+        // Skip animation update if stunned (handled separately)
+        if (stunned) return;
+
         pileTick++;
 
         switch (skill2Phase) {
@@ -357,7 +378,6 @@ public class Boss1 {
                 break;
         }
     }
-
     // ── RANDOM SKILL SELECTION (50/50) ────────────────────────
     private void enterRandom() {
         if (rng.nextBoolean()) {
@@ -439,8 +459,10 @@ public class Boss1 {
     }
 
     private void updateAnimation() {
-        if (state == BossState.SKILL2 && skill2Phase < 3) return;
+        // Don't update animation during stun (stun handles its own animation)
         if (state == BossState.STUN) return;
+
+        if (state == BossState.SKILL2 && skill2Phase < 3) return;
         if (state == BossState.HIT && aniIndex >= FRAME_COUNTS[ROW_HIT] - 1) return;
 
         int speed;
@@ -471,7 +493,16 @@ public class Boss1 {
 
     public void applyStun() {
         if (state == BossState.STUN || stunned) return;
+
+        // Store current state for after stun
         stateAfterHit = state;
+
+        // IMPORTANT: Store skill2 phase if currently in SKILL2
+        if (state == BossState.SKILL2) {
+            // Save the current skill2 phase to resume properly
+            System.out.println("[Boss1 Red] Stunned during SKILL2 - Phase: " + skill2Phase);
+        }
+
         state = BossState.STUN;
         stunned = true;
         stunTick = 0;

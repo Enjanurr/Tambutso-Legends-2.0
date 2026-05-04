@@ -3,7 +3,6 @@ package gameStates;
 import LeaderBoards.LeaderboardDisplay;
 import LeaderBoards.NameEntryOverlay;
 import Ui.MenuButton;
-import Ui.SoundButton;
 import main.Game;
 import utils.LoadSave;
 
@@ -17,7 +16,16 @@ public class Menu extends State implements StateMethods {
     private MenuButton[] buttons = new MenuButton[3];
     private LeaderboardDisplay leaderboardDisplay;
     private NameEntryOverlay nameEntryOverlay;
-    private SoundButton leaderboardButton;
+
+    // Leaderboard button (126x42 total, 3 frames of 42x42)
+    private Rectangle leaderboardButton;
+    private BufferedImage leaderboardButtonNormal;
+    private BufferedImage leaderboardButtonHover;
+    private BufferedImage leaderboardButtonPressed;
+    private boolean leaderboardBtnHover = false;
+    private boolean leaderboardBtnPressed = false;
+    private static final int LEADERBOARD_BTN_FRAME_W = 42;   // 126 / 3 = 42
+    private static final int LEADERBOARD_BTN_FRAME_H = 42;
 
     private BufferedImage backgroundImg;
     private int menuX, menuY, menuWidth, menuHeight;
@@ -28,17 +36,83 @@ public class Menu extends State implements StateMethods {
         super(game);
         loadButtons();
         loadBackground();
+        loadLeaderboardButton();
         backgroundImgPink = LoadSave.getSpriteAtlas(LoadSave.MENU_BACKGROUND_IMG);
         nameEntryOverlay = new NameEntryOverlay(game, game.getLeaderboardManager());
         leaderboardDisplay = new LeaderboardDisplay(game, game.getLeaderboardManager());
 
-        // Create square leaderboard button (42x42) in upper right corner
-        int btnSize = (int)(42 * Game.SCALE);
-        int leaderboardBtnX = Game.GAME_WIDTH - btnSize - (int)(20 * Game.SCALE);
-        int leaderboardBtnY = (int)(20 * Game.SCALE);
-        leaderboardButton = new SoundButton(leaderboardBtnX, leaderboardBtnY, btnSize, btnSize);
+        // Create leaderboard button bounds in upper right corner
+        int btnWidth = (int)(LEADERBOARD_BTN_FRAME_W * Game.SCALE);
+        int btnHeight = (int)(LEADERBOARD_BTN_FRAME_H * Game.SCALE);
+        int btnX = Game.GAME_WIDTH - btnWidth - (int)(20 * Game.SCALE);
+        int btnY = (int)(20 * Game.SCALE);
+        leaderboardButton = new Rectangle(btnX, btnY, btnWidth, btnHeight);
     }
 
+    private void loadLeaderboardButton() {
+        BufferedImage leaderboardSheet = LoadSave.getSpriteAtlas(LoadSave.LEADERBOADS_BUTTON);
+        if (leaderboardSheet != null) {
+            int frameWidth = leaderboardSheet.getWidth() / 3;  // 126 / 3 = 42
+            int frameHeight = leaderboardSheet.getHeight() / 2; // 84 / 2 = 42 (if 2 rows total)
+
+            // Row 0, Col 0 = Normal (bright)
+            leaderboardButtonNormal = leaderboardSheet.getSubimage(frameWidth, 0, frameWidth, frameHeight);
+            // Row 0, Col 1 = Hover (darkened)
+            leaderboardButtonHover = leaderboardSheet.getSubimage(0, 0, frameWidth, frameHeight);
+            // Row 0, Col 2 = Pressed
+            leaderboardButtonPressed = leaderboardSheet.getSubimage(frameWidth * 2, 0, frameWidth, frameHeight);
+
+            System.out.println("[Menu] Loaded LEADERBOARD button - Normal, Hover (darkened), Pressed states");
+        } else {
+            System.err.println("[Menu] Failed to load leaderboard button sheet");
+        }
+    }
+
+    private void drawLeaderboardButton(Graphics g) {
+        BufferedImage btnImage = null;
+
+        // Priority: Pressed > Hover > Normal
+        if (leaderboardBtnPressed && leaderboardButtonPressed != null) {
+            btnImage = leaderboardButtonPressed;
+        }
+        // Hover state (col 1 - darkened)
+        else if (leaderboardBtnHover && leaderboardButtonHover != null) {
+            btnImage = leaderboardButtonHover;
+        }
+        // Normal state (col 0 - bright)
+        else if (leaderboardButtonNormal != null) {
+            btnImage = leaderboardButtonNormal;
+        }
+
+        if (btnImage != null) {
+            g.drawImage(btnImage, leaderboardButton.x, leaderboardButton.y,
+                    leaderboardButton.width, leaderboardButton.height, null);
+        } else {
+            drawFallbackLeaderboardButton(g);
+        }
+    }
+
+    private void drawFallbackLeaderboardButton(Graphics g) {
+        // Normal state (bright)
+        if (!leaderboardBtnHover && !leaderboardBtnPressed) {
+            g.setColor(new Color(70, 50, 150, 200));
+        }
+        // Hover state (darkened)
+        else if (leaderboardBtnHover && !leaderboardBtnPressed) {
+            g.setColor(new Color(50, 35, 110, 200));
+        }
+        // Pressed state (darker)
+        else {
+            g.setColor(new Color(30, 20, 70, 200));
+        }
+
+        g.fillRoundRect(leaderboardButton.x, leaderboardButton.y,
+                leaderboardButton.width, leaderboardButton.height, 10, 10);
+        g.setColor(Color.WHITE);
+        g.setFont(new Font("Arial", Font.BOLD, (int)(12 * Game.SCALE)));
+        g.drawString("🏆", leaderboardButton.x + leaderboardButton.width / 3,
+                leaderboardButton.y + leaderboardButton.height - 12);
+    }
     private void loadBackground() {
         backgroundImg = LoadSave.getSpriteAtlas(LoadSave.MENU_BACKGROUNDS);
         menuWidth  = (int)(backgroundImg.getWidth()  * Game.SCALE);
@@ -56,7 +130,6 @@ public class Menu extends State implements StateMethods {
     @Override
     public void update() {
         for (MenuButton mb : buttons) mb.update();
-        if (leaderboardButton != null) leaderboardButton.update();
     }
 
     @Override
@@ -68,7 +141,7 @@ public class Menu extends State implements StateMethods {
         for (MenuButton mb : buttons) mb.draw(g);
 
         // Draw leaderboard button
-        if (leaderboardButton != null) leaderboardButton.draw(g);
+        drawLeaderboardButton(g);
 
         // Draw name overlay on top if visible
         if (nameEntryOverlay.isVisible()) {
@@ -80,6 +153,8 @@ public class Menu extends State implements StateMethods {
             leaderboardDisplay.render(g);
         }
     }
+
+
 
     @Override
     public void mouseClicked(MouseEvent e) {}
@@ -107,8 +182,8 @@ public class Menu extends State implements StateMethods {
         }
 
         // Check leaderboard button
-        if (leaderboardButton != null && leaderboardButton.getBounds().contains(e.getX(), e.getY())) {
-            leaderboardButton.setMousePressed(true);
+        if (leaderboardButton != null && leaderboardButton.contains(e.getX(), e.getY())) {
+            leaderboardBtnPressed = true;
         }
     }
 
@@ -126,7 +201,7 @@ public class Menu extends State implements StateMethods {
             return;
         }
 
-        // Otherwise, handle menu buttons
+        // Otherwise, handle menu buttons clicks
         for (int i = 0; i < buttons.length; i++) {
             MenuButton mb = buttons[i];
             if (isIn(e, mb) && mb.isMousePressed()) {
@@ -142,8 +217,7 @@ public class Menu extends State implements StateMethods {
         }
 
         // Handle leaderboard button click
-        if (leaderboardButton != null && leaderboardButton.isMousePressed() &&
-                leaderboardButton.getBounds().contains(e.getX(), e.getY())) {
+        if (leaderboardBtnPressed && leaderboardButton != null && leaderboardButton.contains(e.getX(), e.getY())) {
             System.out.println("[Menu] Leaderboard button clicked - showing leaderboard");
             leaderboardDisplay.show();
         }
@@ -153,19 +227,24 @@ public class Menu extends State implements StateMethods {
 
     @Override
     public void mouseMoved(MouseEvent e) {
-        // If leaderboard is visible, send mouseMoved to it
+        System.out.println("[Menu] mouseMoved - leaderboard visible: " + (leaderboardDisplay != null && leaderboardDisplay.isVisible()) +
+                ", name overlay visible: " + nameEntryOverlay.isVisible());
+
         if (leaderboardDisplay != null && leaderboardDisplay.isVisible()) {
             leaderboardDisplay.mouseMoved(e);
             return;
         }
 
-        // If name overlay is visible, don't process menu hover
         if (nameEntryOverlay.isVisible()) {
+            System.out.println("[Menu] Forwarding mouseMoved to NameEntryOverlay");
+            nameEntryOverlay.mouseMoved(e);
             return;
         }
 
-        // Otherwise, handle menu button hover
-        for (MenuButton mb : buttons) mb.setMouseOver(false);
+        // Handle menu button hover (NOT clicks)
+        for (MenuButton mb : buttons) {
+            mb.setMouseOver(false);
+        }
         for (MenuButton mb : buttons) {
             if (isIn(e, mb)) {
                 mb.setMouseOver(true);
@@ -173,22 +252,22 @@ public class Menu extends State implements StateMethods {
             }
         }
 
-        // Check leaderboard button hover
+        // Track leaderboard button hover
         if (leaderboardButton != null) {
-            leaderboardButton.setMouseOver(leaderboardButton.getBounds().contains(e.getX(), e.getY()));
+            leaderboardBtnHover = leaderboardButton.contains(e.getX(), e.getY());
         }
     }
 
     private void resetButtons() {
         for (MenuButton mb : buttons) mb.resetBools();
-        if (leaderboardButton != null) leaderboardButton.resetBools();
+        leaderboardBtnPressed = false;
+        leaderboardBtnHover = false;
     }
 
     @Override
     public void keyPressed(KeyEvent e) {
         // If leaderboard is visible, send input to it
         if (leaderboardDisplay != null && leaderboardDisplay.isVisible()) {
-            // Leaderboard can handle ESC to close
             if (e.getKeyCode() == KeyEvent.VK_ESCAPE) {
                 leaderboardDisplay.hide();
             }
@@ -202,7 +281,6 @@ public class Menu extends State implements StateMethods {
         }
 
         if (e.getKeyCode() == KeyEvent.VK_ENTER) {
-            // When ENTER is pressed on menu, show name entry
             nameEntryOverlay.show();
         }
     }

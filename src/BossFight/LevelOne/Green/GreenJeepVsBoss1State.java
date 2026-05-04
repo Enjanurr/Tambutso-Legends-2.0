@@ -2,6 +2,7 @@ package BossFight.LevelOne.Green;
 
 import BossFight.BossObstacleManager;
 import BossFight.BossWalkerManager;
+import BossFight.BuildingRenderer;
 import BossFight.CloudRenderer;
 import Ui.*;
 import entities.EnemyCar;
@@ -28,6 +29,7 @@ public class GreenJeepVsBoss1State extends State implements StateMethods {
     private BossBanner bossBanner;
     private CloudRenderer cloudRenderer;
     private BossObstacleManager obstacleManager;
+    private BuildingRenderer buildingRenderer;
     // -------------------------------------------------------
     // BOSS FIGHT SETTINGS  ← ADJUST
     // -------------------------------------------------------
@@ -111,7 +113,8 @@ public class GreenJeepVsBoss1State extends State implements StateMethods {
         player.setBossMode(false);
         this.healthBar = healthBar;
         cloudRenderer = new CloudRenderer();
-        obstacleManager = new BossObstacleManager();  // ← ADD THIS LINE
+        buildingRenderer = new BuildingRenderer();
+        obstacleManager = new BossObstacleManager(game);  // ← ADD THIS LINE
         this.levelPixelWidth =
                 LoadSave.GetLevelData()[0].length * Game.TILES_SIZE;
 
@@ -307,7 +310,7 @@ public class GreenJeepVsBoss1State extends State implements StateMethods {
         if (worldOffset >= levelPixelWidth) worldOffset -= levelPixelWidth;
 
         cloudRenderer.update(SCROLL_SPEED * Game.SCALE);
-
+        buildingRenderer.update(true, SCROLL_SPEED * Game.SCALE);
         // ── Player clamping ───────────────────────────────────
         float leftLimit = 20 * Game.SCALE;
         if (player.getHitBox().x < leftLimit)
@@ -534,12 +537,14 @@ public class GreenJeepVsBoss1State extends State implements StateMethods {
 
     @Override
     public void draw(Graphics g) {
-        // Draw clouds using CloudRenderer
         cloudRenderer.drawBackground(g);
         cloudRenderer.drawClouds(g);
-        bossBanner.updatePosition(10);  // 10 pixels from top
+        buildingRenderer.render(g);
+        bossBanner.updatePosition(10);
         bossBanner.render(g);
         game.getPlaying().getLevelManager().draw(g, (int) worldOffset);
+
+
         walkerManager.render(g);
         obstacleManager.render(g);  // ← ADD THIS
         boss.render(g);
@@ -696,7 +701,7 @@ public class GreenJeepVsBoss1State extends State implements StateMethods {
 
         worldOffset = 0;
         cloudRenderer.reset();
-
+        buildingRenderer.reset();
         walkerManager.resetAll();   // NEW from first version
         obstacleManager.reset();  // ← ADD THIS
         resetDeathOverlay();

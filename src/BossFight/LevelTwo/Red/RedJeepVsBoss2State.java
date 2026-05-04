@@ -3,6 +3,7 @@ package BossFight.LevelTwo.Red;
 
 import BossFight.BossObstacleManager;
 import BossFight.BossWalkerManager;
+import BossFight.BuildingRenderer;
 import BossFight.CloudRenderer;
 import BossFight.LevelTwo.NukeProjectile;
 import Ui.*;
@@ -83,6 +84,7 @@ public class RedJeepVsBoss2State extends State implements StateMethods {
     private UrmButton deathRestartBtn;
     private BufferedImage deathScreenImg;
     private int deathImgW, deathImgH, deathImgX, deathImgY;
+    private BuildingRenderer buildingRenderer;
 
     // ── Boss defeat overlay ───────────────────────────────────
     private boolean          bossDefeated   = false;
@@ -107,7 +109,8 @@ public class RedJeepVsBoss2State extends State implements StateMethods {
         this.player.setBossMode(true);
         this.healthBar = healthBar;
         cloudRenderer = new CloudRenderer();
-        obstacleManager = new BossObstacleManager();
+        buildingRenderer = new BuildingRenderer();
+        obstacleManager = new BossObstacleManager(game);
         this.levelPixelWidth =
                 LoadSave.GetLevelData()[0].length * Game.TILES_SIZE;
 
@@ -313,7 +316,7 @@ public class RedJeepVsBoss2State extends State implements StateMethods {
         worldOffset += SCROLL_SPEED * Game.SCALE;
         if (worldOffset >= levelPixelWidth) worldOffset -= levelPixelWidth;
         cloudRenderer.update(SCROLL_SPEED * Game.SCALE);
-
+        buildingRenderer.update(true, SCROLL_SPEED * Game.SCALE);
         // ── Player clamping ───────────────────────────────────
         float leftLimit = 20 * Game.SCALE;
         if (player.getHitBox().x < leftLimit)
@@ -571,12 +574,11 @@ public class RedJeepVsBoss2State extends State implements StateMethods {
     // ─────────────────────────────────────────────────────────
     @Override
     public void draw(Graphics g) {
-
         cloudRenderer.drawBackground(g);
         cloudRenderer.drawClouds(g);
-        bossBanner.updatePosition(10);  // 10 pixels from top
+        buildingRenderer.render(g);
+        bossBanner.updatePosition(10);
         bossBanner.render(g);
-
         game.getPlaying().getLevelManager().draw(g, (int) worldOffset);
 
         // ── Walkers behind boss ── NEW from first version ─────────
@@ -731,6 +733,7 @@ public class RedJeepVsBoss2State extends State implements StateMethods {
         worldOffset = 0;
         cloudRenderer.reset();
         obstacleManager.reset();
+        buildingRenderer.reset();
         walkerManager.resetAll();   // NEW from first version
         resetDeathOverlay();
         spawnBoss();

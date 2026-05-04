@@ -1,3 +1,7 @@
+// ═══════════════════════════════════════════════════════════════════════════════
+// FIXED: NameEntryOverlay button behavior with proper hover and pressed states
+// ═══════════════════════════════════════════════════════════════════════════════
+
 package LeaderBoards;
 
 import main.Game;
@@ -28,7 +32,14 @@ public class NameEntryOverlay {
     private Rectangle startBtn;
     private LeaderboardManager leaderboardManager;
 
-    // Colors from PaymentOverlay reference
+    // Button images for ENTER button (420x56 total, 3 frames of 140x56)
+    private BufferedImage enterButtonNormal;
+    private BufferedImage enterButtonHover;
+    private BufferedImage enterButtonPressed;
+    private static final int ENTER_BTN_WIDTH = 140;   // 420 / 3 = 140
+    private static final int ENTER_BTN_HEIGHT = 56;
+
+    // Colors
     private static final Color INPUT_COLOR = Color.YELLOW;
     private static final Color ERROR_COLOR = new Color(212, 8, 8, 255);
     private static final Color VALUE_COLOR = new Color(100, 220, 100);
@@ -47,6 +58,24 @@ public class NameEntryOverlay {
         if (backgroundImg == null) {
             System.err.println("[NameEntryOverlay] Could not load PlayerName.png");
         }
+
+        // Load the ENTER button images (1 row, 3 cols: 420x56 total)
+        BufferedImage enterButtonSheet = LoadSave.getSpriteAtlas(LoadSave.ENTERNAME_BUTTON);
+        if (enterButtonSheet != null) {
+            int frameWidth = enterButtonSheet.getWidth() / 3;  // 420 / 3 = 140
+            int frameHeight = enterButtonSheet.getHeight();     // 56
+
+            // Col 0 = Normal (bright)
+            enterButtonNormal = enterButtonSheet.getSubimage(0, 0, frameWidth, frameHeight);
+            // Col 1 = Hover (darkened)
+            enterButtonHover = enterButtonSheet.getSubimage(frameWidth, 0, frameWidth, frameHeight);
+            // Col 2 = Pressed
+            enterButtonPressed = enterButtonSheet.getSubimage(frameWidth * 2, 0, frameWidth, frameHeight);
+
+            System.out.println("[NameEntryOverlay] Loaded ENTER button - Frame width: " + frameWidth + ", height: " + frameHeight);
+        } else {
+            System.err.println("[NameEntryOverlay] Failed to load ENTER button sheet");
+        }
     }
 
     private void calculatePositions() {
@@ -63,17 +92,21 @@ public class NameEntryOverlay {
         overlayX = (Game.GAME_WIDTH - overlayW) / 2;
         overlayY = (Game.GAME_HEIGHT - overlayH) / 2;
 
-        // Name input field - MOVED UP (was 0.5, now 0.4)
+        // Name input field
         int fieldW = (int)(overlayW * 0.6);
         int fieldH = (int)(45 * Game.SCALE);
         int fieldX = overlayX + (overlayW - fieldW) / 2;
-        int fieldY = overlayY + (int)(overlayH * 0.4);  // MOVED UP from 0.5 to 0.4
+        int fieldY = overlayY + (int)(overlayH * 0.4);
         nameField = new Rectangle(fieldX, fieldY, fieldW, fieldH);
 
-        // Start button - moved up slightly to follow
-        int btnX = overlayX + overlayW / 2;
-        int btnY = overlayY + (int)(overlayH * 0.65);  // MOVED UP from 0.7 to 0.65
-        startBtn = new Rectangle(btnX - (B_WIDTH / 2), btnY, B_WIDTH, B_HEIGHT);
+        // Start button using new ENTER button (scaled)
+        int btnWidth = (int)(ENTER_BTN_WIDTH * Game.SCALE);
+        int btnHeight = (int)(ENTER_BTN_HEIGHT * Game.SCALE);
+        int btnX = overlayX + (overlayW - btnWidth) / 2;
+        int btnY = overlayY + (int)(overlayH * 0.65);
+        startBtn = new Rectangle(btnX, btnY, btnWidth, btnHeight);
+
+        System.out.println("[NameEntryOverlay] Button bounds: " + startBtn);
     }
 
     public void render(Graphics g) {
@@ -82,17 +115,17 @@ public class NameEntryOverlay {
         Graphics2D g2d = (Graphics2D) g;
         g2d.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
 
-        // Draw menu background covering the whole screen
+        // Draw menu background
         BufferedImage menuBg = LoadSave.getSpriteAtlas(LoadSave.MENU_BACKGROUND_IMG);
         if (menuBg != null) {
             g.drawImage(menuBg, 0, 0, Game.GAME_WIDTH, Game.GAME_HEIGHT, null);
         }
 
-        // Darken background for contrast
+        // Darken background
         g2d.setColor(new Color(0, 0, 0, 180));
         g2d.fillRect(0, 0, Game.GAME_WIDTH, Game.GAME_HEIGHT);
 
-        // Draw PLAYERNAME overlay on top
+        // Draw PLAYERNAME overlay
         if (backgroundImg != null) {
             g2d.drawImage(backgroundImg, overlayX, overlayY, overlayW, overlayH, null);
         } else {
@@ -100,12 +133,12 @@ public class NameEntryOverlay {
             g2d.fillRoundRect(overlayX, overlayY, overlayW, overlayH, 20, 20);
         }
 
-        // Name input field border (using highlight color)
+        // Name input field border
         g2d.setColor(isTyping ? VALUE_COLOR : Color.WHITE);
         g2d.setStroke(new BasicStroke(2));
         g2d.drawRect(nameField.x, nameField.y, nameField.width, nameField.height);
 
-        // Name input field text (using INPUT_COLOR from reference)
+        // Name input field text
         g2d.setFont(NAME_FONT);
 
         if (playerName.isEmpty()) {
@@ -116,7 +149,7 @@ public class NameEntryOverlay {
             int textY = nameField.y + (nameField.height + pfm.getAscent() - pfm.getDescent()) / 2;
             g2d.drawString(placeholder, textX, textY);
         } else {
-            g2d.setColor(INPUT_COLOR);  // Yellow like PaymentOverlay
+            g2d.setColor(INPUT_COLOR);
             FontMetrics pfm = g2d.getFontMetrics();
 
             String displayName = playerName;
@@ -138,44 +171,67 @@ public class NameEntryOverlay {
         // Draw START button
         drawStartButton(g2d);
 
-        // Error message - MOVED UP (was Game.GAME_HEIGHT - 50, now closer to button)
+        // Error message
         if (!errorMessage.isEmpty()) {
             g2d.setFont(ERROR_FONT);
             g2d.setColor(ERROR_COLOR);
             FontMetrics fm = g2d.getFontMetrics();
             int errW = fm.stringWidth(errorMessage);
             int errX = (Game.GAME_WIDTH - errW) / 2;
-            int errY = startBtn.y + startBtn.height + 30;  // MOVED UP - just below start button
+            int errY = startBtn.y + startBtn.height + 30;
             g2d.drawString(errorMessage, errX, errY);
         }
     }
 
     private void drawStartButton(Graphics2D g2d) {
-        BufferedImage btnImg = LoadSave.getSpriteAtlas(LoadSave.MENU_BUTTONS);
-        if (btnImg != null) {
-            int btnState = 0;
-            if (startBtnPressed) btnState = 2;
-            else if (startBtnHover) btnState = 1;
+        BufferedImage btnImage = null;
 
-            BufferedImage currentBtn = btnImg.getSubimage(
-                    btnState * B_WIDTH_DEFAULT,
-                    0 * B_HEIGHT_DEFAULT,
-                    B_WIDTH_DEFAULT,
-                    B_HEIGHT_DEFAULT
-            );
-            g2d.drawImage(currentBtn, startBtn.x, startBtn.y, B_WIDTH, B_HEIGHT, null);
+        // Debug: Print current state
+        System.out.println("[NameEntryOverlay] drawStartButton - startBtnPressed=" + startBtnPressed +
+                ", startBtnHover=" + startBtnHover);
+        System.out.println("[NameEntryOverlay] Button images - Normal=" + (enterButtonNormal != null) +
+                ", Hover=" + (enterButtonHover != null) +
+                ", Pressed=" + (enterButtonPressed != null));
+
+        // Priority: Pressed > Hover > Normal
+        if (startBtnPressed && enterButtonPressed != null) {
+            btnImage = enterButtonPressed;
+            System.out.println("[NameEntryOverlay] Using PRESSED button");
+        } else if (startBtnHover && enterButtonHover != null) {
+            btnImage = enterButtonHover;
+            System.out.println("[NameEntryOverlay] Using HOVER button");
+        } else if (enterButtonNormal != null) {
+            btnImage = enterButtonNormal;
+            System.out.println("[NameEntryOverlay] Using NORMAL button");
         } else {
-            // Fallback
-            g2d.setColor(new Color(0, 150, 0));
-            g2d.fillRoundRect(startBtn.x, startBtn.y, startBtn.width, startBtn.height, 15, 15);
-            g2d.setColor(Color.WHITE);
-            g2d.setFont(new Font("Arial", Font.BOLD, (int)(18 * Game.SCALE)));
-            String startText = "START";
-            FontMetrics sfm = g2d.getFontMetrics();
-            int startX = startBtn.x + (startBtn.width - sfm.stringWidth(startText)) / 2;
-            int startY = startBtn.y + (startBtn.height + sfm.getAscent() - sfm.getDescent()) / 2;
-            g2d.drawString(startText, startX, startY);
+            System.out.println("[NameEntryOverlay] All button images are NULL!");
         }
+
+        if (btnImage != null) {
+            g2d.drawImage(btnImage, startBtn.x, startBtn.y, startBtn.width, startBtn.height, null);
+        } else {
+            drawFallbackStartButton(g2d);
+        }
+    }
+
+    private void drawFallbackStartButton(Graphics2D g2d) {
+        // ── FIXED: Correct fallback states ──
+        if (startBtnPressed) {
+            g2d.setColor(new Color(0, 50, 0));  // Darkest when pressed
+        } else if (startBtnHover) {
+            g2d.setColor(new Color(0, 100, 0)); // Dark when hovering
+        } else {
+            g2d.setColor(new Color(0, 150, 0)); // Bright when normal
+        }
+
+        g2d.fillRoundRect(startBtn.x, startBtn.y, startBtn.width, startBtn.height, 15, 15);
+        g2d.setColor(Color.WHITE);
+        g2d.setFont(new Font("Arial", Font.BOLD, (int)(18 * Game.SCALE)));
+        String startText = "START";
+        FontMetrics sfm = g2d.getFontMetrics();
+        int startX = startBtn.x + (startBtn.width - sfm.stringWidth(startText)) / 2;
+        int startY = startBtn.y + (startBtn.height + sfm.getAscent() - sfm.getDescent()) / 2;
+        g2d.drawString(startText, startX, startY);
     }
 
     public void keyPressed(KeyEvent e) {
@@ -212,37 +268,62 @@ public class NameEntryOverlay {
 
     public void mouseMoved(MouseEvent e) {
         if (!visible) return;
+
+        // Always print when mouse moves (not just on change)
+        System.out.println("[NameEntryOverlay] mouseMoved called - mouse at: (" + e.getX() + ", " + e.getY() + ")");
+        System.out.println("[NameEntryOverlay] Button bounds: " + startBtn);
+        System.out.println("[NameEntryOverlay] Button contains: " + startBtn.contains(e.getX(), e.getY()));
+
+        boolean wasHover = startBtnHover;
         startBtnHover = startBtn.contains(e.getX(), e.getY());
+
+        if (wasHover != startBtnHover) {
+            System.out.println("[NameEntryOverlay] Hover state changed: " + startBtnHover);
+        }
+
+        if (startBtnHover) {
+            game.getGamePanel().setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        } else {
+            game.getGamePanel().setCursor(Cursor.getDefaultCursor());
+        }
     }
 
     public void mousePressed(MouseEvent e) {
         if (!visible) return;
 
+        // Check if clicked on name field
         if (nameField.contains(e.getX(), e.getY())) {
             isTyping = true;
             startBtnPressed = false;
-        } else if (startBtn.contains(e.getX(), e.getY())) {
+        }
+        // Check if clicked on start button
+        else if (startBtn.contains(e.getX(), e.getY())) {
             startBtnPressed = true;
             isTyping = false;
-        } else {
+            System.out.println("[NameEntryOverlay] Start button PRESSED");
+        }
+        // Clicked outside - close the overlay
+        else {
             isTyping = false;
             startBtnPressed = false;
-            hide();
+            hide();  // ← This closes the overlay when clicking outside
+            System.out.println("[NameEntryOverlay] Clicked outside modal - hiding");
         }
     }
-
     public void mouseReleased(MouseEvent e) {
         if (!visible) return;
 
+        // ── FIXED: Check if release is WITHIN button bounds ──
         if (startBtnPressed && startBtn.contains(e.getX(), e.getY())) {
+            System.out.println("[NameEntryOverlay] Start button CLICKED");
             startGame();
         }
+
+        // Always reset pressed state on release
         startBtnPressed = false;
     }
 
-    public void mouseClicked(MouseEvent e) {
-        // Not used but needed for compatibility
-    }
+    public void mouseClicked(MouseEvent e) {}
 
     private void startGame() {
         if (playerName.trim().isEmpty()) {
@@ -264,6 +345,8 @@ public class NameEntryOverlay {
         playerName = "";
         errorMessage = "";
         isTyping = true;
+        startBtnHover = false;
+        startBtnPressed = false;
         System.out.println("[NameEntryOverlay] Showing");
     }
 
@@ -271,6 +354,7 @@ public class NameEntryOverlay {
         visible = false;
         startBtnPressed = false;
         startBtnHover = false;
+        game.getGamePanel().setCursor(Cursor.getDefaultCursor());
         System.out.println("[NameEntryOverlay] Hiding");
     }
 

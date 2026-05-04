@@ -13,6 +13,7 @@ public class BossObstacleManager {
 
     private final Random rng = new Random();
     private final List<EnemyCar> obstacles = new ArrayList<>();
+    private final Game game;  // ← ADD GAME REFERENCE
 
     // Spawn settings (adjust as needed)
     private static final float SPAWN_CHANCE = 0.35f;
@@ -26,7 +27,8 @@ public class BossObstacleManager {
     private int spawnTimer;
     private static final int BULLET_DAMAGE = 1;
 
-    public BossObstacleManager() {
+    public BossObstacleManager(Game game) {  // ← ADD CONSTRUCTOR WITH GAME
+        this.game = game;
         spawnTimer = nextSpawnInterval();
     }
 
@@ -60,7 +62,8 @@ public class BossObstacleManager {
         float spawnX = Game.GAME_WIDTH + (type.frameW * Game.SCALE * type.scale);
         float spawnY = LANES_Y[rng.nextInt(LANES_Y.length)];
 
-        EnemyCar newObstacle = new EnemyCar(spawnX, spawnY, type);
+        // ← PASS GAME INSTANCE TO ENEMYCAR FOR AUDIO
+        EnemyCar newObstacle = new EnemyCar(spawnX, spawnY, type, game);
         newObstacle.setShowHealthBar(true);  // ← ENABLE HEALTH BAR FOR BOSS FIGHTS
         obstacles.add(newObstacle);
         System.out.println("[BossObstacleManager] Spawned: " + type.name() + " (Health: " + type.maxHealth + ")");
