@@ -66,8 +66,8 @@ public class EnemyCar extends Enemy {
                 (int)(type.frameH * Game.SCALE * type.scale),
                 0);
         this.type = type;
-        this.game = game;
         this.currentHealth = type.maxHealth;
+        this.game = game;
         loadFrames();
 
         float scaledW = type.frameW * Game.SCALE * type.scale;
@@ -82,6 +82,14 @@ public class EnemyCar extends Enemy {
         if (type == EnemyType.CART) {
             playCartSpawnSoundOnce();
         }
+
+        float scaledW = type.frameW * Game.SCALE * type.scale;
+        float scaledH = type.frameH * Game.SCALE * type.scale;
+
+        initHitbox(x + 4 * Game.SCALE * type.scale,
+                y + 2 * Game.SCALE * type.scale,
+                scaledW - 20 * Game.SCALE * type.scale,
+                scaledH - 8 * Game.SCALE * type.scale);
     }
 
     // ── PLAY CART SPAWN SOUND ONLY ONCE WITH COOLDOWN ──

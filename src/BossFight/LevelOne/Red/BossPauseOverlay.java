@@ -38,8 +38,8 @@ public class BossPauseOverlay {
     private UrmButton    resumeBtn, restartBtn, menuBtn;
     private VolumeButton volumeButton;
 
-    public BossPauseOverlay(RedJeepVsBoss1State blueJeepVsBoss1State) {
-        this.redJeepVsBoss1State = blueJeepVsBoss1State;
+    public BossPauseOverlay(RedJeepVsBoss1State redJeepVsBoss1State) {
+        this.redJeepVsBoss1State = redJeepVsBoss1State;
         loadBackground();
         createSoundButtons();
         createUrmButtons();

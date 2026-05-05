@@ -77,6 +77,9 @@ public class Game implements Runnable {
     /** Stores the last active game state (PLAYING or boss fight) for resume after menu. */
     private GameStates lastActiveGameState = null;
 
+    /** Set true after game completion so next PLAY press starts a completely fresh game. */
+    private boolean needsFullReset = false;
+
 
     public Game() {
         leaderboardManager = new LeaderboardManager();
@@ -115,6 +118,15 @@ public class Game implements Runnable {
         }
     }
 
+    /** Mark that the next PLAY press should start a completely fresh game from Level 1. */
+    public void markNeedsFullReset() {
+        this.needsFullReset = true;
+        System.out.println("[Game] needsFullReset flagged — next PLAY will start fresh from Level 1");
+    }
+
+    public boolean needsFullReset() { return needsFullReset; }
+    public void clearResetFlag()    { this.needsFullReset = false; }
+
     /**
      * Explicitly set the last active game state for resume purposes.
      * Called when entering boss fights or other special game states.
@@ -130,6 +142,17 @@ public class Game implements Runnable {
      * Handles both normal gameplay and boss fight states.
      */
     public void startOrResumeGame() {
+        if (needsFullReset) {
+            // Game was just completed — wipe all progress and start fresh
+            System.out.println("[Game] Full reset required — starting fresh from Level 1");
+            needsFullReset = false;
+            hasActiveGame = false;
+            lastActiveGameState = null;
+            selectedDriver = null;
+            currentBossLevel = 1;
+            playing.resetToLevel1();
+        }
+
         if (hasActiveGame && lastActiveGameState != null) {
             System.out.println("[Game] Resuming active game: " + lastActiveGameState);
             GameStates.state = lastActiveGameState;

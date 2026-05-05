@@ -1,5 +1,7 @@
 // ═══════════════════════════════════════════════════════════════════════════════
-// FIXED: NameEntryOverlay button behavior with proper hover and pressed states
+// FIXED: NameEntryOverlay - startGame() now calls game.startOrResumeGame()
+//        so that a full reset (resetToLevel1, intro reset, etc.) is triggered
+//        when returning from game completion, before going to char select.
 // ═══════════════════════════════════════════════════════════════════════════════
 
 package LeaderBoards;
@@ -108,6 +110,7 @@ public class NameEntryOverlay {
 
         System.out.println("[NameEntryOverlay] Button bounds: " + startBtn);
     }
+
 
     public void render(Graphics g) {
         if (!visible) return;
@@ -310,6 +313,7 @@ public class NameEntryOverlay {
             System.out.println("[NameEntryOverlay] Clicked outside modal - hiding");
         }
     }
+
     public void mouseReleased(MouseEvent e) {
         if (!visible) return;
 
@@ -325,6 +329,24 @@ public class NameEntryOverlay {
 
     public void mouseClicked(MouseEvent e) {}
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // CRITICAL FIX: startGame() now calls game.startOrResumeGame() instead of
+    // game.startCharSelect() directly.
+    //
+    // Why this matters:
+    //   • After game completion, Boss3 calls game.markNeedsFullReset().
+    //   • startOrResumeGame() checks needsFullReset and calls playing.resetToLevel1()
+    //     which resets the level manager, progress bar, clock, and introOverlay.
+    //   • Then, since hasActiveGame is false after the reset, it calls startCharSelect().
+    //   • If needsFullReset is NOT set (normal new-game flow), startOrResumeGame()
+    //     just calls startCharSelect() as before — no behaviour change.
+    //
+    // OLD (broken):
+    //   game.startCharSelect();   ← skips reset entirely, game resumes from Level 3
+    //
+    // NEW (correct):
+    //   game.startOrResumeGame(); ← applies reset if flagged, then goes to char select
+    // ─────────────────────────────────────────────────────────────────────────
     private void startGame() {
         if (playerName.trim().isEmpty()) {
             errorMessage = "Please enter your name!";
@@ -334,10 +356,17 @@ public class NameEntryOverlay {
         String cleanName = playerName.trim();
         System.out.println("[NameEntryOverlay] Starting game with name: " + cleanName);
 
+        // CRITICAL: Register this player (creates new record or loads existing one)
         leaderboardManager.setCurrentPlayer(cleanName);
 
+        // NOTE: Timer (startSession) is started in Playing.onIntroDone() once the
+        // intro overlay finishes — do NOT start it here to avoid double-starting.
+
         hide();
-        game.startCharSelect();
+
+        // CRITICAL: Use startOrResumeGame() so that needsFullReset is respected.
+        // This resets Playing to Level 1, resets introOverlay, then goes to char select.
+        game.startOrResumeGame(); // ← CRITICAL CHANGE (was: game.startCharSelect())
     }
 
     public void show() {
@@ -356,6 +385,13 @@ public class NameEntryOverlay {
         startBtnHover = false;
         game.getGamePanel().setCursor(Cursor.getDefaultCursor());
         System.out.println("[NameEntryOverlay] Hiding");
+    }
+
+    public void handleEsc() {
+        if (visible) {
+            hide();
+            System.out.println("[NameEntryOverlay] ESC pressed - hiding");
+        }
     }
 
     public boolean isVisible() {

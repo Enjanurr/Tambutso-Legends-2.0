@@ -202,6 +202,29 @@ public class Boss2 {
         }
     }
 
+    private void updateStunState() {
+        currentRow = ROW_STUN;
+
+        // Update stun animation
+        aniTick++;
+        if (aniTick >= ANI_SPEED_STUN) {
+            aniTick = 0;
+            aniIndex = (aniIndex + 1) % FRAME_COUNTS[ROW_STUN];
+        }
+
+        stunTick++;
+
+        if (stunTick >= STUN_DURATION) {
+            stunned = false;
+            stunTick = 0;
+            state = stateAfterHit;
+            stateTick = 0;
+            aniIndex = 0;
+            currentRow = ROW_RUNNING;
+            System.out.println("[Boss2] Stun ended");
+        }
+    }
+
     private float clampY(float candidateY) {
         if (candidateY < laneTopY) candidateY = laneTopY;
         if (candidateY > laneBotY) candidateY = laneBotY;
@@ -535,6 +558,10 @@ public class Boss2 {
         aniTick = 0;
         currentRow = ROW_STUN;
         System.out.println("[Boss2 Red] ⚡ Stunned! Duration: 3 seconds.");
+    }
+
+    public boolean isSlowed() {
+        return false;
     }
 
     // ── RENDER ─────────────────────────────────────────────────

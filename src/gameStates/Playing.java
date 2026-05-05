@@ -86,6 +86,9 @@ public class Playing extends State implements StateMethods {
     private PaymentOverlay         paymentOverlay;
     private MissionOverlay         missionOverlay;
 
+    // ── Pause button (top-right corner during normal play) ────
+    private PauseOverlayButton pauseButton;
+
     // ── Overlay-state flags ───────────────────────────────────
     private boolean paused            = false;
     private boolean playerDead        = false;
@@ -96,6 +99,11 @@ public class Playing extends State implements StateMethods {
     private boolean paymentPaused     = false;
     private boolean missionShowing    = false;
 
+    // ── Interaction safety timeout ────────────────────────────
+    // Counts frames while interactionPaused == true.
+    // Auto-recovers if the flag is stuck for more than 2 seconds (400 frames @ 200 UPS).
+    private int interactionStuckTimer = 0;
+
     // ── Driver reference backup ───────────────────────────────
     private entities.DriverProfile currentDriver = null;
 
@@ -103,6 +111,10 @@ public class Playing extends State implements StateMethods {
     private float worldOffset    = 0;
     private final int levelPixelWidth =
             LoadSave.GetLevelData()[0].length * Game.TILES_SIZE;
+
+    public static final int MAX_WORLD_LOOPS = 15;
+    // -------------------------------------------------------
+    public int getMaxWorldLoops() { return MAX_WORLD_LOOPS; }
 
     private static final float CENTER_TOLERANCE = 10f * Game.SCALE;
 
@@ -224,7 +236,19 @@ public class Playing extends State implements StateMethods {
         gameClock = new GameClock();
         skipOverlay = new SkipOverlay(game, this);
         missionOverlay = null;  // Created on-demand for current level
+
+        // ── Pause button: top-right corner ── ADJUST X/Y offsets as needed ──
+        float pauseBtnScale = 0.8f;  // ← ADJUST: button size multiplier
+        int   pauseBtnW = (int)(126 * Game.SCALE * pauseBtnScale);
+        int   pauseBtnH = (int)( 42 * Game.SCALE * pauseBtnScale);
+        int   pauseBtnX = Game.GAME_WIDTH  - pauseBtnW - (int)(-62 * Game.SCALE);  // ← ADJUST: right margin
+        int   pauseBtnY = (int)(6 * Game.SCALE);                                  // ← ADJUST: top margin
+        pauseButton = new PauseOverlayButton(pauseBtnX, pauseBtnY, pauseBtnScale, () -> {
+            paused = true;
+            System.out.println("[Playing] Pause button clicked");
+        });
         System.out.println("[Playing] initClasses() complete - Level " + levelManager.getCurrentLevelId() + " loaded");
+        passengerInteractionController = new PassengerInteractionController(this, passengerCounter);
     }
 
     private void loadBackgroundAssets() {
@@ -455,6 +479,31 @@ public class Playing extends State implements StateMethods {
         restartGame();
     }
 
+    /**
+     * Full reset to Level 1 for a brand-new game after game completion.
+     * Resets the level manager, all gameplay systems, progress bars, clock, and intro state.
+     */
+    public void resetToLevel1() {
+        // Reset level progression back to Level 1
+        levelManager.resetToLevel1();
+
+        // Recreate progress bar and banner for Level 1
+        progressBar = new ProgressBar(1);
+        levelBanner = new LevelBanner(1);
+
+        // Reset clock to Level 1
+        gameClock.reset();
+        gameClock.setCurrentLevel(1);
+
+        // Reset all gameplay state
+        restartGame();
+
+        // Reset intro so it plays again on next game start
+        introOverlay.resetShown();
+
+        System.out.println("[Playing] Reset to Level 1 — fresh game ready");
+    }
+
     // ── Health callbacks ─────────────────────────────────────
     public void onPlayerHit() {
         boolean dead = healthBar.takeDamage();
@@ -547,6 +596,9 @@ public class Playing extends State implements StateMethods {
         } else {
             pauseOverlay.update();
         }
+
+        // Pause button always updates so hover/press state stays current
+        if (pauseButton != null) pauseButton.update();
     }
 
     // ─────────────────────────────────────────────────────────
@@ -601,6 +653,12 @@ public class Playing extends State implements StateMethods {
         if (missionOverlay != null && missionOverlay.isOpen()) { missionOverlay.render(g); return; }
         acceptPassengerOverlay.render(g);
         if (playerDead)        { deathOverlay.render(g);         return; }
+
+        // Pause button — visible only when nothing else is blocking input
+        if (pauseButton != null && !paused && !listPopupPaused) {
+            pauseButton.draw(g);
+        }
+
         if (paused) {
             g.setColor(new Color(0, 0, 0, 150));
             g.fillRect(0, 0, Game.GAME_WIDTH, Game.GAME_HEIGHT);
@@ -666,6 +724,16 @@ public class Playing extends State implements StateMethods {
         }
         player.setAttacking(true);
     }
+    public void resetPassengersDroppedCount() {
+        this.passengersDroppedCount = 0;
+        System.out.println("[Playing] Passengers dropped count reset to 0");
+    }
+    public PassengerListOverlay getPassengerListOverlay() {
+        return passengerListOverlay;
+    }
+    public PassengerCounter getPassengerCounter() {
+        return passengerCounter;
+    }
 
     @Override
     public void mousePressed(MouseEvent e) {
@@ -684,6 +752,11 @@ public class Playing extends State implements StateMethods {
             case LIST_POPUP: passengerListOverlay.mousePressed(e, passengerManager.getSeatList()); return;
             case PAUSE:      pauseOverlay.mousePressed(e);                            return;
             case NONE:
+                // Pause button takes priority over passenger list clicks
+                if (pauseButton != null && pauseButton.getBounds().contains(e.getX(), e.getY())) {
+                    pauseButton.mousePressed(e);
+                    return;
+                }
                 passengerListOverlay.mousePressed(e, passengerManager.getSeatList());
                 break;
         }
@@ -705,6 +778,10 @@ public class Playing extends State implements StateMethods {
             case LIST_POPUP: passengerListOverlay.mouseReleased(e);          return;
             case PAUSE:      pauseOverlay.mouseReleased(e);                  return;
             case NONE:
+                if (pauseButton != null && pauseButton.getBounds().contains(e.getX(), e.getY())) {
+                    pauseButton.mouseReleased(e);
+                    return;
+                }
                 passengerListOverlay.mouseReleased(e);
                 break;
         }
@@ -722,6 +799,7 @@ public class Playing extends State implements StateMethods {
             case LIST_POPUP: passengerListOverlay.mouseMoved(e);      return;
             case PAUSE:      pauseOverlay.mouseMoved(e);              return;
             case NONE:
+                if (pauseButton != null) pauseButton.mouseMoved(e);
                 passengerListOverlay.mouseMoved(e);
                 break;
         }
@@ -852,6 +930,11 @@ public class Playing extends State implements StateMethods {
         enemyManager.resetAll();
         stopSignManager.resetAll();
         worldObjectManager.reset();
+    }
+
+    public void setCurrentMap(RouteMap map) {
+        currentMap = map;
+        worldObjectManager.setCurrentMap(map);
     }
 
     public void windowFocusLost() {

@@ -37,7 +37,7 @@ public class LoadSave {
     public static final String BOSS2_LIFE  = "boss/boss2_life.png";  // 3300×224, Row0=11cols, Row1=10cols
     public static final String BOSS3_ATLAS = "boss/boss3.png";       // 550×316, 4 rows × 5 cols
     public static final String BOSS3_LIFE  = "boss/boss3_life.png";  // 4147×348, Row0=13cols, Row1=12cols
-
+    public static final String CHARACTERS_SPRITE = "ui/overlays/letters_numbers_symbols.png";
     // ── Objects ───────────────────────────────────────────────
     public static final String STOP_SIGN        = "objects/stop_sign.png";
     public static final String LIFE_STATUS      = "ui/hud/life_status.png";
@@ -96,7 +96,13 @@ public class LoadSave {
     // ── Status Check overlays ─────────────────────────────────
     public static final String BEFORE_BOSS_PASSED = "ui/overlays/before_boss_passed.png";
     public static final String BEFORE_BOSS_FAILED = "ui/overlays/before_boss_failed.png";
-
+    // ── About & Credits UI ───────────────────────────────────────
+    public static final String ABOUT_BUTTONS = "ui/buttons/about_buttons.png";
+    public static final String ABOUT_GAME_IMG = "ui/overlays/about_game.png";
+    public static final String CREDITS_IMG = "ui/overlays/credits.png";
+    public static final String PAUSE_OVERLAY_BUTTON = "ui/buttons/pause_overlay_button.png";
+    // ── Game completion overlay ───────────────────────────────────
+    public static final String GAME_COMPLETED = "ui/overlays/game_completed.png";
     // ── Pause UI atlases ─────────────────────────────────────
     public static final String PAUSE_BACKGROUNDS  = "ui/overlays/pause_menu.png";
     public static final String OPTIONS_BACKGROUND = "ui/overlays/options_menu.png";

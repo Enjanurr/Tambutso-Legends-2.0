@@ -40,11 +40,11 @@ public class CloudRenderer {
         int smallCloudCount = (Game.GAME_WIDTH / SMALL_CLOUD_WIDTH) + 3;
 
         // Big clouds - higher position (reduced from 40 to 15)
-        int bigCloudY = (int)(10 * Game.SCALE);
+        int bigCloudY = (int)(15 * Game.SCALE);
 
         bigCloudLayer = new ScrollingCloudLayer(
                 bigClouds, BIG_CLOUD_WIDTH, BIG_CLOUD_HEIGHT,
-                BIG_CLOUD_PARALLAX, bigCloudCount, bigCloudY);
+                BIG_CLOUD_PARALLAX, bigCloudCount, bigCloudY);  // FIXED: removed duplicate line
 
         // Small clouds - using the adjusted positions array
         smallCloudLayer = new ScrollingCloudLayer(
@@ -53,8 +53,8 @@ public class CloudRenderer {
     }
 
     public void update(float scrollSpeed) {
-        bigCloudLayer.update(scrollSpeed);
-        smallCloudLayer.update(scrollSpeed);
+        if (bigCloudLayer != null) bigCloudLayer.update(scrollSpeed);
+        if (smallCloudLayer != null) smallCloudLayer.update(scrollSpeed);
     }
 
     public void drawBackground(Graphics g) {
@@ -64,11 +64,12 @@ public class CloudRenderer {
     }
 
     public void drawClouds(Graphics g) {
-        bigCloudLayer.draw(g);
-        smallCloudLayer.draw(g);
+        if (bigCloudLayer != null) bigCloudLayer.draw(g);
+        if (smallCloudLayer != null) smallCloudLayer.draw(g);
     }
 
     public void reset() {
+        // Re-initialize layers to reset offsets
         loadAssets();
     }
 }

@@ -273,6 +273,7 @@ public class Boss2 {
 
             case HIT:
                 currentRow = ROW_HIT;
+                updateAnimation();  // Make sure animation updates
                 hitTick++;
                 if (hitTick >= HIT_ANIM_TICKS) {
                     hitTick = 0;

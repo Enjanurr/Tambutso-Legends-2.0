@@ -361,6 +361,30 @@ public class Boss1 {
     }
 
 
+    private void enterRandom() {
+        state     = BossState.RANDOM;
+        stateTick = 0;
+    }
+
+    public void triggerHit() {
+        if (state == BossState.HIT) return;
+        stateAfterHit = state;
+        state = BossState.HIT;
+        hitTick = 0;
+        stateTick = 0;
+        aniIndex = 0;
+        aniTick = 0;
+        System.out.println("[Boss2] HIT triggered - currentRow: " + currentRow + ", ROW_HIT: " + ROW_HIT);
+    }
+
+    // ─────────────────────────────────────────────────────────
+    // PROJECTILE & PILE HELPERS
+    // ─────────────────────────────────────────────────────────
+    /**
+     * Fires a bullet from the left edge of the boss, vertically centred on the boss
+     * (which during Skill 1 is aligned to the jeep hitbox centre).
+     * The spawn Y is the boss's own centre, lane-clamped so it never exits the road.
+     */
     private void fireBullet() {
         float bx = x;
         float bulletH = GarbagePile.BossProjectile.FRAME_H * Game.SCALE;
@@ -402,6 +426,7 @@ public class Boss1 {
     }
 
     private void updateAnimation() {
+        // Only skip animation for SKILL2 state, NOT for HIT
         if (state == BossState.SKILL2 && skill2Phase < 3) return;
         if (state == BossState.HIT && aniIndex >= FRAME_COUNTS[ROW_HIT] - 1) return;
 

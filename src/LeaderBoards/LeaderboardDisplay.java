@@ -57,6 +57,12 @@ public class LeaderboardDisplay {
                 closeSize
         );
     }
+    public void handleEsc() {
+        if (visible) {
+            hide();
+            System.out.println("[LeaderboardDisplay] ESC pressed - hiding");
+        }
+    }
 
     public void render(Graphics g) {
         if (!visible) return;

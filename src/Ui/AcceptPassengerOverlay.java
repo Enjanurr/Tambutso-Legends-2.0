@@ -50,7 +50,7 @@ public class AcceptPassengerOverlay {
     // STOP NAME TEXT  ← ADJUST
     // =========================================================
     private static final int   stopNameX        = 90;
-    private static final int   stopNameY        = 135;
+    private static final int   stopNameY        = 125;
     private static final Color stopNameColor    = new Color(255, 255, 255);
     private static final int   stopNameFontSize = 14;
     private static final int   stopNameMaxWidth = 240;  // Max width before wrapping
@@ -59,7 +59,7 @@ public class AcceptPassengerOverlay {
     // STOP NUMBER TEXT  ← ADJUST
     // =========================================================
     private static final int   stopNumberX      = 125;
-    private static final int   stopNumberY      = 170;
+    private static final int   stopNumberY      = 156;
     private static final Color stopNumberColor  = new Color(255, 220, 50);
     private static final int   stopNumberFontSize = 18;
 
@@ -67,7 +67,7 @@ public class AcceptPassengerOverlay {
     // FARE TEXT  ← ADJUST
     // =========================================================
     private static final int   fareTextX        = 175;
-    private static final int   fareTextY        = 198;
+    private static final int   fareTextY        = 184;
     private static final Color fareTextColor    = new Color(100, 220, 100);
     private static final int   fareFontSize     = 20;
 
@@ -97,6 +97,8 @@ public class AcceptPassengerOverlay {
     private BufferedImage backgroundImg;
     private int acceptOverlayX, acceptOverlayY, bgW, bgH;
 
+    private CharacterConverter charConverter;
+
     private AcceptPassengerButtons yesButton;
     private AcceptPassengerButtons noButton;
 
@@ -120,6 +122,7 @@ public class AcceptPassengerOverlay {
         this.passengerCounter = passengerCounter;
         loadBackground();
         createButtons();
+        charConverter = new CharacterConverter(1.5f, 1);
     }
 
     public void setPassengerManager(PassengerManager pm) {
@@ -332,59 +335,40 @@ public class AcceptPassengerOverlay {
 
         // ── Stop Name (wrapped, centered, displayed first) ─────────
         if (generatedStop >= 1) {
-            Font nameFont = new Font("SansSerif", Font.BOLD, (int)(stopNameFontSize * Game.SCALE));
-            g2.setFont(nameFont);
-            g2.setColor(stopNameColor);
-            g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
-
-            int lineHeight = (int)((stopNameFontSize + 4) * Game.SCALE);
-            int startY = acceptOverlayY + (int)(stopNameY * Game.SCALE);
+            int charHeight  = charConverter.getCharHeight();
+            int lineHeight  = charHeight + (int)(4 * Game.SCALE);
+            int startY      = acceptOverlayY + (int)(stopNameY * Game.SCALE);
             int overlayCenterX = acceptOverlayX + (bgW / 2);
 
             for (int i = 0; i < wrappedStopNameLines.size(); i++) {
-                int yPos = startY + (i * lineHeight);
-                FontMetrics fm = g2.getFontMetrics();
-                int textWidth = fm.stringWidth(wrappedStopNameLines.get(i));
-                int centeredX = overlayCenterX - (textWidth / 2);
-                g2.drawString(wrappedStopNameLines.get(i), centeredX, yPos);
+                int yPos    = startY + (i * lineHeight);
+                int textW   = charConverter.getStringWidth(wrappedStopNameLines.get(i));
+                int centeredX = overlayCenterX - (textW / 2);
+                charConverter.drawString(g2, wrappedStopNameLines.get(i).toUpperCase(), centeredX, yPos);
             }
-        }else {
+        } else {
             // Fallback for invalid stop number
-            Font nameFont = new Font("SansSerif", Font.BOLD, (int)(stopNameFontSize * Game.SCALE));
-            g2.setFont(nameFont);
-            g2.setColor(stopNameColor);
-            g2.drawString("Unknown Stop",
+            charConverter.drawString(g2, "UNKNOWN STOP",
                     acceptOverlayX + (int)(stopNameX * Game.SCALE),
                     acceptOverlayY + (int)(stopNameY * Game.SCALE));
         }
 
         // ── Stop Number (displayed second) ─────────────────────
-        Font stopFont = new Font("SansSerif", Font.BOLD, (int)(stopNumberFontSize * Game.SCALE));
-        g2.setFont(stopFont);
-        g2.setColor(stopNumberColor);
-
         // Calculate Y position based on wrapped lines
-        int lineCount = Math.max(1, wrappedStopNameLines.size());
-        int lineHeight = (int)((stopNameFontSize + 4) * Game.SCALE);
         int stopNumberActualY = acceptOverlayY + (int)(stopNumberY * Game.SCALE);
 
-        String stopStr = (generatedStop > 0)
-                ? "" + generatedStop
-                : "";
-        g2.drawString(stopStr,
-                acceptOverlayX + (int)(stopNumberX * Game.SCALE),
-                stopNumberActualY);
+        if (generatedStop > 0) {
+            charConverter.drawNumber(g2, generatedStop,
+                    acceptOverlayX + (int)(stopNumberX * Game.SCALE),
+                    stopNumberActualY);
+        }
 
         // ── Fare (generated at open time, displayed third) ─────────────────────
-        Font fareFont = new Font("SansSerif", Font.BOLD, (int)(fareFontSize * Game.SCALE));
-        g2.setFont(fareFont);
-        g2.setColor(fareTextColor);
-        String fareStr = (generatedFare > 0)
-                ? "" + generatedFare
-                : "";
-        g2.drawString(fareStr,
-                acceptOverlayX + (int)(fareTextX * Game.SCALE),
-                acceptOverlayY + (int)(fareTextY * Game.SCALE));
+        if (generatedFare > 0) {
+            charConverter.drawNumber(g2, generatedFare,
+                    acceptOverlayX + (int)(fareTextX * Game.SCALE),
+                    acceptOverlayY + (int)(fareTextY * Game.SCALE));
+        }
     }
 
     // ─────────────────────────────────────────────────────────

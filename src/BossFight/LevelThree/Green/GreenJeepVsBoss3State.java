@@ -32,6 +32,9 @@ public class GreenJeepVsBoss3State extends State implements StateMethods {
     // -------------------------------------------------------
     private BossBanner bossBanner;
     private BuildingRenderer buildingRenderer;
+    private CloudRenderer cloudRenderer;
+    private BossObstacleManager obstacleManager;
+
     private static final float SCROLL_SPEED = BossFight.LevelThree.Green.Boss3.BOSS_SCROLL_SPEED;
     private static final float LEFT_BORDER_PUSH = 0.3f;
     private static final float PLAYER_RIGHT_LIMIT_FRACTION = 0.50f;
@@ -45,8 +48,8 @@ public class GreenJeepVsBoss3State extends State implements StateMethods {
     private static final float DEATH_FADE_MAX = 0.85f;
 
     // Heal (Skill 2) settings
-    private static final int HEAL_COOLDOWN = 10000; // 10 seconds in milliseconds
-    private static final int HEAL_ANI_SPEED = 20;   // ticks per frame
+    private static final int HEAL_COOLDOWN = 10000;
+    private static final int HEAL_ANI_SPEED = 20;
 
     private final Player player;
     private final HealthBar healthBar;
@@ -64,7 +67,7 @@ public class GreenJeepVsBoss3State extends State implements StateMethods {
 
     // Heal (Skill 2) tracking
     private long healLastUsed = 0;
-    private BufferedImage[] healAnimationFrames;  // 12 frames for heal
+    private BufferedImage[] healAnimationFrames;
     private boolean isHealing = false;
     private int healAnimTick = 0;
     private int healAnimIndex = 0;
@@ -80,6 +83,7 @@ public class GreenJeepVsBoss3State extends State implements StateMethods {
     // Pause
     private boolean paused = false;
     private BossPauseOverlay pauseOverlay;
+    private PauseOverlayButton pauseButton;
 
     // Jeep death overlay
     private boolean playerDead = false;
@@ -90,15 +94,20 @@ public class GreenJeepVsBoss3State extends State implements StateMethods {
     private int deathImgW, deathImgH, deathImgX, deathImgY;
     private BossObstacleManager obstacleManager;
 
-    // Boss defeat overlay
+    // ADD THIS MISSING FIELD
     private boolean bossDefeated = false;
-    private BossDefeatOverlay defeatOverlay;
+
+    // Game completion overlay (Boss 3 only)
+    private GameCompletionOverlay completionOverlay;
+    private boolean showCompletionOverlay = false;
+
+    // Credits overlay (Boss 3 only)
+    private CreditsOverlay creditsOverlay;
 
     // Skill buttons
     private JeepSkillButtons skillButtons;
     private CloudRenderer cloudRenderer;
 
-    // -------------------------------------------------------
     public GreenJeepVsBoss3State(Game game, Player player, HealthBar healthBar) {
         super(game);
         this.player = player;
@@ -111,20 +120,30 @@ public class GreenJeepVsBoss3State extends State implements StateMethods {
         this.playerRightLimit = Game.GAME_WIDTH * PLAYER_RIGHT_LIMIT_FRACTION - player.getHitBox().width;
 
         pauseOverlay = new BossPauseOverlay(this);
+
+        // Pause button: bottom-right corner
+        float pauseBtnScale = 0.8f;
+        int pauseBtnW = (int)(126 * Game.SCALE * pauseBtnScale);
+        int pauseBtnH = (int)(42 * Game.SCALE * pauseBtnScale);
+        int   pauseBtnX = Game.GAME_WIDTH  - pauseBtnW - (int)(-62 * Game.SCALE);  // ← ADJUST: right margin
+        int   pauseBtnY = Game.GAME_HEIGHT - pauseBtnH - (int)(2 * Game.SCALE);  // ← ADJUST: bottom margin
+        pauseButton = new PauseOverlayButton(pauseBtnX, pauseBtnY, pauseBtnScale, () -> {
+            paused = true;
+            System.out.println("[GreenJeepVsBoss3] Pause button clicked");
+        });
+
         buildDeathOverlay();
-        buildDefeatOverlay();
+        buildCompletionOverlay();
         bossBar = new BossHealthBar(BossHealthBar.LifeBarType.BOSS3);
         bossBanner = new BossBanner(3);
         walkerManager = new BossWalkerManager();
         spawnBoss();
 
-        // Initialize skill buttons based on jeep color
         String jeepColor = getJeepColor();
         skillButtons = new JeepSkillButtons(jeepColor,
                 this::isSkill1Ready, this::onSkill1, this::getSkill1CooldownRemaining,
                 this::isSkill2Ready, this::onSkill2, this::getSkill2CooldownRemaining);
 
-        // Load assets immediately
         loadAssets();
     }
 
@@ -134,14 +153,13 @@ public class GreenJeepVsBoss3State extends State implements StateMethods {
             return;
         }
         System.out.println("🎮 [GreenBossFightState] Applying driver assets: " + profile.displayName);
-        // For Green Jeep, we still need to load the skill sheets
         loadAssets();
     }
 
     private void loadAssets() {
 
 
-        // Load Skill 1 frames from separate sheet (6 frames)
+        // Load Skill 1 frames
         java.awt.image.BufferedImage skill1Sheet = LoadSave.getSpriteAtlas(LoadSave.GREEN_JEEP_SKILL1);
         if (skill1Sheet != null) {
             shootFrames = new BufferedImage[6];
@@ -157,21 +175,19 @@ public class GreenJeepVsBoss3State extends State implements StateMethods {
             shootFrames = new BufferedImage[0];
         }
 
-        // ── Load Skill 2 heal animation (12 frames from separate skill2 sprite sheet) ──
+        // Load Skill 2 heal animation
         java.awt.image.BufferedImage skill2Sheet = LoadSave.getSpriteAtlas(LoadSave.GREEN_JEEP_SKILL2);
         if (skill2Sheet != null) {
             healAnimationFrames = new BufferedImage[12];
+            int frameWidth = skill2Sheet.getWidth() / 12;
+            int frameHeight = skill2Sheet.getHeight();
             for (int i = 0; i < 12; i++) {
-                // Make sure dimensions match your sprite sheet
-                int frameWidth = skill2Sheet.getWidth() / 12;  // 1320/12 = 110
-                int frameHeight = skill2Sheet.getHeight();     // Should be 40
                 healAnimationFrames[i] = skill2Sheet.getSubimage(
                         i * frameWidth,
                         0,
                         frameWidth,
                         frameHeight);
             }
-
         } else {
             System.err.println("❌ [GreenBossFightState] Failed to load " + LoadSave.GREEN_JEEP_SKILL2);
             healAnimationFrames = new BufferedImage[0];
@@ -182,22 +198,38 @@ public class GreenJeepVsBoss3State extends State implements StateMethods {
 
     private void buildDeathOverlay() {
         deathScreenImg = LoadSave.getSpriteAtlas(LoadSave.DEATH_SCREEN);
-        deathImgW = (int) (500 * Game.SCALE * 0.5f);
-        deathImgH = (int) (500 * Game.SCALE * 0.5f);
+        deathImgW = (int)(500 * Game.SCALE * 0.5f);
+        deathImgH = (int)(500 * Game.SCALE * 0.5f);
         deathImgX = (Game.GAME_WIDTH - deathImgW) / 2;
         deathImgY = (Game.GAME_HEIGHT - deathImgH) / 2;
 
-        int btnX = (int) (374 * Game.SCALE);
-        int btnY = (int) (325 * Game.SCALE);
+        int btnX = (int)(374 * Game.SCALE);
+        int btnY = (int)(325 * Game.SCALE);
         deathRestartBtn = new UrmButton(btnX, btnY, URM_SIZE, URM_SIZE, 1);
     }
 
-    private void buildDefeatOverlay() {
-        defeatOverlay = new BossDefeatOverlay(
-                this::onNextLevel,
-                this::fullReset,
-                this::onMenuToExit
-        );
+    private void buildCompletionOverlay() {
+        completionOverlay = new GameCompletionOverlay(this::onNextToCredits);
+    }
+
+    private void initCreditsOverlay() {
+        creditsOverlay = new CreditsOverlay(() -> {
+            creditsOverlay = null;
+            GameStates.state = GameStates.MENU;
+            game.setHasActiveGame(false);
+            game.markNeedsFullReset();
+            System.out.println("[GreenJeepVsBoss3] Credits closed — returning to MENU, full reset flagged");
+        });
+    }
+
+    private void onNextToCredits() {
+        if (creditsOverlay == null) {
+            initCreditsOverlay();
+        }
+        creditsOverlay.open();
+        if (completionOverlay != null) completionOverlay.close();
+        showCompletionOverlay = false;
+        System.out.println("[GreenJeepVsBoss3] Completion overlay closed, credits overlay opened");
     }
 
     private void spawnBoss() {
@@ -206,9 +238,6 @@ public class GreenJeepVsBoss3State extends State implements StateMethods {
         boss = new BossFight.LevelThree.Green.Boss3(bx, by);
     }
 
-    // ─────────────────────────────────────────────────────────
-    // SKILL BUTTONS
-    // ─────────────────────────────────────────────────────────
     private String getJeepColor() {
         return "green";
     }
@@ -242,8 +271,19 @@ public class GreenJeepVsBoss3State extends State implements StateMethods {
 
     @Override
     public void update() {
-        if (bossDefeated) {
-            defeatOverlay.update();
+        // Credits overlay
+        if (creditsOverlay != null && creditsOverlay.isOpen()) {
+            creditsOverlay.update();
+            return;
+        }
+
+        // Game completion overlay
+        if (showCompletionOverlay && completionOverlay != null) {
+            completionOverlay.update();
+            return;
+        }
+
+        if (showCompletionOverlay) {
             return;
         }
 
@@ -257,8 +297,8 @@ public class GreenJeepVsBoss3State extends State implements StateMethods {
             return;
         }
 
-        // Skill buttons update
         skillButtons.update();
+        if (pauseButton != null) pauseButton.update();
 
         // World scroll
         worldOffset += SCROLL_SPEED * Game.SCALE;
@@ -295,24 +335,17 @@ public class GreenJeepVsBoss3State extends State implements StateMethods {
             }
         }
 
-        // Player bullets
-        playerBullets.removeIf(pb -> {
-            pb.update();
-            return !pb.isActive();
-        });
+        playerBullets.removeIf(pb -> { pb.update(); return !pb.isActive(); });
 
-        // Walkers
         walkerManager.update(SCROLL_SPEED);
         obstacleManager.update(true, SCROLL_SPEED * Game.SCALE);
         Rectangle jeepHB = new Rectangle(
                 (int) player.getHitBox().x,
                 (int) player.getHitBox().y,
                 (int) player.getHitBox().width,
-                (int) player.getHitBox().height
-        );
+                (int) player.getHitBox().height);
 
         float jeepCentreY = jeepHB.y + jeepHB.height / 2f;
-
         boss.update(jeepHB.x, jeepCentreY, jeepHB.width, jeepHB.height);
 
         // Boss bullets collision
@@ -336,6 +369,7 @@ public class GreenJeepVsBoss3State extends State implements StateMethods {
             }
         }
         obstacleManager.checkCollision(jeepHB, this::handleJeepHit);
+
         // Player bullets → boss AND obstacles
         Rectangle bossHB = boss.getHitbox();
         for (GreenJeepProjectile pb : playerBullets) {
@@ -376,20 +410,20 @@ public class GreenJeepVsBoss3State extends State implements StateMethods {
     private void handleBossHit() {
         boolean defeated = bossBar.takeDamage();
         if (defeated && !bossDefeated) {
-            bossDefeated = true;
+            System.out.println("[GreenJeepVsBoss3] Boss defeated! Showing completion overlay...");
+            showCompletionOverlay = true;
 
             // STOP THE TIMER AND SAVE TO LEADERBOARD
             game.getLeaderboardManager().completeGame();
             System.out.println("🎉 GREEN JEEP BEAT BOSS 3! Time: " +
                     game.getLeaderboardManager().getCurrentPlayer().getFormattedBestTime());
 
-            defeatOverlay.reset();
+            if (completionOverlay != null) {
+                completionOverlay.reset();
+            }
         }
     }
 
-    // ─────────────────────────────────────────────────────────
-    // SKILL 1: Shoot
-    // ─────────────────────────────────────────────────────────
     private void fireSingleBulletGreen() {
         if (!canShoot || shootCooldown > 0 || paused || playerDead) return;
         spawnOneBulletGreen();
@@ -414,9 +448,6 @@ public class GreenJeepVsBoss3State extends State implements StateMethods {
         playerBullets.add(new GreenJeepProjectile(bx, by, shootFrames));
     }
 
-    // ─────────────────────────────────────────────────────────
-    // SKILL 2: Heal
-    // ─────────────────────────────────────────────────────────
     private void attemptHeal() {
         if (paused || playerDead) return;
 
@@ -493,46 +524,44 @@ public class GreenJeepVsBoss3State extends State implements StateMethods {
         for (GreenJeepProjectile pb : playerBullets) pb.render(g);
         player.render(g);
 
-        // Draw heal animation (centered on player)
-        // Draw heal animation (centered on player)
+        // Draw heal animation
         if (isHealing && healAnimationFrames != null && healAnimIndex < healAnimationFrames.length) {
             BufferedImage healFrame = healAnimationFrames[healAnimIndex];
             if (healFrame != null) {
-                // Use the actual frame dimensions from the loaded image
                 int frameWidth = healFrame.getWidth();
                 int frameHeight = healFrame.getHeight();
-
-                // Scale the frame properly
                 float healScale = 2.5f;
                 int healW = (int)(frameWidth * Game.SCALE * healScale);
                 int healH = (int)(frameHeight * Game.SCALE * healScale);
-
-                // Center of player hitbox
                 float centerX = player.getHitBox().x + player.getHitBox().width / 2f;
                 float centerY = player.getHitBox().y + player.getHitBox().height / 2f;
-
-                // Center animation on player
                 int healX = (int)(centerX - healW / 2f);
                 int healY = (int)(centerY - healH / 2f);
-
                 g.drawImage(healFrame, healX, healY, healW, healH, null);
             }
         }
 
-        // UI bars
         healthBar.render(g);
         bossBar.render(g);
         skillButtons.render(g);
 
-        // Overlays
-        if (bossDefeated) {
-            defeatOverlay.render(g);
+        if (creditsOverlay != null && creditsOverlay.isOpen()) {
+            creditsOverlay.draw(g);
+            return;
+        }
+
+        if (showCompletionOverlay && completionOverlay != null) {
+            completionOverlay.render(g);
             return;
         }
 
         if (playerDead) {
             renderDeathOverlay(g);
             return;
+        }
+
+        if (pauseButton != null && !paused && !playerDead) {
+            pauseButton.draw(g);
         }
 
         if (paused) {
@@ -546,7 +575,7 @@ public class GreenJeepVsBoss3State extends State implements StateMethods {
 
     @Override
     public void keyPressed(KeyEvent e) {
-        if (playerDead || bossDefeated) return;
+        if (playerDead || showCompletionOverlay) return;
 
         switch (e.getKeyCode()) {
             case KeyEvent.VK_ESCAPE:
@@ -593,8 +622,12 @@ public class GreenJeepVsBoss3State extends State implements StateMethods {
 
     @Override
     public void mousePressed(MouseEvent e) {
-        if (bossDefeated) {
-            defeatOverlay.mousePressed(e);
+        if (creditsOverlay != null && creditsOverlay.isOpen()) {
+            creditsOverlay.mousePressed(e);
+            return;
+        }
+        if (showCompletionOverlay && completionOverlay != null) {
+            completionOverlay.mousePressed(e);
             return;
         }
         if (playerDead) {
@@ -603,48 +636,62 @@ public class GreenJeepVsBoss3State extends State implements StateMethods {
         } else if (paused) {
             pauseOverlay.mousePressed(e);
         } else {
-            skillButtons.mousePressed(e);
+            if (pauseButton != null && pauseButton.getBounds().contains(e.getX(), e.getY())) {
+                pauseButton.mousePressed(e);
+            } else {
+                skillButtons.mousePressed(e);
+            }
         }
     }
 
     @Override
     public void mouseReleased(MouseEvent e) {
-        if (bossDefeated) {
-            defeatOverlay.mouseReleased(e);
+        if (creditsOverlay != null && creditsOverlay.isOpen()) {
+            creditsOverlay.mouseReleased(e);
+            return;
+        }
+        if (showCompletionOverlay && completionOverlay != null) {
+            completionOverlay.mouseReleased(e);
             return;
         }
         if (playerDead) {
             if (!deathFadeDone) return;
-            if (deathRestartBtn.isMousePressed() &&
-                    deathRestartBtn.getBounds().contains(e.getX(), e.getY()))
+            if (deathRestartBtn.isMousePressed() && deathRestartBtn.getBounds().contains(e.getX(), e.getY()))
                 fullReset();
             deathRestartBtn.resetBools();
         } else if (paused) {
             pauseOverlay.mouseReleased(e);
         } else {
-            skillButtons.mouseReleased(e);
+            if (pauseButton != null && pauseButton.getBounds().contains(e.getX(), e.getY())) {
+                pauseButton.mouseReleased(e);
+            } else {
+                skillButtons.mouseReleased(e);
+            }
         }
     }
 
     @Override
     public void mouseMoved(MouseEvent e) {
-        if (bossDefeated) {
-            defeatOverlay.mouseMoved(e);
+        if (creditsOverlay != null && creditsOverlay.isOpen()) {
+            creditsOverlay.mouseMoved(e);
+            return;
+        }
+        if (showCompletionOverlay && completionOverlay != null) {
+            completionOverlay.mouseMoved(e);
             return;
         }
         if (playerDead && deathFadeDone) {
-            deathRestartBtn.setMouseOver(
-                    deathRestartBtn.getBounds().contains(e.getX(), e.getY()));
+            deathRestartBtn.setMouseOver(deathRestartBtn.getBounds().contains(e.getX(), e.getY()));
         } else if (paused) {
             pauseOverlay.mouseMoved(e);
         } else {
+            if (pauseButton != null) pauseButton.mouseMoved(e);
             skillButtons.mouseMoved(e);
         }
     }
 
     @Override
-    public void mouseClicked(MouseEvent e) {
-    }
+    public void mouseClicked(MouseEvent e) {}
 
     public void mouseDragged(MouseEvent e) {
         if (paused) pauseOverlay.mouseDragged(e);
@@ -677,6 +724,7 @@ public class GreenJeepVsBoss3State extends State implements StateMethods {
         paused = false;
         playerDead = false;
         bossDefeated = false;
+        showCompletionOverlay = false;
         shootCooldown = 0;
         bulletsRemaining = 0;
         canShoot = true;
@@ -696,10 +744,14 @@ public class GreenJeepVsBoss3State extends State implements StateMethods {
         resetDeathOverlay();
         spawnBoss();
         player.setBossMode(true);
+
+        creditsOverlay = null;
+        if (completionOverlay != null) completionOverlay.close();
     }
 
     public void resetAll() {
         fullReset();
+        creditsOverlay = null;
         if (game.getSelectedDriver() != null) {
             applyDriverAssets(game.getSelectedDriver());
         }

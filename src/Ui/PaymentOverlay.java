@@ -54,7 +54,7 @@ public class PaymentOverlay {
     // =========================================================
     // Section 1: To Be Earned (value only)
     private static final int EARNED_VALUE_X = 135;
-    private static final int EARNED_VALUE_Y = 100;
+    private static final int EARNED_VALUE_Y = 87;
 
     // Section 2: Computation
     private static final int COMP_VALUE_X = 40;
@@ -62,7 +62,7 @@ public class PaymentOverlay {
 
     // Section 3: Passenger Paid
     private static final int PAID_VALUE_X = 115;
-    private static final int PAID_VALUE_Y = 190;
+    private static final int PAID_VALUE_Y = 178;
 
     // Section 4: Change to Give input
     private static final int CHANGE_INPUT_X = 95;
@@ -92,6 +92,13 @@ public class PaymentOverlay {
     // =========================================================
     private BufferedImage overlayImg;
     private BufferedImage[][] btnFrames;  // [row][col] col: 0=normal, 1=hover, 2=pressed
+
+    // =========================================================
+    // CHARACTER CONVERTERS (Different sizes for different elements)
+    // =========================================================
+    private CharacterConverter earnedConverter;   // For To Be Earned value
+    private CharacterConverter paidConverter;     // For Passenger Paid value
+
 
     // =========================================================
     // STATE
@@ -134,6 +141,11 @@ public class PaymentOverlay {
         this.onClose = onClose;
         loadAssets();
         buildLayout();
+        // Different converters for different text elements
+        // In constructor
+        earnedConverter = new CharacterConverter(1.5f, 1.0f);  // 150% size, 1px spacing
+        paidConverter   = new CharacterConverter(1.5f, 1.0f);  // 150% size, 1px spacing
+
     }
 
     // =========================================================
@@ -323,8 +335,8 @@ public class PaymentOverlay {
     }
 
     // =========================================================
-    // RENDER
-    // =========================================================
+// RENDER
+// =========================================================
     public void render(Graphics g) {
         if (!isOpen) return;
 
@@ -345,14 +357,12 @@ public class PaymentOverlay {
         float scaleX = (float)overlayBounds.width / OVERLAY_W;
         float scaleY = (float)overlayBounds.height / OVERLAY_H;
 
-        // Section 1: To Be Earned
-        g2.setFont(VALUE_FONT);
-        g2.setColor(VALUE_COLOR);
-        g2.drawString("" + expectedFare,
+        // Section 1: To Be Earned (Using Sprite Converter)
+        earnedConverter.drawNumber(g2, expectedFare,
                 overlayBounds.x + (int)(EARNED_VALUE_X * scaleX),
                 overlayBounds.y + (int)(EARNED_VALUE_Y * scaleY));
 
-        // Section 2: Computation
+        // Section 2: Computation (Using Regular Font - NOT sprites)
         g2.setFont(COMPUTATION_FONT);
         g2.setColor(COMPUTATION_COLOR);
         String computation = computeFormula(expectedFare);
@@ -360,10 +370,8 @@ public class PaymentOverlay {
                 overlayBounds.x + (int)(COMP_VALUE_X * scaleX),
                 overlayBounds.y + (int)(COMP_VALUE_Y * scaleY));
 
-        // Section 3: Passenger Paid
-        g2.setFont(PAID_VALUE_FONT);
-        g2.setColor(PAID_VALUE_COLOR);
-        g2.drawString("" + passengerPaid,
+        // Section 3: Passenger Paid (Using Sprite Converter)
+        paidConverter.drawNumber(g2, passengerPaid,
                 overlayBounds.x + (int)(PAID_VALUE_X * scaleX),
                 overlayBounds.y + (int)(PAID_VALUE_Y * scaleY));
 
@@ -400,11 +408,18 @@ public class PaymentOverlay {
     /**
      * Computes the fare formula string for display.
      */
+    // In PaymentOverlay.java, replace the computeFormula method with:
+
+    /**
+     * Computes the fare formula string for display.
+     * Format: base + (stops × perStop) = base + (stops * perStop) = fare
+     */
     private String computeFormula(int fare) {
         int base = PassengerManager.BASE_FARE;
         int perStop = PassengerManager.PER_STOP_FARE;
         int stops = (fare - base) / perStop;
-        return base + " + (" + stops + " × " + perStop + ") = " + base + " + " + (stops * perStop) + " = ₱" + fare;
+        // Use proper symbols: +, (, ), ×, =, -
+        return base + " + (" + stops + " x " + perStop + ") = " + base + " + " + (stops * perStop) + " = " + fare;
     }
 
     private void drawButton(Graphics2D g2, int row, Rectangle bounds,

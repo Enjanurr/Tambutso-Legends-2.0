@@ -64,7 +64,21 @@ public class Constants {
         public static final LandmarkTuning MAP3_AYALA_CENTRAL =
                 new LandmarkTuning(0.50f, 0, -12f); // 1241x675
     }
+    // Add this to the UI class in Constants.java (after VolumeButtons)
 
+    public static class AboutButtons {
+        public static final int BUTTON_WIDTH_DEFAULT = 140;
+        public static final int BUTTON_HEIGHT_DEFAULT = 56;
+        public static final int BUTTON_WIDTH = (int)(BUTTON_WIDTH_DEFAULT * Game.SCALE);
+        public static final int BUTTON_HEIGHT = (int)(BUTTON_HEIGHT_DEFAULT * Game.SCALE);
+
+        // Row indices (0-based, matching about_buttons.png)
+        public static final int ABOUT_GAME_ROW = 0;
+        public static final int CREDITS_ROW = 1;
+        public static final int EXIT_ROW = 2;
+        public static final int NEXT_ROW = 3;
+        public static final int BACK_ROW = 4;
+    }
     // ── Person sprites ───────────────────────────────────────
     public static class PersonConstants {
         // Base dimensions for person sprites (pre-scale)

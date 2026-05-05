@@ -25,18 +25,18 @@ public class PauseOverlay {
     // BUTTON POSITIONS (relative to background)  ← ADJUST
     // =========================================================
     // URM Buttons (Resume, Restart, Home)
-    private static final int   BTN_MENU_X = 295;           // Home button X (original)
+    private static final int   BTN_MENU_X = 300;           // Home button X (original)
     private static final int   BTN_REPLAY_X = 374;         // Restart button X
-    private static final int   BTN_UNPAUSE_X = 451;        // Resume button X
-    private static final int   BTN_Y = 318;                // All buttons Y
+    private static final int   BTN_UNPAUSE_X = 445;        // Resume button X
+    private static final int   BTN_Y = 314;                // All buttons Y
 
     // =========================================================
     // AUDIO CONTROLS POSITIONS  ← ADJUST
     // =========================================================
     // Sound buttons (Music, SFX)
-    private static final int   SOUND_X = 450;              // Sound buttons X
-    private static final int   MUSIC_Y = 136;              // Music button Y
-    private static final int   SFX_Y = 180;                // SFX button Y
+    private static final int   SOUND_X = 440;              // Sound buttons X
+    private static final int   MUSIC_Y = 134;              // Music button Y
+    private static final int   SFX_Y = 179;                // SFX button Y
 
     // Volume slider
     private static final int   VOLUME_X = 293;             // Volume slider X

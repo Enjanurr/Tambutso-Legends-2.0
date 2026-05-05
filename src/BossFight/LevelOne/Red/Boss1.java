@@ -23,8 +23,7 @@ public class Boss1 {
     public static final int ROW_RUNNING = 1;
     public static final int ROW_SKILL2  = 2;
     public static final int ROW_HIT     = 3;
-    public static final int ROW_STUN    = 4;
-
+    public static final int ROW_STUN    = 4;  // ← ADD THIS
     // ── Frame counts per row ──────────────────────────────────
     private static final int[] FRAME_COUNTS = { 5, 5, 4, 2, 4 };
 
@@ -51,11 +50,13 @@ public class Boss1 {
     private static final int MAX_BULLETS = 12;            // 12 bullets (was 10)
     private static final int MAX_PILES = 3;
 
-    // ── Animation speeds ─────────────────────────────────────
-    public static final int ANI_SPEED_RUNNING = 20;
-    public static final int ANI_SPEED_SKILL1 = 10;
-    public static final int ANI_SPEED_HIT = 20;
-    public static final int ANI_SPEED_STUN = 15;
+    // ── Per-row animation speeds (ticks per frame) ← ADJUST ──
+    // -------------------------------------------------------
+    public static final int ANI_SPEED_RUNNING  = 20;
+    public static final int ANI_SPEED_SKILL1   = 10;
+    public static final int ANI_SPEED_HIT      = 20;
+    public static final int ANI_SPEED_STUN = 15;  // Ticks per frame for stun animation
+    // -------------------------------------------------------
 
     // Skill 2 animation phase durations
     private static final int S2_COL0_TICKS = 30;
@@ -166,6 +167,28 @@ public class Boss1 {
         pileImage = frames[ROW_SKILL2][4];
     }
 
+    private void updateStunState() {
+        currentRow = ROW_STUN;  // ← CHANGE to use stun row instead of hit row
+
+        // Update stun animation
+        aniTick++;
+        if (aniTick >= ANI_SPEED_STUN) {
+            aniTick = 0;
+            aniIndex = (aniIndex + 1) % FRAME_COUNTS[ROW_STUN];
+        }
+
+        stunTick++;
+
+        if (stunTick >= STUN_DURATION) {
+            stunned = false;
+            stunTick = 0;
+            state = stateAfterHit;  // Return to previous state
+            stateTick = 0;
+            aniIndex = 0;
+            currentRow = ROW_RUNNING;
+        }
+    }
+
     private float clampY(float candidateY) {
         if (candidateY < laneTopY) candidateY = laneTopY;
         if (candidateY > laneBotY) candidateY = laneBotY;
@@ -179,6 +202,36 @@ public class Boss1 {
         updateAnimation();
     }
 
+
+    // ─────────────────────────────────────────────────────────
+    // Jeep skill effect
+    // ─────────────────────────────────────────────────────────
+
+    // ── Public API for applying slow effect ─────────────────
+
+    public void applySlowEffect() {
+        slowed = true;
+        slowTick = 0;
+        System.out.println("[Boss1] Slowed! Duration: 3 seconds. Movement & firing reduced by 50%.");
+    }
+
+
+
+    public boolean isSlowed() {
+        return slowed;
+    }
+
+    public void applyStun() {
+        if (state == BossState.STUN || stunned) return;
+        stateAfterHit = state;
+        state = BossState.STUN;
+        stunned = true;
+        stunTick = 0;
+        aniIndex = 0;
+        aniTick = 0;
+        currentRow = ROW_STUN;
+        System.out.println("[Boss1] ⚡ Stunned! Duration: 3 seconds.");
+    }
     private void updateStateMachine(float jeepX, float jeepY) {
         if (stunned) {
             updateStunState();
@@ -253,6 +306,9 @@ public class Boss1 {
                     aniIndex = 0;
                 }
                 break;
+            case STUN:
+                // Stun handled in updateStunState() called before switch
+                break;
 
             case STUN:
                 // Handled above
@@ -300,11 +356,16 @@ public class Boss1 {
         }
     }
 
+    // ── Vertical movement ─────────────────────────────────────
+    /** Smooth lerp — aligns the BOSS'S CENTRE to the jeep hitbox centre Y. */
+
     private void followJeepY(float jeepCenterY) {
         float targetTopY = jeepCenterY - height / 2f;
         y += (targetTopY - y) * FOLLOW_Y_DELAY;
         y = clampY(y);
     }
+
+    /** Free random wander — used in all other states. */
 
     private void wanderY() {
         wanderChangeTick++;
@@ -418,6 +479,15 @@ public class Boss1 {
         System.out.println("[Boss1 Red] ⏸️ Wait state - preparing next skill");
     }
 
+    public void triggerHit() {
+        if (state == BossState.HIT || state == BossState.STUN) return;
+        stateAfterHit = state;
+        state = BossState.HIT;
+        hitTick = 0;
+        stateTick = 0;
+        aniIndex = 0;
+    }
+
     private void fireBullet() {
         float bx = x;
         float bulletH = GarbagePile.BossProjectile.FRAME_H * Game.SCALE;
@@ -519,6 +589,7 @@ public class Boss1 {
         List<GarbagePile.BossProjectile> bulletsCopy = new ArrayList<>(bullets);
         for (GarbagePile.BossProjectile b : bulletsCopy) b.render(g);
 
+        // Make sure currentRow is within bounds
         int safeRow = Math.min(currentRow, ROWS - 1);
         int safeIndex = Math.min(aniIndex, FRAME_COUNTS[safeRow] - 1);
         if (safeIndex < 0) safeIndex = 0;
@@ -527,7 +598,6 @@ public class Boss1 {
         if (frame != null)
             g.drawImage(frame, (int) x, (int) y, width, height, null);
     }
-
     // ── GETTERS ────────────────────────────────────────────────
     private static final float HB_INSET_PERCENT = 0.6f;
     private static final int X_OFFSET = 0;

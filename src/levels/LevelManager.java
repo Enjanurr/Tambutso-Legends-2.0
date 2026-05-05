@@ -68,6 +68,15 @@ public class LevelManager {
         loadLevel(currentLevelId);
     }
 
+    /**
+     * Reset all progress back to Level 1.
+     * Called when starting a completely fresh game after game completion.
+     */
+    public void resetToLevel1() {
+        loadLevel(1);
+        System.out.println("[LevelManager] Reset to Level 1");
+    }
+
     public void draw(Graphics g, int lvlOffset) {
         int levelCols  = levelOne.getLevelData()[0].length;
         int levelPixelW = levelCols * Game.TILES_SIZE;
