@@ -46,28 +46,36 @@ public class WorldObjectManager {
         }
 
         boolean debug = debugStopSpawnSequence;
-        int stopIndex2 = !debug ? 3 : 1,
-            stopIndex3 = !debug ? 6 : 2,
-            stopIndex4 = !debug ? 9 : 3,
-            stopIndex5 = !debug ? 12 : 4;
+        int map1StopIndex2 = !debug ? 3 : 1,
+            map1StopIndex3 = !debug ? 6 : 2,
+            map1StopIndex4 = !debug ? 9 : 3,
+            map1StopIndex5 = !debug ? 12 : 4;
+        int map2StopIndex2 = !debug ? 4 : 1,
+            map2StopIndex3 = !debug ? 8 : 2,
+            map2StopIndex4 = !debug ? 12 : 3,
+            map2StopIndex5 = !debug ? 16 : 4;
+        int map3StopIndex2 = !debug ? 5 : 1,
+            map3StopIndex3 = !debug ? 10 : 2,
+            map3StopIndex4 = !debug ? 15 : 3,
+            map3StopIndex5 = !debug ? 20 : 4;
 
         registerBuilding(RouteMap.MAP_1, 0, true, LoadSave.MAP1_KEPCO, Constants.Landmarks.MAP1_KEPCO);
-        registerBuilding(RouteMap.MAP_1, stopIndex2, true, LoadSave.MAP1_GAISANO, Constants.Landmarks.MAP1_GAISANO);
-        registerBuilding(RouteMap.MAP_1, stopIndex3, true, LoadSave.MAP1_MARKETPLACE, Constants.Landmarks.MAP1_MARKETPLACE);
-        registerBuilding(RouteMap.MAP_1, stopIndex4, true, LoadSave.MAP1_UC, Constants.Landmarks.MAP1_UC);
-        registerBuilding(RouteMap.MAP_1, stopIndex5, true, LoadSave.MAP1_WILCON, Constants.Landmarks.MAP1_WILCON);
+        registerBuilding(RouteMap.MAP_1, map1StopIndex2, true, LoadSave.MAP1_GAISANO, Constants.Landmarks.MAP1_GAISANO);
+        registerBuilding(RouteMap.MAP_1, map1StopIndex3, true, LoadSave.MAP1_MARKETPLACE, Constants.Landmarks.MAP1_MARKETPLACE);
+        registerBuilding(RouteMap.MAP_1, map1StopIndex4, true, LoadSave.MAP1_UC, Constants.Landmarks.MAP1_UC);
+        registerBuilding(RouteMap.MAP_1, map1StopIndex5, true, LoadSave.MAP1_WILCON, Constants.Landmarks.MAP1_WILCON);
 
         registerBuilding(RouteMap.MAP_2, 0, true, LoadSave.MAP2_STARMALL, Constants.Landmarks.MAP2_STARMALL);
-        registerBuilding(RouteMap.MAP_2, stopIndex2, true, LoadSave.MAP2_USJR, Constants.Landmarks.MAP2_USJR);
-        registerBuilding(RouteMap.MAP_2, stopIndex3, true, LoadSave.MAP2_SHOPWISE, Constants.Landmarks.MAP2_SHOPWISE);
-        registerBuilding(RouteMap.MAP_2, stopIndex4, true, LoadSave.MAP2_CITU, Constants.Landmarks.MAP2_CITU);
-        registerBuilding(RouteMap.MAP_2, stopIndex5, true, LoadSave.MAP2_EMALL, Constants.Landmarks.MAP2_EMALL);
+        registerBuilding(RouteMap.MAP_2, map2StopIndex2, true, LoadSave.MAP2_USJR, Constants.Landmarks.MAP2_USJR);
+        registerBuilding(RouteMap.MAP_2, map2StopIndex3, true, LoadSave.MAP2_SHOPWISE, Constants.Landmarks.MAP2_SHOPWISE);
+        registerBuilding(RouteMap.MAP_2, map2StopIndex4, true, LoadSave.MAP2_CITU, Constants.Landmarks.MAP2_CITU);
+        registerBuilding(RouteMap.MAP_2, map2StopIndex5, true, LoadSave.MAP2_EMALL, Constants.Landmarks.MAP2_EMALL);
 
         registerBuilding(RouteMap.MAP_3, 0, true, LoadSave.MAP3_CATHEDRAL, Constants.Landmarks.MAP3_CATHEDRAL);
-        registerBuilding(RouteMap.MAP_3, stopIndex2, true, LoadSave.MAP3_CITYHALL, Constants.Landmarks.MAP3_CITYHALL);
-        registerBuilding(RouteMap.MAP_3, stopIndex3, true, LoadSave.MAP3_SMCITY, Constants.Landmarks.MAP3_SMCITY);
-        registerBuilding(RouteMap.MAP_3, stopIndex4, true, LoadSave.MAP3_AYALA_TERRACES, Constants.Landmarks.MAP3_AYALA_TERRACES);
-        registerBuilding(RouteMap.MAP_3, stopIndex5, true, LoadSave.MAP3_AYALA_CENTRAL, Constants.Landmarks.MAP3_AYALA_CENTRAL);
+        registerBuilding(RouteMap.MAP_3, map3StopIndex2, true, LoadSave.MAP3_CITYHALL, Constants.Landmarks.MAP3_CITYHALL);
+        registerBuilding(RouteMap.MAP_3, map3StopIndex3, true, LoadSave.MAP3_SMCITY, Constants.Landmarks.MAP3_SMCITY);
+        registerBuilding(RouteMap.MAP_3, map3StopIndex4, true, LoadSave.MAP3_AYALA_TERRACES, Constants.Landmarks.MAP3_AYALA_TERRACES);
+        registerBuilding(RouteMap.MAP_3, map3StopIndex5, true, LoadSave.MAP3_AYALA_CENTRAL, Constants.Landmarks.MAP3_AYALA_CENTRAL);
     }
 
     public void setCurrentMap(RouteMap map) {
