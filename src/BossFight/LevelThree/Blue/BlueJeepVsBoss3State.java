@@ -384,7 +384,12 @@ public class BlueJeepVsBoss3State extends State implements StateMethods {
     private void handleBossHit() {
         boolean defeated = bossBar.takeDamage();
         if (defeated) {
-            System.out.println("[BlueJeepVsBoss3] Boss defeated! Showing completion overlay...");
+            System.out.println("[BlueJeepVsBoss3] Boss defeated! Recording time to leaderboard...");
+
+            // ── CRITICAL: Record time to leaderboard ──
+            game.getLeaderboardManager().completeGame();
+
+            System.out.println("[BlueJeepVsBoss3] Showing completion overlay...");
             showCompletionOverlay = true;
             if (completionOverlay != null) {
                 completionOverlay.reset();
