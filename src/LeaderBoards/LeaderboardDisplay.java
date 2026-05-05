@@ -113,7 +113,7 @@ public class LeaderboardDisplay {
         g2d.drawString("RANK", startX, headerY);
         g2d.drawString("PLAYER NAME", startX + (int)(80 * Game.SCALE), headerY);
         g2d.drawString("BEST TIME", startX + (int)(400 * Game.SCALE), headerY);
-        g2d.drawString("PLAYS", startX + (int)(580 * Game.SCALE), headerY);
+        //g2d.drawString("PLAYS", startX + (int)(580 * Game.SCALE), headerY);
 
         // Separator line
         g2d.setColor(new Color(255, 215, 0, 100));
@@ -174,7 +174,7 @@ public class LeaderboardDisplay {
             g2d.drawString(stats.getFormattedBestTime(), startX + (int)(400 * Game.SCALE), currentY);
 
             // Draw games played
-            g2d.drawString(String.valueOf(stats.getGamesPlayed()), startX + (int)(585 * Game.SCALE), currentY);
+            //g2d.drawString(String.valueOf(stats.getGamesPlayed()), startX + (int)(585 * Game.SCALE), currentY);
         }
 
         // No entries message

@@ -1,7 +1,6 @@
 // ═══════════════════════════════════════════════════════════════════════════════
-// FIXED: NameEntryOverlay - startGame() now calls game.startOrResumeGame()
-//        so that a full reset (resetToLevel1, intro reset, etc.) is triggered
-//        when returning from game completion, before going to char select.
+// UPDATED: NameEntryOverlay - No input box border, text color #33323D
+// Overlay size: 282 x 275
 // ═══════════════════════════════════════════════════════════════════════════════
 
 package LeaderBoards;
@@ -41,11 +40,22 @@ public class NameEntryOverlay {
     private static final int ENTER_BTN_WIDTH = 140;   // 420 / 3 = 140
     private static final int ENTER_BTN_HEIGHT = 56;
 
+    // =========================================================
+    // ADJUSTABLE POSITIONS - MODIFY THESE VALUES ↓
+    // =========================================================
+    // Name input field Y position (as percentage of overlay height)
+    private static final float NAME_FIELD_Y_OFFSET = 0.45f;  // 45% from top of overlay
+    private static final float NAME_FIELD_HEIGHT = 0.10f;    // 10% of overlay height
+
+    // START button Y position (as percentage of overlay height)
+    private static final float START_BTN_Y_OFFSET = 0.70f;   // 70% from top of overlay
+    // =========================================================
+
     // Colors
-    private static final Color INPUT_COLOR = Color.YELLOW;
+    private static final Color INPUT_COLOR = new Color(51, 50, 61);  // #33323D
     private static final Color ERROR_COLOR = new Color(212, 8, 8, 255);
-    private static final Color VALUE_COLOR = new Color(100, 220, 100);
-    private static final Font NAME_FONT = new Font("SansSerif", Font.PLAIN, 20);
+    private static final Color CURSOR_COLOR = new Color(51, 50, 61);  // #33323D for cursor
+    private static final Font NAME_FONT = new Font("SansSerif", Font.BOLD, 24);
     private static final Font ERROR_FONT = new Font("SansSerif", Font.BOLD, 18);
 
     public NameEntryOverlay(Game game, LeaderboardManager leaderboardManager) {
@@ -81,36 +91,30 @@ public class NameEntryOverlay {
     }
 
     private void calculatePositions() {
-        float scaleFactor = 0.65f;
-
-        if (backgroundImg != null) {
-            overlayW = (int)(backgroundImg.getWidth() * scaleFactor);
-            overlayH = (int)(backgroundImg.getHeight() * scaleFactor);
-        } else {
-            overlayW = (int)(450 * Game.SCALE);
-            overlayH = (int)(350 * Game.SCALE);
-        }
+        // Fixed overlay size: 282 x 275
+        overlayW = (int)(282 * Game.SCALE);
+        overlayH = (int)(275 * Game.SCALE);
 
         overlayX = (Game.GAME_WIDTH - overlayW) / 2;
         overlayY = (Game.GAME_HEIGHT - overlayH) / 2;
 
-        // Name input field
-        int fieldW = (int)(overlayW * 0.6);
-        int fieldH = (int)(45 * Game.SCALE);
+        // Name input field (position only, NO border drawn)
+        int fieldW = (int)(overlayW * 0.6);  // 60% of overlay width
+        int fieldH = (int)(overlayH * NAME_FIELD_HEIGHT);  // Adjustable height
         int fieldX = overlayX + (overlayW - fieldW) / 2;
-        int fieldY = overlayY + (int)(overlayH * 0.4);
-        nameField = new Rectangle(fieldX, fieldY, fieldW, fieldH);
+        int fieldY = overlayY + (int)(overlayH * NAME_FIELD_Y_OFFSET);
+        nameField = new Rectangle(fieldX, fieldY, fieldW, fieldH);  // Used only for click detection
 
         // Start button using new ENTER button (scaled)
-        int btnWidth = (int)(ENTER_BTN_WIDTH * Game.SCALE);
-        int btnHeight = (int)(ENTER_BTN_HEIGHT * Game.SCALE);
+        int btnWidth = (int)(ENTER_BTN_WIDTH * Game.SCALE * 0.8f);
+        int btnHeight = (int)(ENTER_BTN_HEIGHT * Game.SCALE * 0.8f);
         int btnX = overlayX + (overlayW - btnWidth) / 2;
-        int btnY = overlayY + (int)(overlayH * 0.65);
+        int btnY = overlayY + (int)(overlayH * START_BTN_Y_OFFSET);
         startBtn = new Rectangle(btnX, btnY, btnWidth, btnHeight);
 
-        System.out.println("[NameEntryOverlay] Button bounds: " + startBtn);
+        System.out.println("[NameEntryOverlay] Overlay: " + overlayW + "x" + overlayH + " at (" + overlayX + "," + overlayY + ")");
+        System.out.println("[NameEntryOverlay] NameField Y: " + fieldY + ", Button Y: " + btnY);
     }
-
 
     public void render(Graphics g) {
         if (!visible) return;
@@ -136,23 +140,22 @@ public class NameEntryOverlay {
             g2d.fillRoundRect(overlayX, overlayY, overlayW, overlayH, 20, 20);
         }
 
-        // Name input field border
-        g2d.setColor(isTyping ? VALUE_COLOR : Color.WHITE);
-        g2d.setStroke(new BasicStroke(2));
-        g2d.drawRect(nameField.x, nameField.y, nameField.width, nameField.height);
-
-        // Name input field text
+        // ─────────────────────────────────────────────────────────────────
+        // NAME INPUT FIELD - NO BORDER DRAWN (only text + cursor)
+        // ─────────────────────────────────────────────────────────────────
         g2d.setFont(NAME_FONT);
 
         if (playerName.isEmpty()) {
-            g2d.setColor(Color.WHITE);
+            // Placeholder text
+            g2d.setColor(new Color(100, 100, 120));  // Light gray placeholder
             String placeholder = "Enter your name...";
             FontMetrics pfm = g2d.getFontMetrics();
             int textX = nameField.x + (nameField.width - pfm.stringWidth(placeholder)) / 2;
             int textY = nameField.y + (nameField.height + pfm.getAscent() - pfm.getDescent()) / 2;
             g2d.drawString(placeholder, textX, textY);
         } else {
-            g2d.setColor(INPUT_COLOR);
+            // Player name text in #33323D color
+            g2d.setColor(INPUT_COLOR);  // #33323D
             FontMetrics pfm = g2d.getFontMetrics();
 
             String displayName = playerName;
@@ -164,10 +167,12 @@ public class NameEntryOverlay {
             int textY = nameField.y + (nameField.height + pfm.getAscent() - pfm.getDescent()) / 2;
             g2d.drawString(displayName, textX, textY);
 
-            // Blinking cursor
+            // Blinking cursor (also #33323D color)
             if (isTyping && (System.currentTimeMillis() / 500 % 2 == 0)) {
+                g2d.setColor(CURSOR_COLOR);
                 int cursorX = textX + pfm.stringWidth(displayName);
-                g2d.drawString("_", cursorX, textY);
+                int cursorY = textY - pfm.getAscent() + 2;
+                g2d.drawLine(cursorX, cursorY, cursorX, cursorY + pfm.getHeight() - 4);
             }
         }
 
@@ -329,24 +334,6 @@ public class NameEntryOverlay {
 
     public void mouseClicked(MouseEvent e) {}
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // CRITICAL FIX: startGame() now calls game.startOrResumeGame() instead of
-    // game.startCharSelect() directly.
-    //
-    // Why this matters:
-    //   • After game completion, Boss3 calls game.markNeedsFullReset().
-    //   • startOrResumeGame() checks needsFullReset and calls playing.resetToLevel1()
-    //     which resets the level manager, progress bar, clock, and introOverlay.
-    //   • Then, since hasActiveGame is false after the reset, it calls startCharSelect().
-    //   • If needsFullReset is NOT set (normal new-game flow), startOrResumeGame()
-    //     just calls startCharSelect() as before — no behaviour change.
-    //
-    // OLD (broken):
-    //   game.startCharSelect();   ← skips reset entirely, game resumes from Level 3
-    //
-    // NEW (correct):
-    //   game.startOrResumeGame(); ← applies reset if flagged, then goes to char select
-    // ─────────────────────────────────────────────────────────────────────────
     private void startGame() {
         if (playerName.trim().isEmpty()) {
             errorMessage = "Please enter your name!";
@@ -356,17 +343,11 @@ public class NameEntryOverlay {
         String cleanName = playerName.trim();
         System.out.println("[NameEntryOverlay] Starting game with name: " + cleanName);
 
-        // CRITICAL: Register this player (creates new record or loads existing one)
         leaderboardManager.setCurrentPlayer(cleanName);
-
-        // NOTE: Timer (startSession) is started in Playing.onIntroDone() once the
-        // intro overlay finishes — do NOT start it here to avoid double-starting.
 
         hide();
 
-        // CRITICAL: Use startOrResumeGame() so that needsFullReset is respected.
-        // This resets Playing to Level 1, resets introOverlay, then goes to char select.
-        game.startOrResumeGame(); // ← CRITICAL CHANGE (was: game.startCharSelect())
+        game.startOrResumeGame();
     }
 
     public void show() {
