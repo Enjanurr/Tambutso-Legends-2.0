@@ -1,5 +1,6 @@
 package gameStates;
 
+import BossFight.BuildingRenderer;
 import Ui.*;
 import entities.EnemyManager;
 import entities.PassengerManager;
@@ -27,6 +28,7 @@ import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
 import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
@@ -134,6 +136,7 @@ public class Playing extends State implements StateMethods {
     private ScrollingCloudLayer bigCloudLayer;
     private ScrollingCloudLayer smallCloudLayer;
     private final Random rnd = new Random();
+    private BuildingRenderer buildingRenderer;
     private WorldObjectManager worldObjectManager;
 
     // ── Current route position ────────────────────────────────
@@ -206,6 +209,9 @@ public class Playing extends State implements StateMethods {
         enemyManager     = new EnemyManager(this);
         worldObjectManager = new WorldObjectManager(currentMap);
         stopSignManager  = new StopSignManager(this, worldObjectManager);
+        buildingRenderer = new BuildingRenderer();
+        syncBuildingRendererBounds();
+        buildingRenderer.reset();
         pauseOverlay     = new PauseOverlay(this);
         powerupManager   = new PowerupManager(this);
         healthBar        = new HealthBar();
@@ -441,7 +447,10 @@ public class Playing extends State implements StateMethods {
         player.resetDirBooleans();
         player.setWorldLoopDone(false);
         player.setBossMode(false);
+        stopSignManager.resetAll();
         worldObjectManager.reset();
+        syncBuildingRendererBounds();
+        buildingRenderer.reset();
 
         player.setRight(false);
         player.setLeft(false);
@@ -452,7 +461,6 @@ public class Playing extends State implements StateMethods {
         personManager.resetAll();
         passengerManager.resetAll();  // Clear seated passengers
         enemyManager.resetAll();
-        stopSignManager.resetAll();
         powerupManager.resetAll();
 
         healthBar.reset();
@@ -522,6 +530,13 @@ public class Playing extends State implements StateMethods {
 
     public float getScrollSpeed() { return player.getCurrentXSpeed(); }
 
+    private void syncBuildingRendererBounds() {
+        List<Rectangle> blockedZones = new ArrayList<>();
+        blockedZones.addAll(worldObjectManager.getActiveBounds());
+        blockedZones.addAll(stopSignManager.getActiveBounds());
+        buildingRenderer.setBlockedZones(blockedZones);
+    }
+
     private boolean isJeepCentered() {
         float jeepCenterX   = player.getHitBox().x + player.getHitBox().width / 2f;
         float screenCenterX = Game.GAME_WIDTH / 2f;
@@ -587,6 +602,8 @@ public class Playing extends State implements StateMethods {
             enemyManager.update();
             stopSignManager.update();
             worldObjectManager.update(scrolling, getScrollSpeed());
+            syncBuildingRendererBounds();
+            buildingRenderer.update(scrolling, getScrollSpeed());
             powerupManager.update();
             stopHereIndicator.update(passengerManager, worldLoopCount);
             player.update();
@@ -623,6 +640,7 @@ public class Playing extends State implements StateMethods {
         if (backgroundImg != null)
             g.drawImage(backgroundImg, 0, 0, Game.GAME_WIDTH, Game.GAME_HEIGHT, null);
         drawClouds(g);
+        buildingRenderer.render(g);
         levelManager.draw(g, (int) worldOffset);
         worldObjectManager.draw(g);
         enemyManager.render(g);
@@ -929,11 +947,15 @@ public class Playing extends State implements StateMethods {
         enemyManager.resetAll();
         stopSignManager.resetAll();
         worldObjectManager.reset();
+        syncBuildingRendererBounds();
+        buildingRenderer.reset();
     }
 
     public void setCurrentMap(RouteMap map) {
         currentMap = map;
         worldObjectManager.setCurrentMap(map);
+        syncBuildingRendererBounds();
+        buildingRenderer.reset();
     }
 
     public void windowFocusLost() {

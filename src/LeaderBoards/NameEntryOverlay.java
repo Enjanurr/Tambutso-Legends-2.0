@@ -194,23 +194,13 @@ public class NameEntryOverlay {
     private void drawStartButton(Graphics2D g2d) {
         BufferedImage btnImage = null;
 
-        // Debug: Print current state
-        System.out.println("[NameEntryOverlay] drawStartButton - startBtnPressed=" + startBtnPressed +
-                ", startBtnHover=" + startBtnHover);
-        System.out.println("[NameEntryOverlay] Button images - Normal=" + (enterButtonNormal != null) +
-                ", Hover=" + (enterButtonHover != null) +
-                ", Pressed=" + (enterButtonPressed != null));
-
         // Priority: Pressed > Hover > Normal
         if (startBtnPressed && enterButtonPressed != null) {
             btnImage = enterButtonPressed;
-            System.out.println("[NameEntryOverlay] Using PRESSED button");
         } else if (startBtnHover && enterButtonHover != null) {
             btnImage = enterButtonHover;
-            System.out.println("[NameEntryOverlay] Using HOVER button");
         } else if (enterButtonNormal != null) {
             btnImage = enterButtonNormal;
-            System.out.println("[NameEntryOverlay] Using NORMAL button");
         } else {
             System.out.println("[NameEntryOverlay] All button images are NULL!");
         }
@@ -276,11 +266,6 @@ public class NameEntryOverlay {
 
     public void mouseMoved(MouseEvent e) {
         if (!visible) return;
-
-        // Always print when mouse moves (not just on change)
-        System.out.println("[NameEntryOverlay] mouseMoved called - mouse at: (" + e.getX() + ", " + e.getY() + ")");
-        System.out.println("[NameEntryOverlay] Button bounds: " + startBtn);
-        System.out.println("[NameEntryOverlay] Button contains: " + startBtn.contains(e.getX(), e.getY()));
 
         boolean wasHover = startBtnHover;
         startBtnHover = startBtn.contains(e.getX(), e.getY());

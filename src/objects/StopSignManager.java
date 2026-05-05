@@ -63,6 +63,17 @@ public class StopSignManager {
             s.render(g);
     }
 
+    public List<Rectangle> getActiveBounds() {
+        List<Rectangle> bounds = new ArrayList<>();
+        for (StopSign sign : signs) {
+            if (!sign.isActive()) {
+                continue;
+            }
+            bounds.add(sign.getHitbox());
+        }
+        return bounds;
+    }
+
     // ─────────────────────────────────────────────────────────
     // RESET
     // ─────────────────────────────────────────────────────────

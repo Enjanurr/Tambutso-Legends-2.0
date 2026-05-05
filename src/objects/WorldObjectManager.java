@@ -7,6 +7,7 @@ import utils.LoadSave;
 import utils.RouteMap;
 
 import java.awt.Graphics;
+import java.awt.Rectangle;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.EnumMap;
@@ -141,6 +142,23 @@ public class WorldObjectManager {
             ));
         }
         return entries;
+    }
+
+    public List<Rectangle> getActiveBounds() {
+        List<Rectangle> bounds = new ArrayList<>();
+        for (WorldObject obj : worldObjects) {
+            if (obj.isRemovable()) {
+                continue;
+            }
+
+            bounds.add(new Rectangle(
+                    Math.round(obj.getX()),
+                    obj.getDrawY(),
+                    obj.getWidth(),
+                    obj.getHeight()
+            ));
+        }
+        return bounds;
     }
 
     public void reset() {

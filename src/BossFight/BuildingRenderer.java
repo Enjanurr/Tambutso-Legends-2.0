@@ -6,6 +6,7 @@ import utils.LoadSave;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Random;
 
@@ -85,6 +86,7 @@ public class BuildingRenderer {
     }
 
     private final List<Building> buildings = new ArrayList<>();
+    private final List<Rectangle> blockedZones = new ArrayList<>();
     private final Random random = new Random();
 
     // Spawn settings - BUILDINGS TOUCHING (NO SPACE)
@@ -113,20 +115,13 @@ public class BuildingRenderer {
 
         // Fill screen with initial buildings
         while (currentX < Game.GAME_WIDTH + 500) {
-            addRandomBuilding(currentX);
-
-            // Move currentX to the end of the last building plus gap
-            if (!buildings.isEmpty()) {
-                Building last = buildings.get(buildings.size() - 1);
-                currentX = last.x + last.width + FIXED_GAP;
-            } else {
-                currentX += 100; // Fallback if no building was added
-            }
+            float nextX = addRandomBuilding(currentX);
+            currentX = nextX > currentX ? nextX : currentX + 100;
         }
     }
 
-    private void addRandomBuilding(float x) {
-        if (random.nextFloat() > SPAWN_CHANCE) return;
+    private float addRandomBuilding(float x) {
+        if (random.nextFloat() > SPAWN_CHANCE) return x + 100;
 
         // Choose a random building type that is NOT the same as the last one
         int typeIndex;
@@ -137,14 +132,40 @@ public class BuildingRenderer {
         lastBuildingType = typeIndex;
         BuildingData data = buildingTypes[typeIndex];
 
-        if (data.image == null) return;
+        if (data.image == null) return x + 100;
 
         int width = data.getWidth();
         int height = data.getHeight();
         int anchorY = data.getAnchorY();
+        float spawnX = resolveSpawnX(x, width);
         float y = anchorY - height;
 
-        buildings.add(new Building(data.image, x, y, width, height, typeIndex));
+        buildings.add(new Building(data.image, spawnX, y, width, height, typeIndex));
+        return spawnX + width + FIXED_GAP;
+    }
+
+    private float resolveSpawnX(float x, int width) {
+        float candidateX = x;
+        boolean adjusted;
+
+        do {
+            adjusted = false;
+            float candidateRight = candidateX + width;
+
+            for (Rectangle zone : blockedZones) {
+                float zoneLeft = zone.x;
+                float zoneRight = zone.x + zone.width;
+                if (candidateRight <= zoneLeft || candidateX >= zoneRight) {
+                    continue;
+                }
+
+                candidateX = zoneRight + FIXED_GAP;
+                adjusted = true;
+                break;
+            }
+        } while (adjusted);
+
+        return candidateX;
     }
 
     public void update(boolean worldScrolling, float scrollSpeed) {
@@ -162,17 +183,51 @@ public class BuildingRenderer {
             float rightEdge = last.x + last.width;
 
             while (rightEdge < Game.GAME_WIDTH + 300) {
-                addRandomBuilding(rightEdge + FIXED_GAP);
-                if (!buildings.isEmpty()) {
-                    rightEdge = buildings.get(buildings.size() - 1).x +
-                            buildings.get(buildings.size() - 1).width;
-                } else {
+                float nextRightEdge = addRandomBuilding(rightEdge + FIXED_GAP);
+                if (nextRightEdge <= rightEdge) {
                     break;
                 }
+                rightEdge = nextRightEdge;
             }
         } else {
             init();
         }
+    }
+
+    public void setBlockedZones(List<Rectangle> zones) {
+        blockedZones.clear();
+        if (zones == null || zones.isEmpty()) {
+            return;
+        }
+
+        for (Rectangle zone : zones) {
+            if (zone == null || zone.width <= 0) {
+                continue;
+            }
+            blockedZones.add(new Rectangle(zone));
+        }
+
+        blockedZones.sort(Comparator.comparingInt(zone -> zone.x));
+        removeBlockedBuildings();
+    }
+
+    private void removeBlockedBuildings() {
+        buildings.removeIf(building -> {
+            Rectangle bounds = new Rectangle(
+                    Math.round(building.x),
+                    Math.round(building.y),
+                    building.width,
+                    building.height
+            );
+
+            for (Rectangle zone : blockedZones) {
+                if (bounds.intersects(zone)) {
+                    return true;
+                }
+            }
+
+            return false;
+        });
     }
 
     public void render(Graphics g) {
