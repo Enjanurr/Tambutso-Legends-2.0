@@ -248,7 +248,6 @@ public class Playing extends State implements StateMethods {
             System.out.println("[Playing] Pause button clicked");
         });
         System.out.println("[Playing] initClasses() complete - Level " + levelManager.getCurrentLevelId() + " loaded");
-        passengerInteractionController = new PassengerInteractionController(this, passengerCounter);
     }
 
     private void loadBackgroundAssets() {

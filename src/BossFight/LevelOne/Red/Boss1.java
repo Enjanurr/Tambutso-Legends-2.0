@@ -167,28 +167,6 @@ public class Boss1 {
         pileImage = frames[ROW_SKILL2][4];
     }
 
-    private void updateStunState() {
-        currentRow = ROW_STUN;  // ← CHANGE to use stun row instead of hit row
-
-        // Update stun animation
-        aniTick++;
-        if (aniTick >= ANI_SPEED_STUN) {
-            aniTick = 0;
-            aniIndex = (aniIndex + 1) % FRAME_COUNTS[ROW_STUN];
-        }
-
-        stunTick++;
-
-        if (stunTick >= STUN_DURATION) {
-            stunned = false;
-            stunTick = 0;
-            state = stateAfterHit;  // Return to previous state
-            stateTick = 0;
-            aniIndex = 0;
-            currentRow = ROW_RUNNING;
-        }
-    }
-
     private float clampY(float candidateY) {
         if (candidateY < laneTopY) candidateY = laneTopY;
         if (candidateY > laneBotY) candidateY = laneBotY;
@@ -200,37 +178,6 @@ public class Boss1 {
         updatePiles();
         updateStateMachine(jeepX, jeepY);
         updateAnimation();
-    }
-
-
-    // ─────────────────────────────────────────────────────────
-    // Jeep skill effect
-    // ─────────────────────────────────────────────────────────
-
-    // ── Public API for applying slow effect ─────────────────
-
-    public void applySlowEffect() {
-        slowed = true;
-        slowTick = 0;
-        System.out.println("[Boss1] Slowed! Duration: 3 seconds. Movement & firing reduced by 50%.");
-    }
-
-
-
-    public boolean isSlowed() {
-        return slowed;
-    }
-
-    public void applyStun() {
-        if (state == BossState.STUN || stunned) return;
-        stateAfterHit = state;
-        state = BossState.STUN;
-        stunned = true;
-        stunTick = 0;
-        aniIndex = 0;
-        aniTick = 0;
-        currentRow = ROW_STUN;
-        System.out.println("[Boss1] ⚡ Stunned! Duration: 3 seconds.");
     }
     private void updateStateMachine(float jeepX, float jeepY) {
         if (stunned) {
@@ -308,10 +255,6 @@ public class Boss1 {
                 break;
             case STUN:
                 // Stun handled in updateStunState() called before switch
-                break;
-
-            case STUN:
-                // Handled above
                 break;
         }
     }
@@ -477,15 +420,6 @@ public class Boss1 {
         state = BossState.WAIT_AFTER_SKILL;
         stateTick = 0;
         System.out.println("[Boss1 Red] ⏸️ Wait state - preparing next skill");
-    }
-
-    public void triggerHit() {
-        if (state == BossState.HIT || state == BossState.STUN) return;
-        stateAfterHit = state;
-        state = BossState.HIT;
-        hitTick = 0;
-        stateTick = 0;
-        aniIndex = 0;
     }
 
     private void fireBullet() {

@@ -6,6 +6,7 @@ import BossFight.BuildingRenderer;
 import BossFight.CloudRenderer;
 import BossFight.LevelOne.GarbagePile;
 import Ui.*;
+import entities.EnemyCar;
 import entities.Player;
 import gameStates.GameStates;
 import gameStates.State;
@@ -102,6 +103,7 @@ public class BlueJeepVsBoss1State extends State implements StateMethods {
 
     // ── Skill buttons ────────────────────────────────────────
     private JeepSkillButtons skillButtons;
+    private BossObstacleManager obstacleManager;
 
     // ─────────────────────────────────────────────────────────
     public BlueJeepVsBoss1State(Game game, Player player, HealthBar healthBar) {

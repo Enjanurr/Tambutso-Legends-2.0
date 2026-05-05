@@ -13,7 +13,6 @@ import gameStates.State;
 import gameStates.StateMethods;
 import main.Game;
 import utils.LoadSave;
-import utils.ScrollingCloudLayer;
 
 import java.awt.*;
 import java.awt.event.KeyEvent;
@@ -87,9 +86,7 @@ public class BlueJeepVsBoss3State extends State implements StateMethods {
     private UrmButton deathRestartBtn;
     private BufferedImage deathScreenImg;
     private int deathImgW, deathImgH, deathImgX, deathImgY;
-    private BuildingRenderer buildingRenderer;
 
-    // ADD THIS MISSING FIELD
     private boolean bossDefeated = false;
 
     // Game completion overlay (Boss 3 only)
@@ -112,8 +109,6 @@ public class BlueJeepVsBoss3State extends State implements StateMethods {
         obstacleManager = new BossObstacleManager(game);
         this.levelPixelWidth =
                 LoadSave.GetLevelData()[0].length * Game.TILES_SIZE;
-
-        this.levelPixelWidth = LoadSave.GetLevelData()[0].length * Game.TILES_SIZE;
         this.playerRightLimit = Game.GAME_WIDTH * PLAYER_RIGHT_LIMIT_FRACTION - player.getHitBox().width;
 
         pauseOverlay = new BossPauseOverlay(this);
@@ -375,15 +370,6 @@ public class BlueJeepVsBoss3State extends State implements StateMethods {
                 }
             }
             if (hitObstacle) continue;
-        }
-
-            for (EnemyCar obstacle : obstacleManager.getActiveObstacles()) {
-                if (obstacle.isActive() && pb.getHitbox().intersects(obstacle.getHitBox())) {
-                    obstacle.takeDamage(1);
-                    pb.setActive(false);
-                    break;
-                }
-            }
         }
     }
 

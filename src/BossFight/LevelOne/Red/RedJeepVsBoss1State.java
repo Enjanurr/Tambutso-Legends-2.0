@@ -203,18 +203,11 @@ public class RedJeepVsBoss1State extends State implements StateMethods {
 
     private void onMenuToExit() {
         player.setBossMode(false);
-        game.getPlaying().advanceToNextLevel();
-        game.getPlaying().showMissionForCurrentLevel();
-        GameStates.state = GameStates.PLAYING;
-    }
-
-    private void onMenuToExit() {
-        player.setBossMode(false);  // Reset boss mode before returning to menu
         GameStates.state = GameStates.MENU;
     }
 
     private void spawnBoss() {
-        float bx = Game.GAME_WIDTH + BossFight.LevelOne.Blue.Boss1.FRAME_W * Game.SCALE;
+        float bx = Game.GAME_WIDTH + Boss1.FRAME_W * Game.SCALE;
         float by = 480;
         boss = new Boss1(bx, by);
     }

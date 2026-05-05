@@ -359,24 +359,6 @@ public class Boss1 {
         currentRow = ROW_SKILL2;
         System.out.println("[Boss1] 💧 Entering SKILL2 (Garbage Piles) phase!");
     }
-
-
-    private void enterRandom() {
-        state     = BossState.RANDOM;
-        stateTick = 0;
-    }
-
-    public void triggerHit() {
-        if (state == BossState.HIT) return;
-        stateAfterHit = state;
-        state = BossState.HIT;
-        hitTick = 0;
-        stateTick = 0;
-        aniIndex = 0;
-        aniTick = 0;
-        System.out.println("[Boss2] HIT triggered - currentRow: " + currentRow + ", ROW_HIT: " + ROW_HIT);
-    }
-
     // ─────────────────────────────────────────────────────────
     // PROJECTILE & PILE HELPERS
     // ─────────────────────────────────────────────────────────

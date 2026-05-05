@@ -92,7 +92,6 @@ public class GreenJeepVsBoss3State extends State implements StateMethods {
     private UrmButton deathRestartBtn;
     private BufferedImage deathScreenImg;
     private int deathImgW, deathImgH, deathImgX, deathImgY;
-    private BossObstacleManager obstacleManager;
 
     // ADD THIS MISSING FIELD
     private boolean bossDefeated = false;
@@ -106,7 +105,6 @@ public class GreenJeepVsBoss3State extends State implements StateMethods {
 
     // Skill buttons
     private JeepSkillButtons skillButtons;
-    private CloudRenderer cloudRenderer;
 
     public GreenJeepVsBoss3State(Game game, Player player, HealthBar healthBar) {
         super(game);
