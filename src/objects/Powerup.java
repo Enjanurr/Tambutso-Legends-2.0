@@ -103,3 +103,7 @@ public class Powerup {
     public float       getX()                  { return x; }
     public float       getY()                  { return y; }
 }
+
+
+
+

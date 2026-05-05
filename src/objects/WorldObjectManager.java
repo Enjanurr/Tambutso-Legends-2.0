@@ -1,6 +1,6 @@
 package objects;
 
-import entities.WorldObject;
+import entities.base.WorldObject;
 import main.Game;
 import utils.Constants;
 import utils.LoadSave;
@@ -317,3 +317,8 @@ public class WorldObjectManager {
         }
     }
 }
+
+
+
+
+

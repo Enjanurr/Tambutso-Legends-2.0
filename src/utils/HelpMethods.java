@@ -34,3 +34,7 @@ public class HelpMethods {
         return nextX + hitBoxWidth >= Game.GAME_WIDTH;
     }
 }
+
+
+
+

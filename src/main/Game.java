@@ -4,27 +4,30 @@ import java.awt.Graphics;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
 
-import BossFight.LevelThree.Blue.BlueJeepVsBoss3State;
-import BossFight.LevelThree.Green.GreenJeepVsBoss3State;
-import BossFight.LevelThree.Red.RedJeepVsBoss3State;
-import BossFight.LevelTwo.Blue.BlueJeepVsBoss2State;
-import BossFight.LevelTwo.Green.GreenJeepVsBoss2State;
+import BossFight.LevelThree.Blue.state.BlueJeepVsBoss3State;
+import BossFight.LevelThree.Green.state.GreenJeepVsBoss3State;
+import BossFight.LevelThree.Red.state.RedJeepVsBoss3State;
+import BossFight.LevelTwo.Blue.state.BlueJeepVsBoss2State;
+import BossFight.LevelTwo.Green.state.GreenJeepVsBoss2State;
 import LeaderBoards.LeaderboardManager;
 import LeaderBoards.NameEntryOverlay;
-import entities.DriverProfile;
-import gameStates.*;
-import Ui.IntroOverlay;
+import entities.profile.DriverProfile;
+import gameStates.core.*;
+import gameStates.menu.*;
+import gameStates.play.*;
+import gameStates.boss.*;
+import Ui.overlays.IntroOverlay;
 
-import BossFight.LevelOne.Blue.BlueJeepVsBoss1State;
-import BossFight.LevelOne.Red.RedJeepVsBoss1State;
-import BossFight.LevelOne.Green.GreenJeepVsBoss1State;
+import BossFight.LevelOne.Blue.state.BlueJeepVsBoss1State;
+import BossFight.LevelOne.Red.state.RedJeepVsBoss1State;
+import BossFight.LevelOne.Green.state.GreenJeepVsBoss1State;
 
-import BossFight.LevelTwo.Red.RedJeepVsBoss2State;
+import BossFight.LevelTwo.Red.state.RedJeepVsBoss2State;
 import utils.AudioPlayer;
-import gameStates.BossFightMatchmaker;
+import gameStates.boss.BossFightMatchmaker;
 
-import static gameStates.GameStates.RED_JEEP_VS_BOSS2;
-import static gameStates.GameStates.GREEN_JEEP_VS_BOSS2;
+import static gameStates.core.GameStates.RED_JEEP_VS_BOSS2;
+import static gameStates.core.GameStates.GREEN_JEEP_VS_BOSS2;
 
 public class Game implements Runnable {
     private GameWindow    gameWindow;
@@ -747,4 +750,10 @@ public class Game implements Runnable {
         }
     }
 }
+
+
+
+
+
+
 
