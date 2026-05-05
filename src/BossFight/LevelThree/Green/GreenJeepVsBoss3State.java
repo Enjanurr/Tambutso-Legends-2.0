@@ -408,6 +408,8 @@ public class GreenJeepVsBoss3State extends State implements StateMethods {
     private void handleBossHit() {
         boolean defeated = bossBar.takeDamage();
         if (defeated && !bossDefeated) {
+            bossDefeated = true;
+            game.getAudioPlayer().playLevelClearThenMenuTheme();
             System.out.println("[GreenJeepVsBoss3] Boss defeated! Recording time to leaderboard...");
 
             // ── CRITICAL: Record time to leaderboard ──

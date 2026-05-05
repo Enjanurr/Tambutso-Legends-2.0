@@ -205,6 +205,13 @@ public class SkipOverlay {
     // ─────────────────────────────────────────────────────────
     private void completeCurrentLevel() {
         System.out.println("[SkipOverlay] Completing current level");
+
+        if (isBossFightState()) {
+            playing.handleBossVictoryNext();
+            hide();
+            return;
+        }
+
         int maxLoops = playing.getLevelManager().getMaxWorldLoops();
         playing.getProgressBar().setProgress(maxLoops);
         playing.completeLevelForDebug();
@@ -219,30 +226,53 @@ public class SkipOverlay {
     private int getCurrentLevel() {
         return playing.getLevelManager().getCurrentLevelId();
     }
+
+    private boolean isBossFightState() {
+        return switch (GameStates.state) {
+            case BLUE_JEEP_VS_BOSS1, RED_JEEP_VS_BOSS1, GREEN_JEEP_VS_BOSS1,
+                    BLUE_JEEP_VS_BOSS2, RED_JEEP_VS_BOSS2, GREEN_JEEP_VS_BOSS2,
+                    BLUE_JEEP_VS_BOSS3, RED_JEEP_VS_BOSS3, GREEN_JEEP_VS_BOSS3 -> true;
+            default -> false;
+        };
+    }
+
+    private boolean ensureDriverSelected() {
+        if (game.getSelectedDriver() != null) {
+            return true;
+        }
+
+        var playingDriver = game.getPlaying().getCurrentDriver();
+        if (playingDriver != null) {
+            game.setSelectedDriver(playingDriver);
+            System.out.println("[SkipOverlay] Restored driver: " + playingDriver.displayName);
+            return true;
+        }
+
+        System.err.println("[SkipOverlay] No driver available!");
+        hide();
+        return false;
+    }
+
     private void skipToBoss() {
         System.out.println("[SkipOverlay] Skipping to boss");
 
-        // Check if driver is selected before proceeding
-        if (game.getSelectedDriver() == null) {
-            System.err.println("[SkipOverlay] Cannot start boss fight - no driver selected!");
-            // Try to recover from Playing
-            var playingDriver = game.getPlaying().getCurrentDriver();
-            if (playingDriver != null) {
-                System.out.println("[SkipOverlay] Recovered driver: " + playingDriver.displayName);
-            } else {
-                System.err.println("[SkipOverlay] No driver to recover - must complete character selection first");
-                hide();
-                return;
-            }
+        if (!ensureDriverSelected()) {
+            return;
         }
 
-        int currentLevel = game.getPlaying().getLevelManager().getCurrentLevelId();
+        int currentLevel = getCurrentLevel();
         game.startBossFightWithLevel(currentLevel);
         hide();
     }
 
     private void skipToNextLevel() {
         System.out.println("[SkipOverlay] Skipping to next level");
+
+        if (isBossFightState()) {
+            playing.handleBossVictoryNext();
+            hide();
+            return;
+        }
 
         int currentLevel = game.getPlaying().getLevelManager().getCurrentLevelId();
 
@@ -268,21 +298,12 @@ public class SkipOverlay {
 
         System.out.println("[SkipOverlay] Skipping to next boss - Level " + currentLevel + " -> " + nextLevel);
 
-        if (game.getSelectedDriver() == null) {
-            var playingDriver = game.getPlaying().getCurrentDriver();
-            if (playingDriver != null) {
-                game.setSelectedDriver(playingDriver);
-                System.out.println("[SkipOverlay] Restored driver: " + playingDriver.displayName);
-            } else {
-                System.err.println("[SkipOverlay] ERROR: No driver available!");
-                hide();
-                return;
-            }
+        if (!ensureDriverSelected()) {
+            return;
         }
 
         if (nextLevel <= 3) {
-            game.getPlaying().getLevelManager().advanceToNextLevel();
-            game.getPlaying().syncLevelPresentation();
+            playing.advanceToNextLevel();
             game.setCurrentGameLevel(nextLevel);
             game.startBossFightWithLevel(nextLevel);
         } else {

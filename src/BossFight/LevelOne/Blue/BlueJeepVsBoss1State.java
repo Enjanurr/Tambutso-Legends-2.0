@@ -141,6 +141,7 @@ public class BlueJeepVsBoss1State extends State implements StateMethods {
         buildDeathOverlay();
         buildDefeatOverlay();
         bossBar = new BossHealthBar(BossHealthBar.LifeBarType.BOSS1);
+        bossBanner = new BossBanner(1);
         walkerManager = new BossWalkerManager();
         spawnBoss();
 
@@ -427,6 +428,7 @@ public class BlueJeepVsBoss1State extends State implements StateMethods {
             boolean defeated = bossBar.takeDamage();
             if (defeated) {
                 bossDefeated = true;
+                game.getAudioPlayer().playLevelClearThenMenuTheme();
                 defeatOverlay.reset();
             }
         }
@@ -498,8 +500,10 @@ public class BlueJeepVsBoss1State extends State implements StateMethods {
             cloudRenderer.drawBackground(g);
             cloudRenderer.drawClouds(g);
             buildingRenderer.render(g);
-            bossBanner.updatePosition(10);
-            bossBanner.render(g);
+            if (bossBanner != null) {
+                bossBanner.updatePosition(10);
+                bossBanner.render(g);
+            }
             game.getPlaying().getLevelManager().draw(g, (int) worldOffset);
 
             walkerManager.render(g);

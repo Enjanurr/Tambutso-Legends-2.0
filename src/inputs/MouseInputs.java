@@ -65,6 +65,10 @@ public class MouseInputs implements MouseListener, MouseMotionListener {
     @Override
     public void mousePressed(MouseEvent e) {
         gamePanel.reclaimFocus();
+        if (gamePanel.getGame().handleBossFightSkipOverlayMousePressed(e)) {
+            return;
+        }
+
         switch (GameStates.state) {
             case GAME_INTRO:
                 gamePanel.getGame().getGameIntroState().mousePressed(e);
@@ -117,6 +121,10 @@ public class MouseInputs implements MouseListener, MouseMotionListener {
     @Override
     public void mouseReleased(MouseEvent e) {
         gamePanel.reclaimFocus();
+        if (gamePanel.getGame().handleBossFightSkipOverlayMouseReleased()) {
+            return;
+        }
+
         switch (GameStates.state) {
             case GAME_INTRO:
                 gamePanel.getGame().getGameIntroState().mouseReleased(e);

@@ -40,14 +40,16 @@ public class BossObstacleManager {
     }
 
     public void update(boolean scrolling, float scrollSpeed) {
-        // Update existing obstacles
-        Iterator<EnemyCar> it = obstacles.iterator();
-        while (it.hasNext()) {
-            EnemyCar obstacle = it.next();
-            obstacle.update(scrolling, scrollSpeed);
-            if (!obstacle.isActive()) {
-                it.remove();
-                System.out.println("[BossObstacleManager] Obstacle removed (destroyed or off-screen)");
+        synchronized (obstacles) {
+            // Update existing obstacles
+            Iterator<EnemyCar> it = obstacles.iterator();
+            while (it.hasNext()) {
+                EnemyCar obstacle = it.next();
+                obstacle.update(scrolling, scrollSpeed);
+                if (!obstacle.isActive()) {
+                    it.remove();
+                    System.out.println("[BossObstacleManager] Obstacle removed (destroyed or off-screen)");
+                }
             }
         }
 
@@ -62,7 +64,9 @@ public class BossObstacleManager {
     }
 
     private void trySpawnObstacle() {
-        if (obstacles.size() >= MAX_OBSTACLES) return;
+        synchronized (obstacles) {
+            if (obstacles.size() >= MAX_OBSTACLES) return;
+        }
         if (rng.nextFloat() >= SPAWN_CHANCE) return;
 
         EnemyCar.EnemyType type = EnemyCar.EnemyType.values()[rng.nextInt(EnemyCar.EnemyType.values().length)];
@@ -77,7 +81,9 @@ public class BossObstacleManager {
             newObstacle = new EnemyCar(spawnX, spawnY, type);
         }
         newObstacle.setShowHealthBar(true);
-        obstacles.add(newObstacle);
+        synchronized (obstacles) {
+            obstacles.add(newObstacle);
+        }
         System.out.println("[BossObstacleManager] Spawned: " + type.name() + " (Health: " + type.maxHealth + ")");
     }
 
@@ -86,44 +92,52 @@ public class BossObstacleManager {
     }
 
     public void checkCollision(Rectangle playerHitbox, Runnable onHit) {
-        for (EnemyCar obstacle : obstacles) {
-            if (obstacle.isActive() && obstacle.getHitBox().intersects(playerHitbox)) {
-                obstacle.setActive(false);
-                onHit.run();
-                System.out.println("[BossObstacleManager] Player collided with obstacle!");
-                break;
+        synchronized (obstacles) {
+            for (EnemyCar obstacle : obstacles) {
+                if (obstacle.isActive() && obstacle.getHitBox().intersects(playerHitbox)) {
+                    obstacle.setActive(false);
+                    onHit.run();
+                    System.out.println("[BossObstacleManager] Player collided with obstacle!");
+                    break;
+                }
             }
         }
     }
 
     public void checkBulletCollision(Rectangle bulletHitbox, Runnable onBulletHit) {
-        for (EnemyCar obstacle : obstacles) {
-            if (obstacle.isActive() && obstacle.getHitBox().intersects(bulletHitbox)) {
-                boolean destroyed = obstacle.takeDamage(BULLET_DAMAGE);
+        synchronized (obstacles) {
+            for (EnemyCar obstacle : obstacles) {
+                if (obstacle.isActive() && obstacle.getHitBox().intersects(bulletHitbox)) {
+                    boolean destroyed = obstacle.takeDamage(BULLET_DAMAGE);
 
-                if (destroyed) {
-                    System.out.println("[BossObstacleManager] Obstacle destroyed! Remaining obstacles: " + (obstacles.size() - 1));
-                } else {
-                    System.out.println("[BossObstacleManager] Obstacle hit! Remaining health: " + obstacle.getCurrentHealth() + "/" + obstacle.getMaxHealth());
+                    if (destroyed) {
+                        System.out.println("[BossObstacleManager] Obstacle destroyed! Remaining obstacles: " + (obstacles.size() - 1));
+                    } else {
+                        System.out.println("[BossObstacleManager] Obstacle hit! Remaining health: " + obstacle.getCurrentHealth() + "/" + obstacle.getMaxHealth());
+                    }
+                    break;  // One bullet hits only one obstacle
                 }
-                break;  // One bullet hits only one obstacle
             }
         }
     }
 
     public void render(Graphics g) {
-        for (EnemyCar obstacle : obstacles) {
+        for (EnemyCar obstacle : getActiveObstacles()) {
             obstacle.render(g);
         }
     }
 
     public void reset() {
-        obstacles.clear();
+        synchronized (obstacles) {
+            obstacles.clear();
+        }
         spawnTimer = nextSpawnInterval();
         System.out.println("[BossObstacleManager] Reset - all obstacles cleared");
     }
 
     public List<EnemyCar> getActiveObstacles() {
-        return obstacles;
+        synchronized (obstacles) {
+            return new ArrayList<>(obstacles);
+        }
     }
 }

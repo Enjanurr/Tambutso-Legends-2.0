@@ -24,7 +24,6 @@ public class AudioPlayer {
     private static final String MAIN_THEME_PREFIX = "/audio/music/main/main_";
     private static final String BOSS_THEME_PREFIX = "/audio/music/boss/boss_";
     private static final String TRACK_EXTENSION = ".wav";
-    private static final String CART_SPAWN_SOUND_PATH = "/audio/sfx/MPAudio.wav";
 
     private Clip musicClip;
     private String currentTrack;
@@ -48,7 +47,7 @@ public class AudioPlayer {
     }
 
     public void playCartSpawnSound() {
-        playRawSfx(CART_SPAWN_SOUND_PATH, "cart_spawn");
+        playSfx(SoundEffect.CART_SPAWN);
     }
 
     public void playMainTheme(int level) {
@@ -63,7 +62,20 @@ public class AudioPlayer {
         playSfx(SoundEffect.INTRO_EXPLOSION);
     }
 
+    public void playLevelClearSfx() {
+        playSfx(SoundEffect.LEVEL_CLEAR);
+    }
+
+    public void playLevelClearThenMenuTheme() {
+        stopMusic();
+        playSfx(SoundEffect.LEVEL_CLEAR, this::playMenuTheme);
+    }
+
     public void playSfx(SoundEffect soundEffect) {
+        playSfx(soundEffect, null);
+    }
+
+    private void playSfx(SoundEffect soundEffect, Runnable onComplete) {
         cleanupFinishedSfxClips();
 
         Clip newClip = null;
@@ -78,7 +90,7 @@ public class AudioPlayer {
                 newClip = AudioSystem.getClip();
                 newClip.open(audioStream);
                 applySfxPlaybackSettings(newClip, soundEffect);
-                registerSfxLifecycle(newClip);
+                registerSfxLifecycle(newClip, onComplete);
                 synchronized (activeSfxClips) {
                     activeSfxClips.add(newClip);
                     activeSfxTypes.put(newClip, soundEffect);
@@ -96,73 +108,16 @@ public class AudioPlayer {
         }
     }
 
-    /**
-     * Play a raw sound effect from a direct file path (for CART spawn, etc.)
-     */
-    private void playRawSfx(String resourcePath, String soundName) {
-        cleanupFinishedSfxClips();
-
-        Clip newClip = null;
-        try (InputStream rawStream = AudioPlayer.class.getResourceAsStream(resourcePath)) {
-            if (rawStream == null) {
-                System.err.println("[AudioPlayer] Missing audio resource: " + resourcePath);
-                return;
-            }
-
-            try (BufferedInputStream bufferedStream = new BufferedInputStream(rawStream);
-                 AudioInputStream audioStream = AudioSystem.getAudioInputStream(bufferedStream)) {
-                newClip = AudioSystem.getClip();
-                newClip.open(audioStream);
-
-                // Apply SFX settings without SoundEffect enum
-                applyRawSfxPlaybackSettings(newClip);
-                registerSfxLifecycle(newClip);
-
-                synchronized (activeSfxClips) {
-                    activeSfxClips.add(newClip);
-                }
-                newClip.setFramePosition(0);
-                newClip.start();
-                System.out.println("[AudioPlayer] Playing cart spawn sound: " + soundName);
-            }
-        } catch (UnsupportedAudioFileException e) {
-            System.err.println("[AudioPlayer] Unsupported audio format: " + resourcePath);
-        } catch (IOException | LineUnavailableException e) {
-            if (newClip != null) {
-                newClip.close();
-            }
-            e.printStackTrace();
-        }
-    }
-
-    private void applyRawSfxPlaybackSettings(Clip targetClip) {
-        if (targetClip == null) return;
-
-        if (targetClip.isControlSupported(BooleanControl.Type.MUTE)) {
-            BooleanControl muteControl = (BooleanControl) targetClip.getControl(BooleanControl.Type.MUTE);
-            muteControl.setValue(sfxMuted);
-        }
-
-        if (targetClip.isControlSupported(FloatControl.Type.MASTER_GAIN)) {
-            FloatControl gainControl = (FloatControl) targetClip.getControl(FloatControl.Type.MASTER_GAIN);
-            float min = gainControl.getMinimum();
-            float max = gainControl.getMaximum();
-
-            if (sfxMuted || sfxMasterVolume <= 0f) {
-                gainControl.setValue(min);
-                return;
-            }
-
-            float gain = (float) (20f * Math.log10(Math.max(sfxMasterVolume, 0.0001f)));
-            gain = Math.min(gain, max);
-            gainControl.setValue(Math.max(min, Math.min(max, gain)));
-        }
-    }
-
     public void stop() {
         rememberCurrentTrackPosition();
         closeMusicClip();
         stopAllSfx();
+        currentTrack = null;
+    }
+
+    public void stopMusic() {
+        rememberCurrentTrackPosition();
+        closeMusicClip();
         currentTrack = null;
     }
 
@@ -354,12 +309,19 @@ public class AudioPlayer {
         return Math.min(saved, maxFrame);
     }
 
-    private void registerSfxLifecycle(Clip clip) {
+    private void registerSfxLifecycle(Clip clip, Runnable onComplete) {
+        final boolean[] completionHandled = {false};
         clip.addLineListener(event -> {
             if (event.getType() == LineEvent.Type.STOP && clip.getFramePosition() >= clip.getFrameLength()) {
                 synchronized (activeSfxClips) {
                     activeSfxClips.remove(clip);
                     activeSfxTypes.remove(clip);
+                }
+                if (!completionHandled[0]) {
+                    completionHandled[0] = true;
+                    if (onComplete != null) {
+                        onComplete.run();
+                    }
                 }
                 clip.close();
             } else if (event.getType() == LineEvent.Type.CLOSE) {

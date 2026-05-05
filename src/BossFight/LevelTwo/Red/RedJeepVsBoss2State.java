@@ -476,6 +476,7 @@ public class RedJeepVsBoss2State extends State implements StateMethods {
         boolean defeated = bossBar.takeDamage();
         if (defeated) {
             bossDefeated = true;
+            game.getAudioPlayer().playLevelClearThenMenuTheme();
             defeatOverlay.reset();
         }
     }

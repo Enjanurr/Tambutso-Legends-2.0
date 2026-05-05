@@ -493,6 +493,8 @@ public class Playing extends State implements StateMethods {
     public void resetToLevel1() {
         // Reset level progression back to Level 1
         levelManager.resetToLevel1();
+        game.setCurrentGameLevel(1);
+        syncRouteForCurrentLevel();
 
         // Recreate progress bar and banner for Level 1
         progressBar = new ProgressBar(1);
@@ -750,6 +752,10 @@ public class Playing extends State implements StateMethods {
     }
     public PassengerCounter getPassengerCounter() {
         return passengerCounter;
+    }
+
+    public SkipOverlay getSkipOverlay() {
+        return skipOverlay;
     }
 
     @Override

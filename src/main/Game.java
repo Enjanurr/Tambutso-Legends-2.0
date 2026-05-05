@@ -1,6 +1,8 @@
 package main;
 
 import java.awt.Graphics;
+import java.awt.event.KeyEvent;
+import java.awt.event.MouseEvent;
 
 import BossFight.LevelThree.Blue.BlueJeepVsBoss3State;
 import BossFight.LevelThree.Green.GreenJeepVsBoss3State;
@@ -590,6 +592,52 @@ public class Game implements Runnable {
             default:
                 break;
         }
+
+        if (isBossFightState(GameStates.state)) {
+            playing.getSkipOverlay().render(g);
+        }
+    }
+
+    private boolean isBossFightState(GameStates state) {
+        return switch (state) {
+            case BLUE_JEEP_VS_BOSS1, RED_JEEP_VS_BOSS1, GREEN_JEEP_VS_BOSS1,
+                    BLUE_JEEP_VS_BOSS2, RED_JEEP_VS_BOSS2, GREEN_JEEP_VS_BOSS2,
+                    BLUE_JEEP_VS_BOSS3, RED_JEEP_VS_BOSS3, GREEN_JEEP_VS_BOSS3 -> true;
+            default -> false;
+        };
+    }
+
+    public boolean handleBossFightSkipOverlayKeyPressed(KeyEvent e) {
+        if (!isBossFightState(GameStates.state)) {
+            return false;
+        }
+
+        if (e.getKeyCode() == KeyEvent.VK_S && e.isControlDown() && e.isShiftDown()) {
+            playing.getSkipOverlay().toggleEnabled();
+            return true;
+        }
+
+        playing.getSkipOverlay().keyPressed(e);
+
+        return playing.getSkipOverlay().isVisible()
+                || e.getKeyCode() == KeyEvent.VK_F1
+                || (playing.getSkipOverlay().isEnabled() && (
+                e.getKeyCode() == KeyEvent.VK_N
+                        || e.getKeyCode() == KeyEvent.VK_B
+                        || e.getKeyCode() == KeyEvent.VK_C));
+    }
+
+    public boolean handleBossFightSkipOverlayMousePressed(MouseEvent e) {
+        if (!isBossFightState(GameStates.state) || !playing.getSkipOverlay().isVisible()) {
+            return false;
+        }
+
+        playing.getSkipOverlay().mousePressed(e);
+        return true;
+    }
+
+    public boolean handleBossFightSkipOverlayMouseReleased() {
+        return isBossFightState(GameStates.state) && playing.getSkipOverlay().isVisible();
     }
 
 

@@ -70,6 +70,10 @@ public class KeyboardInputs implements KeyListener {
 
     @Override
     public void keyPressed(KeyEvent e) {
+        if (gamePanel.getGame().handleBossFightSkipOverlayKeyPressed(e)) {
+            return;
+        }
+
         switch (GameStates.state) {
             case GAME_INTRO:
                 gamePanel.getGame().getGameIntroState().keyPressed(e);
